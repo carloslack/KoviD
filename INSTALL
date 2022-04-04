@@ -1,0 +1,6 @@
+Follow the steps:
+
+$ git submodule update --init
+$ make
+
+$ sudo insmod ./kovid.ko
