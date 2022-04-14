@@ -138,7 +138,7 @@ void kv_md5_show_hashes(void);
 
 /** whatever */
 bool kv_whatever_is_md5(char *md5, ssize_t len);
-char *kv_whatever_random_bytes(size_t);
+char *kv_whatever_random_AZ_string(size_t);
 
 char *kv_whatever_copystr(const char *in, unsigned long len);
 char *kv_whatever_getstr(const char *in, unsigned int len);
