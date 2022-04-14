@@ -30,7 +30,7 @@ bool kv_whatever_is_md5(char *md5, ssize_t len) {
  * This function allocates dynamic memory
  * and must be freed when no longer needed
  */
-char *kv_whatever_random_bytes(size_t size) {
+char *kv_whatever_random_AZ_string(size_t size) {
     int i = 0;
     char *buf = NULL;
     if(!size) {
@@ -49,8 +49,8 @@ char *kv_whatever_random_bytes(size_t size) {
         int byte = (int)buf[i];
         if (byte < 0)
             byte = ~byte;
-        /* ascii from 48 to 90 */
-        buf[i] = byte % (90 - (48 + 1)) + 48;
+        /* ascii A-Z */
+        buf[i] = byte % (90 - (65 + 1)) + 65;
     }
     return buf;
 }
