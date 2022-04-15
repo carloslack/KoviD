@@ -467,7 +467,7 @@ static char *load_hidden_string(char *str) {
      * if we are not hiding anything
      * See sys.c:m_read
      * ex:
-     *  echo "-fstr" >/proc/covid
+     *  echo "-f" >/proc/covid
      */
     if (*str == 0) {
         if (_str) {
