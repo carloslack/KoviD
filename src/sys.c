@@ -273,7 +273,7 @@ static asmlinkage long m_read(struct pt_regs *regs) {
     const char __user *arg;
     size_t size;
     long rv;
-    struct fs_file_node *fs;
+    struct fs_file_node *fs = NULL;
 
     /** call the real thing first */
     rv = real_m_read(regs);
@@ -311,8 +311,7 @@ static asmlinkage long m_read(struct pt_regs *regs) {
     }
 
 out:
-    if (fs) kfree(fs);
-    if (buf) kfree(buf);
+    kv_mem_free(fs, buf);
 
     return rv;
 }
