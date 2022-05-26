@@ -27,6 +27,7 @@
         2.10 Persistence
         2.11 MD5
         2.12 Base address
+        2.13 BPF
     3 - Usage
         3.1 /proc/kovid interface
         3.2 Help
@@ -447,6 +448,15 @@
 
         $ echo "-b <PID>" >/proc/kovid
         $ cat /proc/kovid
+
+    2.13 BPF
+
+        KoviD can evade some anti-rk tools based on BPF. More specifically ones
+        that look for syscall hooks that rely on analysing BPF kernel stack traces
+        via bpf_map_...() interfaces.
+
+        The one anti-rk tool, based on BPF, used for our evasion is:
+            https://github.com/pathtofile/bpf-hookdetect.git
 
 3 - Usage
 

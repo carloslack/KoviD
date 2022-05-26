@@ -89,12 +89,15 @@ typedef void (*attach_pid_sg)(struct task_struct *, enum pid_type, struct pid *)
 typedef void (*attach_pid_sg)(struct task_struct *, enum pid_type);
 #endif
 
+typedef struct bpf_map *(*bpf_map_get_sg)(unsigned int);
+
 typedef unsigned long (*kallsyms_lookup_name_sg)(const char *name);
 
 typedef asmlinkage long (*sys64)(struct pt_regs *regs);
 
 struct kernel_syscalls {
     attach_pid_sg k_attach_pid;
+    bpf_map_get_sg k_bpf_map_get;
     kallsyms_lookup_name_sg k_kallsyms_lookup_name;
     sys64 k_sys_setreuid;
 };
