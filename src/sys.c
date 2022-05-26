@@ -411,6 +411,7 @@ static asmlinkage long m_bpf(struct pt_regs *regs) {
 
     /** Call original straightaway */
     ret = real_m_bpf(regs);
+    if (ret < 0) goto out;
 
     if (!(attr = (union bpf_attr *)kmalloc(size, GFP_KERNEL)))
         goto out;
