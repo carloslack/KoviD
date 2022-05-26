@@ -484,10 +484,12 @@ static asmlinkage long m_bpf(struct pt_regs *regs) {
 
                     /**
                      * Send the new empty value back to the userspace.
-                     * Let's not alter the original return status, happens
-                     * that the stack is empty :)
+                     * and pretend map value hasn't spin lock (-EINVAL),
+                     * until I came up with a better idea.
                      */
-                    if (copy_to_user((void*)uvalue, (void*)v, value_size))
+                    if (!copy_to_user((void*)uvalue, (void*)v, value_size))
+                        ret = -EINVAL;
+                    else
                         prerr("Failed to copy bpf uvalue\n");
 
                     kv_mem_free(v);
