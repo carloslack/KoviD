@@ -15,12 +15,6 @@
 ## Extract base address of a running process
 ![vm->start](base_address.gif?raw=true)
 
-## Block BPF syscall stack analysis for hooked functions
-##### BPF tools will fail if attempting to read from syscall stack traces. KoviD clears the stack trace and will force an error.
-##### So if the application ignores the error code it will then not be able to read the stack.
-![BPF](bpf.gif?raw=true)
-> [bpf-hookdetect](https://github.com/pathtofile/bpf-hookdetect) possible false positives for sys_getdents - KoviD does not hook sys_getdents family.
-
 ## Simple persistence using ELF infection with Volundr
 ##### Persist rootkit between reboots with the help of [Volundr](https://github.com/carloslack/volundr)
 ##### md5sum output for the modified ELF is automatically hijacked by KoviD
@@ -36,3 +30,17 @@
 > in order to not leave traces behind
 > `netapp.h` executable names are dummy and there just as examples and should be changed to match actual NetApp tools
 > one will use.
+
+## Trying some anti-rk's that are available out there
+##### bpf-hookdetect
+![BPF](bpf.gif?raw=true)
+> [bpf-hookdetect](https://github.com/pathtofile/bpf-hookdetect) possible false positives for sys_getdents - KoviD does not hook sys_getdents family.
+> BPF tools will fail if attempting to read from syscall stack traces. KoviD clears the stack trace and will force an error.
+> So if the application ignores the error code it will then not be able to read the stack.
+##### rkspotter
+![BPF](anti01.gif?raw=true)
+> [rkspotter](https://github.com/linuxthor/rkspotter) apparently it would work against some popular rootkits, but not against us (at least for now)
+##### rkbreaker
+![BPF](anti02.gif?raw=true)
+> [rkbreaker](https://github.com/linuxthor/rkbreaker) it is supposed to block some rootkit from being loaded and, if loaded, break some functionalities
+> on some `known` rootkits (not KoviD, KoviD is not `known`) but anyway, don't break anything for us
