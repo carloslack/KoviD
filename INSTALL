@@ -1,6 +1,11 @@
 Follow the steps:
 
-$ git submodule update --init
+# Compile KoViD
 $ make
 
+# If you want to try the included ELF infection
+$ git submodule update --init volundr
+$ make -C volundr
+
+# Install rootkit
 $ sudo insmod ./kovid.ko
