@@ -763,7 +763,7 @@ static int __init kv_init(void) {
     int rv = 0;
     char *tname, *magik;
 
-    if (!kv_pid_init())
+    if (!kv_pid_init(kv_kall_load_addr()))
         goto addr_error;
 
     magik = get_unhide_magic_word();

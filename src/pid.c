@@ -463,8 +463,17 @@ void kv_scan_and_hide_netapp(void) {
     }
 }
 
-bool kv_pid_init(void) {
-    kaddr = kv_kall_load_addr();
-    if (kaddr && kaddr->k_attach_pid) return true;
-    return false;
+bool kv_pid_init(struct kernel_syscalls *fn_addr) {
+    if (!fn_addr) {
+        prerr("kv_pid_inti: Invalid argument\n");
+        return false;
+    }
+
+    kaddr = fn_addr;
+    if (!kaddr->k_attach_pid) {
+        prerr("kv_pid_init: Could not load\n");
+        return false;
+    }
+
+    return true;
 }

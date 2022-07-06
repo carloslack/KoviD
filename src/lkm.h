@@ -107,7 +107,7 @@ bool sys_init(void);
 void sys_deinit(void);
 
 /** pid,task management */
-bool kv_pid_init(void);
+bool kv_pid_init(struct kernel_syscalls *fn_addr);
 bool kv_find_hidden_pid(struct hidden_status *status, pid_t pid);
 bool kv_find_hidden_task(struct task_struct *);
 void kv_hide_task_by_pid(pid_t, __be32, Operation);
