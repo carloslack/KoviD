@@ -59,8 +59,8 @@
     the system in order to unhide (rmmod) the module. In some cases removing the rootkit
     is essential.
 
-    The other issue, that is easily forgotten is that some anti-rootkit detectors (those
-    written by white-motherfucking-hatters) that look for patterns created by rootkits
+    The other issue, that is easily forgotten is that some anti-rootkit detectors
+    that look for patterns created by rootkits
     when they execute certain operations, and leave tracks behind. So simply calling
     kernel functions to do our work sometimes is not enough, we need to implement
     these functionalities ourselves (basically stealing kernel code and customizing it)
@@ -103,7 +103,7 @@
         1. Some of the code is not accessible from the kernel module
         2. Need to change/customize the code path and data
 
-    For example, in order to trick those motherfucker anti-rk shite:
+    For example, in order to trick some anti-rk:
 
 ```C
     /* So cute that __module_address will return NULL for us

