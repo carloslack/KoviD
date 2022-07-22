@@ -4,6 +4,7 @@ extraction:
       packages:
         - build-essential
         - linux-headers-generic
+        - linux-kernel-headers
     after_prepare:
       - export GNU_MAKE=make
     index:
