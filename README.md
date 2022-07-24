@@ -11,6 +11,9 @@
     ░  ░       ░ ░        ░   ░     ░
                          ░        ░
 
+[![Total alerts](https://img.shields.io/lgtm/alerts/g/carloslack/KoviD.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/carloslack/KoviD/alerts/)
+[![Language grade: C/C++](https://img.shields.io/lgtm/grade/cpp/g/carloslack/KoviD.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/carloslack/KoviD/context:cpp)
+
 ## 1 - About
 
     KoviD rootkit is a full-feature LKM intended for use against
