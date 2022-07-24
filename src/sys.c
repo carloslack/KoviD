@@ -1172,6 +1172,10 @@ int fh_install_hook(struct ftrace_hook *hook) {
 
 void fh_remove_hook(struct ftrace_hook *hook) {
     int err;
+#ifdef DEBUG_RING_BUFFER
+    if (hook && hook->name)
+        prinfo("Uninstalling: '%s' syscall=%d\n", hook->name, hook->syscall);
+#endif
     if ((err = unregister_ftrace_function(&hook->ops)))
         pr_debug("unregister_ftrace_function() failed: %d\n", err);
 
