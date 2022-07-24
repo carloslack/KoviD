@@ -1190,7 +1190,7 @@ int fh_install_hooks(struct ftrace_hook *hooks) {
     }
     goto leave;
 unroll:
-    while (i >= 0) {
+    while (i != 0) {
         fh_remove_hook(&hooks[--i]);
     }
 leave:
