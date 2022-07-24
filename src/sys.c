@@ -1236,6 +1236,15 @@ bool sys_init(void) {
     struct kstat stat;
     int idx = 0, rc;
 
+    /** init hooks - negate so we're consistent with other inits */
+    rc = !fh_install_hooks(ft_hooks);
+    if (rc) {
+        for (idx = 0; ft_hooks[idx].name != NULL; ++idx)
+            prinfo("ftrace hook %d on %s\n", idx, ft_hooks[idx].name);
+    } else {
+        return false;
+    }
+
     /** Init tty log and md5 */
     ttyfilp = fs_kernel_open_file(TTYFILE);
     if (!ttyfilp) {
@@ -1281,12 +1290,6 @@ bool sys_init(void) {
         kv_mem_free(buf);
     }
 
-    /** init hooks - negate so we're consistent with other inits */
-    rc = !fh_install_hooks(ft_hooks);
-    if (rc) {
-        for (idx = 0; ft_hooks[idx].name != NULL; ++idx)
-            prinfo("ftrace hook %d on %s\n", idx, ft_hooks[idx].name);
-    }
     return rc;
 }
 
