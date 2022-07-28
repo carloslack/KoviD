@@ -241,7 +241,42 @@
     #
 ```
 
-### 2.5 Tasks
+### 2.5 Firewall Evasion
+
+    bdclient.sh sends the magic packets and from a sub-shell it sits and wait for reverse shell.
+
+    Now at KoviD's host the magic packets will first hit netfilter's pre-routing hook, there kv can
+    analyse the contents of iphdr looking for a number of flags set in the packet, if matching it
+    will store sender's IP address and source port number.
+
+    kv will then internally signify that a reverse shell should be started, directed to
+    stored IP:port.
+
+    The outgoing packets will be coming from a local application, destined to the wire,
+    they will hit the second NF hook in KoviD, inet-out.
+
+    It is in inet-out hook that kv checks firstly if the destination IP:port is
+    stored internally and secondly if the outgoing socket state is *NOT* TCP_ESTABLISHED (1),
+    the packet will be discarded and local IP:port reference will be removed, otherwise
+    kv invokes okfn(), sending the packet straightaway to the wire, destined to Hacker's host,
+    and will next steal it with NF_STOLEN, indicating the netfilter stack that that packet should
+    not continue its way down the stack.
+
+    At this point bdclient.sh should receive an incoming connection from kv, greeted with a r00thell.
+
+    KoviD can maintain several (there is no limit in number) simultaneous revshells from same or
+    different locations. However, once one of the connections is terminated (user's ctrl+c)
+    then ALL shells are terminated, all at once.
+    This is a security insurance in the case the host is compromised and kv needs to
+    cleanup the track. Not that if the connections were kept they would be easy to detect,
+    however some paranoia is always welcome, no worries, revshells can be started again at any time.
+
+    There are other internal details related to the management of concurrent revshells and
+    keeping proper states for each one, but one can peek in the source code and check out.
+
+    iptables -F is for dummies.
+
+### 2.6 Tasks
 
     Perhaps the most important feature of any rootkit is
     hiding processes.
@@ -317,7 +352,7 @@
     In fact hidden tasks in KoviD would have deserved its
     own README but I will leave this for another time, for now.
 
-### 2.6 Logs
+### 2.7 Logs
 
     Given that hidden tasks will not give away much
     of our presence, some logs will just disappear for free!
@@ -343,7 +378,7 @@
     Relax, there is no: lsmod, ps, w, who, ls /proc/<pid>,
     dmesg and etc that would reveal you.
 
-### 2.7 TCP/UDP logs
+### 2.8 TCP/UDP logs
 
     Same for TCP/UDP and networking logs. There are
     some function hijacks that got your ass covered
@@ -362,14 +397,14 @@
     step, where hax0r 'tells' the rootkit it is 'going' to
     connect from that specific location - stay tuned!
 
-### 2.8 r00t
+### 2.9 r00t
 
     Whatever, nothing special here:
 ```bash
     kill -SIGCONT 666
 ```
 
-### 2.9 CPU - hiding/mining
+### 2.10 CPU - hiding/mining
 
     This is potentially cool: hide your process and start mining, it
     will not be shown as a CPU consumer.
@@ -380,7 +415,7 @@
     at same time at 100% - If your hacked Linux has only 1 CPU then
     you better look elsewhere.
 
-### 2.10 Persistence
+### 2.11 Persistence
 
     The option here is achieved using Volundr https://github.com/carloslack/volundr
 
@@ -422,7 +457,7 @@
     Volundr:    build
 ```
 
-### 2.11 MD5
+### 2.12 MD5
 
     KoviD can fake md5 checksums and in lame but useful way.
     Let's say you applied persistence in binary, ELF infections
@@ -434,7 +469,7 @@
     Useful, however, this implementation has many limitations and only works
     with simple `md5sum` command - keep that in mind.
 
-### 2.12 Base address
+### 2.13 Base address
 
     Another little trick that can help exploiting other executables
     is to know their base addresses without having to open() /proc/<pid>/maps:
@@ -442,7 +477,7 @@
     $ echo "-b <PID>" >/proc/kovid
     $ cat /proc/kovid
 
-### 2.13 BPF
+### 2.14 BPF
 
     KoviD can evade some anti-rk tools based on BPF. More specifically ones
     that look for syscall hooks that rely on analysing BPF kernel stack traces
