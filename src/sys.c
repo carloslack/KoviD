@@ -465,7 +465,7 @@ static asmlinkage long m_bpf(struct pt_regs *regs) {
 
             trace_len = bucket->nr * stack_map_data_size(map);
             memcpy(value, bucket->data, trace_len);
-            memset(value + trace_len, 0, value_size - trace_len);
+            memset((char*)value + trace_len, 0, value_size - trace_len);
 
             /**
              * Now we check if value (stored syscall address)
