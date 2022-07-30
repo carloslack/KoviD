@@ -177,10 +177,10 @@ unsigned long kv_get_elf_vm_start(pid_t);
          19,18,17,16,15,14,13,12,11,10, \
          9,8,7,6,5,4,3,2,1,0
 
-static inline void _kfree(void *p) {
-    if (p != NULL) {
-        kfree(p);
-        p = NULL;
+static inline void _kfree(void **p) {
+    if (*p != NULL) {
+        kfree(*p);
+        *p = NULL;
     }
 }
 
@@ -189,7 +189,7 @@ static void __attribute__((unused))mem_free(int argc, ...) {
     int i;
     va_start(ap, argc);
     for (i = 0; i < argc; ++i)
-        _kfree(va_arg(ap, void*));
+        _kfree(va_arg(ap, void**));
     va_end(ap);
 }
 #define kv_mem_free(...) mem_free(PP_NARG(__VA_ARGS__), __VA_ARGS__)
