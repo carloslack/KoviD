@@ -77,11 +77,13 @@ struct fs_file_node *fs_load_fnode(struct file *f) {
     if(!fnode)
         return NULL;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,11,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,12,0)
+    op->getattr(task_active_pid_ns(current)->user_ns, &f->f_path, &stat, req_mask, query_mask);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,11,0)
     op->getattr(&f->f_path, &stat, req_mask, query_mask);
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(4,11,0)
-    op->getattr(task_active_pid_ns(current)->proc_mnt, f->f_path.dentry, &stat);
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(3,19,0)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,10,0)
+  op->getattr(task_active_pid_ns(current)->proc_mnt, f->f_path.dentry, &stat);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3,18,0)
     op->getattr(task_active_pid_ns(current)->proc_mnt, f->f_dentry, &stat);
 #endif
 

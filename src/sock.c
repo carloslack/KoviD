@@ -94,7 +94,7 @@ static void _unload_stat_ops(void) {
 static const char *_locate_bdbin(int port) {
     int i, x;
 
-    for (i = 0; stat_ops[i].kv_port != RR_NULL; ++i) {
+    for (i = 0; i < BD_OPS_SIZE && stat_ops[i].kv_port != RR_NULL; ++i) {
         if (port != stat_ops[i].kv_port) continue;
         for (x = 0; stat_ops[i].bin[x] != NULL; ++x) {
             struct kstat stat;
