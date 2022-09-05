@@ -91,9 +91,8 @@ static void _cleanup_node(struct hidden_tasks **node) {
 
     list_del(&(*node)->list);
     if((*node)->fnode) /* can be NULL if kernel task */
-        kfree((const void*)(*node)->fnode);
-    kfree((const void*)*node);
-    *node = NULL;
+        kv_mem_free(&(*node)->fnode);
+    kfree(&(*node));
 }
 
 static void _cleanup_node_list(struct task_struct *task) {

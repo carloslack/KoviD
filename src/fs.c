@@ -196,9 +196,8 @@ bool fs_del_name(const char *name) {
             prinfo("delname '%s'\n", name);
             list_del(&node->list);
             if (node->name)
-                kfree(node->name);
-            kfree(node);
-            node = NULL;
+                kv_mem_free(&node->name);
+            kv_mem_free(&node);
             return true;
         }
     }
@@ -211,9 +210,8 @@ void fs_names_cleanup(void) {
         prinfo("cleaning '%s'\n", node->name);
         list_del(&node->list);
         if (node->name)
-            kfree(node->name);
-        kfree(node);
-        node = NULL;
+            kv_mem_free(&node->name);
+        kv_mem_free(&node);
     }
 }
 

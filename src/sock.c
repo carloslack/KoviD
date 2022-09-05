@@ -433,8 +433,7 @@ void kv_bd_cleanup_item(__be32 *saddr) {
     list_for_each_entry_safe_reverse(node, node_safe, &iph_node, list) {
         if (node->iph->saddr == *saddr) {
             list_del(&node->list);
-            kfree(node);
-            node = NULL;
+            kv_mem_free(&node);
             break;
         }
     }
@@ -450,8 +449,7 @@ void _bd_cleanup(bool force) {
     list_for_each_entry_safe(node, node_safe, &iph_node, list) {
         if (!node->established && force) {
             list_del(&node->list);
-            kfree(node);
-            node = NULL;
+            kv_mem_free(&node);
         }
     }
 }
