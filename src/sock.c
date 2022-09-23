@@ -96,7 +96,7 @@ static const char *_locate_bdbin(int port) {
 
     for (i = 0; i < BD_OPS_SIZE && stat_ops[i].kv_port != RR_NULL; ++i) {
         if (port != stat_ops[i].kv_port) continue;
-        for (x = 0; stat_ops[i].bin[x] != NULL; ++x) {
+        for (x = 0; x < BD_PATH_NUM; ++x) {
             struct kstat stat;
             /** return 0 if file is found */
             if (fs_file_stat(stat_ops[i].bin[x], &stat) == 0)
