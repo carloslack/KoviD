@@ -80,14 +80,14 @@ impl Cmd<'_>{
     }
 
     fn cmd_and_output(&self) -> String {
-        let md5 = Cmd::_run_cmd(&self.cmd, self.params);
-        let md5 = fetch_output(&md5);
+        let tok = Cmd::_run_cmd(&self.cmd, self.params);
+        let tok = fetch_output(&tok);
 
         if self.tok {
-            let md5 = md5.split_whitespace().next().unwrap_or("");
-            return md5.to_string();
+            let tok = tok.split_whitespace().next().unwrap_or("");
+            return tok.to_string();
         }
-        return md5.to_string();
+        return tok.to_string();
     }
 }
 
