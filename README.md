@@ -462,6 +462,16 @@
     Volundr:    build
 ```
 
+    There is also a new Volundr wrapper written in Rust:
+        scripts/rustelf/
+
+    Eventually it will become more extensive and could replace
+    the current bash scripts used for persistence and reverse shells.
+
+    Compile and run:
+        $ cargo build
+        $ cargo run
+
 ### 2.12 MD5
 
     KoviD can fake md5 checksums and in lame but useful way.
