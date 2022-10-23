@@ -1,5 +1,5 @@
 [package]
-name = "rustinstall"
+name = "kvrust"
 version = "0.1.0"
 edition = "2021"
 
@@ -9,3 +9,4 @@ edition = "2021"
 anyhow = "1.0.42"
 assert-str = "0.1"
 chrono = "0.4"
+structopt = "0.3.26"
