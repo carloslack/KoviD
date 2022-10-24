@@ -193,7 +193,7 @@ enum CliCmd {
 
 #[derive(Debug, StructOpt)]
 struct Target {
-    #[structopt(short, long, help = "just a test")]
+    #[structopt(short, long)]
     path: String,
 }
 
