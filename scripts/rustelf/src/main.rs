@@ -1,8 +1,8 @@
-use std::process::{Command};
+use chrono::{DateTime, Utc};
 use std::env;
 use std::fs;
-use chrono::{DateTime, Utc};
 use std::path::Path;
+use std::process::Command;
 use structopt::StructOpt;
 
 const ABOUT: &str = "
@@ -30,13 +30,13 @@ fn fetch_output(output: &Vec<u8>) -> String {
 fn exists(rv: String, msg: &str) -> String {
     match fs::metadata(rv.clone()).is_ok() {
         true => println!("[success] {msg}: found at {rv}"),
-        false => panic!("[error] {msg}: not found")
+        false => panic!("[error] {msg}: not found"),
     }
     rv
 }
 
 #[derive(Debug)]
-struct Volundr <'a>{
+struct Volundr<'a> {
     envname: &'a str,
     append: &'a str,
     path: &'a String,
@@ -55,25 +55,25 @@ impl Volundr<'_> {
 }
 
 #[derive(Debug)]
-struct Commit <'b>{
+struct Commit<'b> {
     target: &'b String,
     volundr: &'b String,
     path: &'b String,
 }
 
 #[derive(Debug)]
-struct Cmd <'c>{
+struct Cmd<'c> {
     tok: bool,
     cmd: String,
     params: &'c [&'c str],
 }
 
-impl Cmd<'_>{
-
-     fn _run_cmd(cmd: &str, args: &[&str]) -> Vec<u8> {
-        let output = Command::new(cmd).args(args).output().unwrap_or_else(|e| {
-            panic!("{cmd} failed to execute process: {e}")
-        });
+impl Cmd<'_> {
+    fn _run_cmd(cmd: &str, args: &[&str]) -> Vec<u8> {
+        let output = Command::new(cmd)
+            .args(args)
+            .output()
+            .unwrap_or_else(|e| panic!("{cmd} failed to execute process: {e}"));
 
         assert!(output.status.success());
         output.stdout
@@ -93,7 +93,6 @@ impl Cmd<'_>{
 
 impl Commit<'_> {
     fn commit(self) -> anyhow::Result<()> {
-
         let md5_before = Cmd {
             tok: true,
             cmd: String::from("md5sum"),
@@ -103,7 +102,12 @@ impl Commit<'_> {
 
         let mut p = self.path.to_string();
         let now: DateTime<Utc> = Utc::now();
-        for s in vec!["/../../elf_backup/", &now.timestamp().to_string(), ".", &md5_before] {
+        for s in vec![
+            "/../../elf_backup/",
+            &now.timestamp().to_string(),
+            ".",
+            &md5_before,
+        ] {
             p.push_str(s);
         }
 
@@ -158,7 +162,7 @@ impl Commit<'_> {
         let mut ld = root.display().to_string();
         ld.push_str("/volundr");
         let key = "LD_LIBRARY_PATH";
-        env::set_var(key,&ld);
+        env::set_var(key, &ld);
 
         let exec_cmd = Cmd {
             tok: false,
