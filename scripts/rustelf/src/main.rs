@@ -28,10 +28,10 @@ fn fetch_output(output: &Vec<u8>) -> String {
 }
 
 fn exists(rv: String, msg: &str) -> String {
-    match fs::metadata(rv.clone()).is_ok() {
-        true => println!("[success] {msg}: found at {rv}"),
-        false => panic!("[error] {msg}: not found"),
+    if !fs::metadata(rv.clone()).is_ok() {
+        panic!("[error] {msg}: not found");
     }
+    println!("[success] {msg}: found at {rv}");
     rv
 }
 
@@ -46,7 +46,7 @@ struct Volundr<'a> {
 impl Volundr<'_> {
     fn resolve_path(&self) -> String {
         let mut rv = env::var(self.envname).unwrap_or("".to_string());
-        if rv.eq("") {
+        if rv == "" {
             rv = self.path.to_string();
             rv.push_str(self.append);
         }
