@@ -20,7 +20,11 @@ OPENSSL="openssl"
 SOCAT="socat"
 NC="nc"
 NPING="nping"
-PERMDIR=$PREFIX/certs
+
+# If environment variable PERMDIR is not available,
+# use default
+PERMDIR=${PERMDIR:-$PREFIX/certs}
+
 GIFT=${GIFT:-""}
 DRY=${DRY:-false}
 
