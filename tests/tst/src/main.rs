@@ -6,6 +6,7 @@
 // work in progress...
 
 use anyhow::Context;
+use fork::{daemon, Fork};
 use std::convert::From;
 use std::{
     ffi::OsStr,
@@ -139,13 +140,23 @@ fn certs() -> anyhow::Result<()> {
     Ok(())
 }
 
+fn fork() -> thread::Result<()> {
+    let thandle = thread::spawn(move || {
+        println!("Detached PID {}", process::id());
+        thread::sleep(time::Duration::from_secs(300));
+    });
+    thandle.join()
+}
+
 fn run(opts: Do) -> anyhow::Result<()> {
     match opts.option.as_ref() {
         "busy" => busy(),
         "certs" => {
             certs().with_context(|| format!("Error generating certificates"))?;
         }
-        "fork" => todo!(),
+        "fork" => {
+            let _ = fork();
+        }
         _ => println!("Invalid command {}", opts.option),
     }
     Ok(())
