@@ -19,7 +19,6 @@ SRC := src/${OBJNAME}.c src/pid.c src/fs.c src/sys.c \
 	src/sock.c src/whatever.c src/vm.c
 
 persist=src/persist
-obf=tools/obfstr
 
 $(OBJNAME)-objs = $(SRC:.c=.o)
 
@@ -27,7 +26,7 @@ obj-m := ${OBJNAME}.o
 
 CC=gcc
 
-all: persist obf
+all: persist
 	make  -C  /lib/modules/$(shell uname -r)/build M=$(PWD) modules
 	$(CC) ./tests/test.c -o ./tests/test
 	$(CC) ./tests/test_fork.c -o ./tests/test_fork
@@ -37,10 +36,7 @@ persist:
 		-size-check=error -o $(persist).o
 	$(LD) -Ttext 200000 --oformat binary -o $(persist) $(persist).o
 
-obf:
-	$(CC) $(obf).c -o $(obf)
-
-lgtm: persist obf
+lgtm: persist
 	make  -C  /lib/modules/$(shell dpkg --status linux-headers-generic |grep ^Depends| \
 		cut -d ":" -f2| sed 's/ linux-headers-//g')/build M=$(PWD) modules
 
@@ -48,7 +44,6 @@ clean:
 	@make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
 	@rm -f *.o src/*.o $(persist)
 	@rm -f ./tests/test ./tests/test_fork
-	@rm -f tools/obfstr
 	@echo "Clean."
 
 tags:
