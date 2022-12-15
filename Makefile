@@ -28,8 +28,6 @@ CC=gcc
 
 all: persist
 	make  -C  /lib/modules/$(shell uname -r)/build M=$(PWD) modules
-	$(CC) ./tests/test.c -o ./tests/test
-	$(CC) ./tests/test_fork.c -o ./tests/test_fork
 
 persist:
 	$(AS) --64 $(persist).S -statistics -fatal-warnings \
@@ -43,7 +41,6 @@ lgtm: persist
 clean:
 	@make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
 	@rm -f *.o src/*.o $(persist)
-	@rm -f ./tests/test ./tests/test_fork
 	@echo "Clean."
 
 tags:
