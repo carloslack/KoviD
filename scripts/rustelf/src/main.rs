@@ -1,8 +1,5 @@
 use chrono::{DateTime, Utc};
-use std::env;
-use std::fs;
-use std::path::Path;
-use std::process::Command;
+use std::{env, fs, path::Path, process::Command};
 use structopt::StructOpt;
 
 const ABOUT: &str = "
