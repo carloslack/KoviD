@@ -1119,6 +1119,12 @@ struct kernel_syscalls *kv_kall_load_addr(void) {
         ks.k_sys_setreuid   = (sys64)_load_syscall_variant(&ks, "sys_setreuid");;
         if (!ks.k_sys_setreuid)
             prwarn("invalid data: syscall hook setreuid will not work\n");
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
+        ks.k_do_exit = (do_exit_sg)ks.k_kallsyms_lookup_name("do_exit");
+        if (!ks.k_do_exit)
+            prwarn("invalid data: do_exit will not work\n");
+#endif
     }
     return &ks;
 }
