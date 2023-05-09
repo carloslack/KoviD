@@ -773,9 +773,6 @@ static int __init kv_init(void) {
     if (!sys_init())
         goto sys_init_error;
 
-    if (!kv_add_proc_interface())
-        goto sys_init_error;
-
     tname = kv_whatever_getstr(_OBF_IRQ_100_PCIEHP, sizeof(_OBF_IRQ_100_PCIEHP));
     tsk_prc = kthread_run(_proc_watchdog, NULL, tname);
     if (!tsk_prc)
