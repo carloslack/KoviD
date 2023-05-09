@@ -9,8 +9,7 @@ endif
 LD=$(shell which ld)
 AS=$(shell which as)
 CTAGS=$(shell which ctags))
-# PROCNAME, /proc/<name>, change this if you wish
-COMPILER_OPTIONS := -Wall -DPROCNAME='"kovid"' \
+COMPILER_OPTIONS := -Wall \
 	-DMODNAME='"kovid"' -DKSOCKET_EMBEDDED ${DEBUG_PR} -DCPUHACK -DPRCTIMEOUT=1200
 
 EXTRA_CFLAGS := -I$(src)/src -I$(src)/fs ${COMPILER_OPTIONS}
