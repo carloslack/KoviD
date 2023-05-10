@@ -52,6 +52,7 @@ char *kv_whatever_random_AZ_string(size_t size) {
         /* ascii A-Z */
         buf[i] = byte % (90 - (65 + 1)) + 65;
     }
+    buf[i] = 0;
     return buf;
 }
 
