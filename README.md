@@ -458,7 +458,7 @@
         $ sudo KOVID=/root/kovid.ko ./install.sh /usr/sbin/sshd
 
     Before running this script, make sure to:
-    KoviD:      build and insmod procname=<name>
+    KoviD:      build and insmod
     Volundr:    build
 ```
 
@@ -503,11 +503,11 @@
 
 ## 3 - Usage
 
-    KoviD is to be loaded with command line argument procname.
-    This is will be the interface entrypoint /proc/<name>
+    Before compiling and loading KoviD, first edit Makefile
+    and chose a name for /proc/<name>. Be smart, chose a difficult-to-guess name.
 
-    Ex:
-        sudo insmod kovid procname=mytest
+    Then compile and:
+        sudo insmod kovid
 
     Throughout this document, I will use "mytest" for all examples.
 
