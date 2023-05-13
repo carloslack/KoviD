@@ -9,7 +9,8 @@ endif
 LD=$(shell which ld)
 AS=$(shell which as)
 CTAGS=$(shell which ctags))
-COMPILER_OPTIONS := -Wall \
+# PROCNAME, /proc/<name> interface. You must change it.
+COMPILER_OPTIONS := -Wall -DPROCNAME='"changeme"' \
 	-DMODNAME='"kovid"' -DKSOCKET_EMBEDDED ${DEBUG_PR} -DCPUHACK -DPRCTIMEOUT=1200
 
 EXTRA_CFLAGS := -I$(src)/src -I$(src)/fs ${COMPILER_OPTIONS}
