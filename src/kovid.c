@@ -777,13 +777,10 @@ static int __init kv_init(void) {
 
     if (strlen(PROCNAME) == 0) {
         procname_err = "Empty PROCNAME build parameter. Check Makefile.";
-        prinfo("%d\n", __LINE__);
     } else if (!strncmp(PROCNAME, "changeme", 5)) {
         procname_err = "You must rename PROCNAME. Check Makefile.";
-        prinfo("%d\n", __LINE__);
     } else if (!strncmp(PROCNAME, "kovid", 5) || !strncmp(PROCNAME, MODNAME, strlen(PROCNAME))) {
         procname_err = "PROCNAME should not be same as module name. Check Makefile.";
-        prinfo("%d\n", __LINE__);
     }
 
     if (*procname_err != 0)
