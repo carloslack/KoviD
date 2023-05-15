@@ -146,12 +146,8 @@ int kv_is_proc_interface_loaded(void);
 
 /** data/passwords gathering/stealing */
 void kv_keylog_rm_log(bool);
-void kv_md5log_rm_log(bool);
-bool kv_md5_add_hashes(char *, char *, bool);
-void kv_md5_show_hashes(void);
 
 /** whatever */
-bool kv_whatever_is_md5(char *md5, ssize_t len);
 char *kv_whatever_random_AZ_string(size_t);
 
 char *kv_whatever_copystr(const char *in, unsigned long len);

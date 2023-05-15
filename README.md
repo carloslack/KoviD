@@ -58,6 +58,11 @@
     gcc (Ubuntu 11.2.0-19ubuntu1) 11.2.0
     ** Same Ubuntu 20.10 Openssl issue
 
+    Ubuntu 22.04.1 LTS
+    Linux hash-virtual-machine 5.19.0-41-generic #42~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC
+    UTC 2 x86_64 x86_64 x86_64 GNU/Linux
+    ** Same Ubuntu 20.10 Openssl issue
+
 ## 2 - Features
 
 ### 2.1 Hide itself (module)
@@ -472,19 +477,7 @@
         $ cargo build
         $ cargo run
 
-### 2.12 MD5
-
-    KoviD can fake md5 checksums and in lame but useful way.
-    Let's say you applied persistence in binary, ELF infections
-    taint the executable and the checksum
-    is compromised. Use the rk to fake the output of md5sum command:
-
-    $ echo "-m <checksum after hijack> <old original checksum>
-
-    Useful, however, this implementation has many limitations and only works
-    with simple `md5sum` command - keep that in mind.
-
-### 2.13 Base address
+### 2.12 Base address
 
     Another little trick that can help exploiting other executables
     is to know their base addresses without having to open() /proc/<pid>/maps:
@@ -492,7 +485,7 @@
     $ echo "-b <PID>" >/proc/mytest
     $ cat /proc/mytest
 
-### 2.14 BPF
+### 2.13 BPF
 
     KoviD can evade some anti-rk tools based on BPF. More specifically ones
     that look for syscall hooks that rely on analysing BPF kernel stack traces
@@ -543,9 +536,6 @@
         -l: list files/directories that are currently hidden (debug mode only)
         -t0: flag tty persistence file to be removed when kovid is unloaded
         -t1: flag tty persistence file to NOT be removed when kovid is unloaded (default)
-        -m0: flag md5 persistence file to be removed when kovid is unloaded
-        -m1: flag md5 persistence file to NOT be removed when kovid is unloaded (default)
-        -m <fake_md5 original_md5>: add fake md5sum checksum for to be shown instead of original
         -b <PID>: dump PID's (task) base address in /proc/mytest
         -f <string>: add string/phrase to be hidden from files
 

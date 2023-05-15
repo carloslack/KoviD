@@ -15,17 +15,6 @@
 #include <linux/random.h>
 #include "lkm.h"
 
-bool kv_whatever_is_md5(char *md5, ssize_t len) {
-    ssize_t i;
-    for (i = 0; i < len; ++i) {
-        if ((md5[i] >= 48 && md5[i] <= 57) ||
-                (md5[i] >= 97 && md5[i] <= 122))
-            continue;
-        break;
-    }
-    return (len == i);
-}
-
 /**
  * This function allocates dynamic memory
  * and must be freed when no longer needed
