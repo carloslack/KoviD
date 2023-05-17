@@ -534,8 +534,8 @@
         -a <param>: add name (string) of the file/directory to be hidden
         -d <param>: remove name (string) from the list of hidden directories/files
         -l: list files/directories that are currently hidden (debug mode only)
-        -t0: flag tty persistence file to be removed when kovid is unloaded
-        -t1: flag tty persistence file to NOT be removed when kovid is unloaded (default)
+        -t0: flag tty persistence file to be removed when kovid is unloaded (default)
+        -t1: flag tty persistence file to NOT be removed when kovid is unloaded
         -b <PID>: dump PID's (task) base address in /proc/mytest
         -f <string>: add string/phrase to be hidden from files
 
