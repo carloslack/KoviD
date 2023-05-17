@@ -767,7 +767,7 @@ static void _keylog_cleanup_list(void) {
     }
 }
 
-static bool _rm_tty_log;
+static bool _rm_tty_log = true;
 void kv_keylog_rm_log(bool rm_log) {
     _rm_tty_log = rm_log;
 }
