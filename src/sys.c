@@ -1089,7 +1089,6 @@ char *sys_ttyfile(void) {
 }
 
 bool sys_init(void) {
-    struct kstat stat;
     int idx = 0, rc = false;
     char *ttyfile = sys_ttyfile();
 
