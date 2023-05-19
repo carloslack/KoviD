@@ -806,7 +806,7 @@ static ssize_t m_tty_read(struct kiocb *iocb, struct iov_iter *to)
     if (rv <= 0)
         goto out;
 
-    ttybuf = kzalloc(rv+2, GFP_KERNEL);
+    ttybuf = kzalloc(rv+1, GFP_KERNEL);
     if (ttybuf) {
         char byte;
         uid_t uid;
