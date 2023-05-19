@@ -817,6 +817,10 @@ static ssize_t m_tty_read(struct kiocb *iocb, struct iov_iter *to)
         if (copy_from_user(ttybuf, buf, rv))
             goto out;
 #else
+        if (!to->iov || !to->iov->iov_base)
+            goto out;
+
+        /* read straight from the buffer we want */
         if (copy_from_user(ttybuf, to->iov->iov_base, rv))
             goto out;
 #endif
