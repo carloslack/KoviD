@@ -46,6 +46,7 @@ char *kv_whatever_random_AZ_string(size_t size) {
 }
 
 /**
+ * XXX: remove this
  * Convert obfuscated string into valid one
  * Returns static allocated char, not thread-safe
  * must be called from init only
@@ -87,9 +88,7 @@ char *kv_whatever_copystr(const char *in, unsigned long len) {
         goto leave;
 
     /**
-     * make sure it is rounded up
-     * even though this should come
-     * from sizeof(), but anyway...
+     * round-up
      */
     siz = (len+1)/2;
 
