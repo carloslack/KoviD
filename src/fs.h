@@ -24,9 +24,9 @@ struct fs_file_node *fs_get_file_node(const struct task_struct *task);
 
 bool fs_search_name(const char *name);
 void fs_list_names(void);
-int fs_add_name_ro(const char *);
-int fs_add_name_rw(const char *);
-bool fs_del_name(const char *name);
+int fs_add_name_ro(const char **);
+int fs_add_name_rw(const char **);
+bool fs_del_name(const char **);
 void fs_names_cleanup(void);
 struct fs_file_node *fs_load_fnode(struct file *f);
 

