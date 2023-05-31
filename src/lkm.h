@@ -148,9 +148,6 @@ void kv_keylog_rm_log(bool);
 /** whatever */
 char *kv_whatever_random_AZ_string(size_t);
 
-char *kv_whatever_copystr(const char *in, unsigned long len);
-char *kv_whatever_getstr(const char *in, unsigned int len);
-
 char *kv_get_hidden_string(void);
 
 /** VM operations */

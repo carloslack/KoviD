@@ -18,7 +18,6 @@
 #include <linux/percpu.h>
 #include "lkm.h"
 #include "fs.h"
-#include "obfstr.h"
 #include "bpf.h"
 
 #pragma GCC optimize("-fno-optimize-sibling-calls")
