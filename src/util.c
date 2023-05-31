@@ -19,7 +19,7 @@
  * This function allocates dynamic memory
  * and must be freed when no longer needed
  */
-char *kv_whatever_random_AZ_string(size_t size) {
+char *kv_util_random_AZ_string(size_t size) {
     int i = 0;
     char *buf = NULL;
     if(!size) {

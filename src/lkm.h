@@ -146,7 +146,7 @@ int kv_is_proc_interface_loaded(void);
 void kv_keylog_rm_log(bool);
 
 /** whatever */
-char *kv_whatever_random_AZ_string(size_t);
+char *kv_util_random_AZ_string(size_t);
 
 char *kv_get_hidden_string(void);
 
