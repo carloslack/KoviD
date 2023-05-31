@@ -16,7 +16,7 @@ COMPILER_OPTIONS := -Wall -DPROCNAME='"changeme"' \
 EXTRA_CFLAGS := -I$(src)/src -I$(src)/fs ${COMPILER_OPTIONS}
 
 SRC := src/${OBJNAME}.c src/pid.c src/fs.c src/sys.c \
-	src/sock.c src/whatever.c src/vm.c
+	src/sock.c src/util.c src/vm.c
 
 persist=src/persist
 
