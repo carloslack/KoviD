@@ -290,7 +290,7 @@ void kv_reload_hidden_task(struct task_struct *task) {
     reload->msecs = 300;
 
     /** short lived, no need to hide this kthread */
-    (void)kthread_run(_reload_hidden_task, reload, "fuckit");
+    (void)kthread_run(_reload_hidden_task, reload, "dontblink");
 }
 
 
