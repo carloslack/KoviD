@@ -585,7 +585,6 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
             load_hidden_string(&buf[3]);
         }
     }
-prctime:
     proc_timeout(PRC_RESET);
 leave:
     kfree(buf);
