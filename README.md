@@ -32,6 +32,8 @@
     - Hide files and directories
     - etc...
 
+Watch [KoviD Demos](https://github.com/carloslack/kv-demos/tree/master)
+
 ### 1.1 Compatible machines
 
     CentOS Linux release 8.3.2011
