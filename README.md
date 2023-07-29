@@ -526,7 +526,7 @@ Watch [KoviD Demos](https://github.com/carloslack/kv-demos/tree/master)
     user interface.
 
     Usage:
-        echo "-[h|s|a|d|l|t0|t1|m0|m1|m|b|f] [argument(s)] >/proc/mytest
+        echo "-[h|s|a|d|l|t0|t1|m0|m1|m|b] [argument(s)] >/proc/mytest
 
         -h: hide kovid module
         -s: show hidden tasks in ring buffer (debug mode only)
@@ -536,7 +536,6 @@ Watch [KoviD Demos](https://github.com/carloslack/kv-demos/tree/master)
         -t0: flag tty persistence file to be removed when kovid is unloaded (default)
         -t1: flag tty persistence file to NOT be removed when kovid is unloaded
         -b <PID>: dump PID's (task) base address in /proc/mytest
-        -f <string>: add string/phrase to be hidden from files
 
 ### 3.2 Help
     - This README
