@@ -706,10 +706,12 @@ static void _keylog_close_file(void) {
 }
 
 void _keylog_cleanup(void) {
+    char *tty;
+
     _keylog_cleanup_list();
     _keylog_close_file();
 
-    char *tty = sys_ttyfile();
+    tty = sys_ttyfile();
     if (tty && _rm_tty_log && fs_file_rm(tty))
         prerr("Error removing %s\n", tty);
 }
