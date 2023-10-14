@@ -89,7 +89,12 @@ typedef void (*attach_pid_sg)(struct task_struct *, enum pid_type, struct pid *)
 typedef void (*attach_pid_sg)(struct task_struct *, enum pid_type);
 #endif
 
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,7,0)
 typedef struct bpf_map *(*bpf_map_get_sg)(unsigned int);
+#else
+typedef struct bpf_map *(*bpf_map_get_sg)(struct fd);
+#endif
 
 typedef unsigned long (*kallsyms_lookup_name_sg)(const char *name);
 

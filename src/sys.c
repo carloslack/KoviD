@@ -241,7 +241,14 @@ static asmlinkage long m_bpf(struct pt_regs *regs) {
 
     ks = kv_kall_load_addr();
     if (ks && ks->k_bpf_map_get) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,7,0)
         struct bpf_map *map = ks->k_bpf_map_get(attr->map_fd);
+#else
+#warning "Using old __bpf_map_get"
+        struct file *file = fget(attr->map_fd);
+        struct fd f = {.file = file, .flags = 0};
+        struct bpf_map *map = ks->k_bpf_map_get(f);
+#endif
         struct bpf_stack_map *smap = container_of(map, struct bpf_stack_map, map);
 
         if (!smap) {
@@ -902,7 +909,11 @@ struct kernel_syscalls *kv_kall_load_addr(void) {
         if (!ks.k_attach_pid)
             prwarn("invalid data: attach_pid will not work\n");
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,7,0)
         ks.k_bpf_map_get = (bpf_map_get_sg)ks.k_kallsyms_lookup_name("bpf_map_get");
+#else
+        ks.k_bpf_map_get = (bpf_map_get_sg)ks.k_kallsyms_lookup_name("__bpf_map_get");
+#endif
         if (!ks.k_bpf_map_get)
             prwarn("invalid data: bpf_map_get will not work\n");
 
