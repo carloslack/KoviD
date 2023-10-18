@@ -1,0 +1,4 @@
++ Hide hooked fn from /sys/kernel/debug/tracing/enabled_functions
+	ref: https://www.linkedin.com/posts/crony_purplelabs-redteam-blueteam-activity-7112825320583442432-mcPn
+	ref: https://www.defensive-security.com/blog/the-crucial-significance-of-modern-linux-detection-and-dfir
+	[to do]
