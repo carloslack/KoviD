@@ -121,7 +121,7 @@ struct module_sect_attrs {
 /*
  * sysfs restoration helpers.
  * Mostly copycat from the kernel with
- * slightly modifications to handle only a subset
+ * light modifications to handle only a subset
  * of sysfs files
  */
 static ssize_t show_refcnt(struct module_attribute *mattr,
@@ -412,14 +412,12 @@ static ssize_t _seq_read(struct file *fptr, char __user *buffer,
 
     return len;
 }
-
-/**
- * removes proc interface
- * after a certain amount of time passes,
- * can be re-activated with magic kill
- * Important to have this as I dump
- * rmmod magic key on it so to unload
- * kv you'll need to know what you are doing
+/*
+ * This function removes the proc interface after a
+ * certain amount of time has passed.
+ * It can be re-activated using a magic
+ * kill signal. It's important to have this feature
+ * because the `rmmod` magic key has been dumped on it.
  */
 static int proc_timeout(unsigned int t) {
     static unsigned int cnt = PRC_TIMEOUT;
@@ -455,7 +453,7 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
     pid = (pid_t)simple_strtol((const char*)buf, NULL, 10);
     /**
      * Please, INIT is a no-goer
-     * Tip: stay safer by avoiding to hide
+     * Tip: stay safe by avoiding to hide
      * system tasks
      */
     if(pid > 1)
