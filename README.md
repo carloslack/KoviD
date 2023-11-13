@@ -51,19 +51,14 @@ Watch [KoviD Demos](https://github.com/carloslack/kv-demos/tree/master)
     Ubuntu 20.10
     Linux ubuntu 5.8.0-55-generic #62-Ubuntu SMP Tue Jun 1 08:21:18 UTC 2021 x86_64 x86_64 x86_64 GNU/Linux
     gcc (Ubuntu 10.3.0-1ubuntu1~20.10) 10.3.0
-    ** OpenSSL backdoor somehow don't work:
-        "140569241376408:error:1408F10B:SSL routines:SSL3_GET_RECORD:wrong version number:s3_pkt.c:362"
-        OpenSSL version: OpenSSL 1.1.1f  31 Mar 2020
 
     Ubuntu 22.04 LTS
     Linux 5.15.0-43-generic #46-Ubuntu SMP Tue Jul 12 10:30:17 UTC 2022 x86_64 x86_64 x86_64 GNU/Linux
     gcc (Ubuntu 11.2.0-19ubuntu1) 11.2.0
-    ** Same Ubuntu 20.10 Openssl issue
 
     Ubuntu 22.04.1 LTS
     Linux hash-virtual-machine 5.19.0-41-generic #42~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC
     UTC 2 x86_64 x86_64 x86_64 GNU/Linux
-    ** Same Ubuntu 20.10 Openssl issue
 
 ## 2 - Features
 
