@@ -13,24 +13,18 @@
 
 ## 1 - About
 
-    KoviD rootkit is a full-featured Loadable Kernel Module (LKM) designed
-    for use with Linux Kernel version 5 and later.
+    KoviD is a Loadable Kernel Module (LKM) designed for
+    Linux Kernel version 5 and later. Key features include:
 
-    Key Features include:
-
-    Self-hiding (module) even from SysFS.
-    Provides 4 multi-user shell reverse backdoors.
-    Conceals processes from the proc file system in userspace, not
-    through unreliable methods. Properly handles child processes,
-    newly created processes, and more. Hides KauditD logs, syslogs,
-    user presence, and more.
+    Self-hiding from SysFS.
+    Provides reverse shell backdoors.
+    Conceals processes from the proc file system.
+    Handles child processes, newly created processes.
+    Hides KauditD logs, syslogs, user presence.
     Conceals CPU usage for all hidden tasks.
     Grants root privileges.
-    Hides files and directories, among other capabilities.
-    Explore KoviD Demos in the KoviD Demos repository.
-
-    KoviD rootkit is a full-feature LKM intended for use against
-    Linux kernel v5+
+    Hides files and directories.
+    Explore Demos repository.
 
 Watch [KoviD Demos](https://github.com/carloslack/kv-demos/tree/master)
 
