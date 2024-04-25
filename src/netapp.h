@@ -4,6 +4,7 @@
  /*
   * The names below are just examples and can be
   * modified and/or extended at will
+  * warning: don't add backdoor programs here
  */
 static const char *netapp_list[] = {
     "whitenose", "pinknose", "rednose", "blacknose",
