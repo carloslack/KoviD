@@ -152,6 +152,10 @@ Watch [KoviD Demos](https://github.com/carloslack/kv-demos/tree/master)
 
     You can hide/unhide processes using the /proc/mytest interface.
     For example, to hide a task, run: $ echo 14886 >/proc/mytest.
+    If a task is a backdoor that needs tcp hiding, run:
+        $ echo "-bd <pid>" >/proc/mytest.
+    Unhiding is the same as for regular tasks:
+        $ echo "<PID>" >/proc/mytest
 
 ### 3.3 Hide module
 
