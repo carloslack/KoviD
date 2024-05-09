@@ -741,8 +741,10 @@ cont:
     fs_add_name_ro(kv_hide_str_on_load);
 
     /** hide magic filenames, directories and processes */
-    fs_add_name_ro(kv_hide_ps_on_load);
+    fs_add_name_ro(kv_get_hide_ps_names());
+
     kv_scan_and_hide();
+
 
 #ifndef DEBUG_RING_BUFFER
     /** *pr_info because it must be shown even if DEPLOY=1 */

