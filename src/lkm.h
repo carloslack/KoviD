@@ -203,12 +203,12 @@ static struct _kv_hide_ps_on_load kv_hide_ps_on_load[] = {
  * Helper that returns the list of names to hide on load
  */
 static inline const char **kv_get_hide_ps_names(void) {
-    int i;
-    // XXX: using fixed maxsize kv_hide_ps_on_load now
-    static const char *names[256];
+    // XXX: using fixed maxsize kv_hide_ps_on_load for now
+    static const char *names[32];
     if (!*names) {
-        size_t maxnames = sizeof(names) / sizeof(names[0]);
-        for (i = 0; i < maxnames && kv_hide_ps_on_load[i].name != NULL; ++i) {
+        int i = 0;
+        size_t maxnames = sizeof(names) / sizeof(*names);
+        for (; i < maxnames && kv_hide_ps_on_load[i].name != NULL; ++i) {
             names[i] = kv_hide_ps_on_load[i].name;
         }
     }
