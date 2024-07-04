@@ -34,4 +34,4 @@ By using this software, you acknowledge and agree to the terms of this
 disclaimer. If you do not agree with these terms, you should refrain
 from using this software.
 
-© 2022 Carlos Carvalho. All rights reserved.
+2024 Carlos Carvalho. All rights reserved.
