@@ -28,6 +28,8 @@
 
 Watch [KoviD Demos](https://github.com/carloslack/kv-demos/tree/master)
 
+Read [Phrack magazine](http://phrack.org/issues/71/12.html#article) where g1inko tries to break some of the challenges posed by KoviD
+
 ### 1.1 Mostly tested against
 
     CentOS Linux release 8.3.2011
