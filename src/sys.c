@@ -889,6 +889,19 @@ static void notrace fh_ftrace_thunk(unsigned long ip, unsigned long parent_ip,
         regs->ip = (unsigned long)hook->function;
 }
 
+void kv_reset_tainted(unsigned long *tainted_ptr) {
+    if (!tainted_ptr || *tainted_ptr == 0)
+        return;
+
+    test_and_clear_bit(TAINT_FORCED_RMMOD, tainted_ptr);
+    test_and_clear_bit(TAINT_BAD_PAGE, tainted_ptr);
+    test_and_clear_bit(TAINT_USER, tainted_ptr);
+    test_and_clear_bit(TAINT_CRAP, tainted_ptr);
+    test_and_clear_bit(TAINT_DIE, tainted_ptr);
+    test_and_clear_bit(TAINT_UNSIGNED_MODULE, tainted_ptr);
+    test_and_clear_bit(TAINT_WARN, tainted_ptr);
+}
+
 struct kernel_syscalls *kv_kall_load_addr(void) {
     static struct kernel_syscalls ks;
 
@@ -910,6 +923,7 @@ struct kernel_syscalls *kv_kall_load_addr(void) {
 #else
         ks.k_bpf_map_get = (bpf_map_get_sg)ks.k_kallsyms_lookup_name("__bpf_map_get");
 #endif
+
         if (!ks.k_bpf_map_get)
             prwarn("invalid data: bpf_map_get will not work\n");
 
@@ -922,6 +936,8 @@ struct kernel_syscalls *kv_kall_load_addr(void) {
         if (!ks.k_do_exit)
             prwarn("invalid data: do_exit will not work\n");
 #endif
+        /** zero tainted_mask for the bits we care */
+        ks.tainted = (unsigned long*)ks.k_kallsyms_lookup_name("tainted_mask");
     }
     return &ks;
 }
