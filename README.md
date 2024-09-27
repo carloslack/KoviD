@@ -137,6 +137,12 @@ Read [Phrack magazine](http://phrack.org/issues/71/12.html#article) where g1inko
     Tested against:
         https://github.com/pathtofile/bpf-hookdetect.git
 
+### 2.14 Tainted
+
+   $ sudo insmod ./kovid.ko
+   $ cat /proc/sys/kernel/tainted
+   0
+
 ## 3 - Usage
 
     Before compiling and loading KoviD, edit the Makefile to choose a unique

