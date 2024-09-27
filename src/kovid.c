@@ -677,11 +677,16 @@ static int _proc_watchdog(void *unused) {
  */
 static int _reset_tainted(void *unused) {
     struct kernel_syscalls *kaddr = kv_kall_load_addr();
+    if (!kaddr) {
+        prerr("_reset_tainted: Invalid data.\n");
+        goto out;
+    }
     while (!kthread_should_stop()) {
         kv_reset_tainted(kaddr->tainted);
         ssleep(5);
     }
 
+out:
     return 0;
 }
 
