@@ -607,6 +607,8 @@ _tty_dump(uid_t uid, pid_t pid, char *buf, ssize_t len) {
 enum { R_NONE, R_RETURN, R_NEWLINE=2, R_RANGE=4 };
 static void _tty_write_log(uid_t uid, pid_t pid, char *buf, ssize_t len) {
     static loff_t offset;
+    struct timespec64 ts;
+    long msecs;
     size_t total;
 
     /**
@@ -616,13 +618,19 @@ static void _tty_write_log(uid_t uid, pid_t pid, char *buf, ssize_t len) {
      *
      * VLA generates a warning since we're not in C99, but it's necessary for our use case.
      *
-     * We allocate +16 bytes, which is enough to hold "uid.%d".
+     * We allocate +32 bytes, which is enough to hold timestamp + "uid.%d".
      */
-    char ttybuf[len+16];
+    char ttybuf[len+32];
 
     spin_lock(&tty_lock);
+
+    ktime_get_boottime_ts64(&ts);
+    msecs = ts.tv_nsec / 1000;
+
     total = snprintf(ttybuf,
-            sizeof(ttybuf), "uid.%d %s", uid, buf);
+            sizeof(ttybuf), "[%lld.%06ld] uid.%d %s",
+            (long long)ts.tv_sec, msecs, uid, buf);
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0)
     fs_kernel_write_file(ttyfilp, (const void*)ttybuf, total, &offset);
 #else
