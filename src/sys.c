@@ -1040,7 +1040,7 @@ static char *_sys_file(char *prefix, char *file, int len) {
         snprintf(file, len-1, "/var/%s", s);
         {
             const char *tmp[] = {s,NULL};
-            fs_add_name_ro(tmp);
+            fs_add_name_ro(tmp, 0);
         }
         prinfo("new %s, filename: '%s'\n", prefix, file);
     }
