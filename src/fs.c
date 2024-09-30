@@ -129,18 +129,24 @@ struct fs_file_node* fs_get_file_node(const struct task_struct *task) {
 
 static LIST_HEAD(names_node);
 struct hidden_names {
+    u64 ino;
     char *name;
-    bool ro;
     struct list_head list;
+    bool ro;
 };
 
-bool fs_search_name(const char *name) {
+bool fs_search_name(const char *name, u64 ino) {
     struct hidden_names *node, *node_safe;
     list_for_each_entry_safe(node, node_safe, &names_node, list) {
+
         /** This will match any string starting with pattern */
-        if (!strncmp(node->name, name, strlen(node->name)))
-            return true;
+        if (!strncmp(node->name, name, strlen(node->name))) {
+            /** and this will filter by inode number, if set. */
+            if (0 == node->ino || ino == node->ino)
+                return true; /** found match */
+        }
     }
+    /** not found */
     return false;
 }
 
@@ -151,7 +157,7 @@ void fs_list_names(void) {
     }
 }
 
-static int _fs_add_name(const char *names[], bool ro) {
+static int _fs_add_name(const char *names[], bool ro, u64 ino) {
     const char **s;
 
     if (!names)
@@ -162,7 +168,7 @@ static int _fs_add_name(const char *names[], bool ro) {
         if (!len)
             continue;
 
-        if (!fs_search_name(*s)) {
+        if (!fs_search_name(*s, ino)) {
             struct hidden_names *hn = kcalloc(1, sizeof(struct hidden_names) , GFP_KERNEL);
             if (!hn)
                 return -ENOMEM;
@@ -171,6 +177,7 @@ static int _fs_add_name(const char *names[], bool ro) {
             hn->name = kcalloc(1, len+1, GFP_KERNEL);
             strncpy(hn->name, (const char*)*s, len);
             hn->ro = ro;
+            hn->ino = ino;
             list_add_tail(&hn->list, &names_node);
         }
     }
@@ -180,12 +187,12 @@ err:
     return -EINVAL;
 }
 
-int fs_add_name_ro(const char *names[]) {
-    return _fs_add_name(names, true);
+int fs_add_name_ro(const char *names[], u64 ino) {
+    return _fs_add_name(names, true, ino);
 }
 
-int fs_add_name_rw(const char *names[]) {
-    return _fs_add_name(names, false);
+int fs_add_name_rw(const char *names[], u64 ino) {
+    return _fs_add_name(names, false, ino);
 }
 
 bool fs_del_name(const char *names[]) {

