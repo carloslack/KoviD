@@ -25,19 +25,19 @@
 #define prerr_once(fmt, ...) pr_err_once(fmt, ##__VA_ARGS__);
 
 #else
-#define prinfo(fmt, ...)
-#define prwarn(fmt, ...)
-#define premerg(fmt, ...)
-#define pralert(fmt, ...)
-#define prcrit(fmt, ...)
-#define prnotice(fmt, ...)
-#define prerr(fmt, ...)
-#define prwarn_ratelimited(fmt, ...);
-#define prinfo_ratelimited(fmt, ...);
-#define prerr_ratelimited(fmt, ...);
-#define prinfo_once(fmt, ...);
-#define prwarn_once(fmt, ...);
-#define prerr_once(fmt, ...);
+#define prinfo(fmt, ...) do {} while (0)
+#define prwarn(fmt, ...) do {} while (0)
+#define premerg(fmt, ...) do {} while (0)
+#define pralert(fmt, ...) do {} while (0)
+#define prcrit(fmt, ...) do {} while (0)
+#define prnotice(fmt, ...) do {} while (0)
+#define prerr(fmt, ...) do {} while (0)
+#define prwarn_ratelimited(fmt, ...) do {} while (0)
+#define prinfo_ratelimited(fmt, ...) do {} while (0)
+#define prerr_ratelimited(fmt, ...) do {} while (0)
+#define prinfo_once(fmt, ...) do {} while (0)
+#define prwarn_once(fmt, ...) do {} while (0)
+#define prerr_once(fmt, ...) do {} while (0)
 #endif
 
 #define EXIT_UNHIDE 1
