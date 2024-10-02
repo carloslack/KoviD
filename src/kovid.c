@@ -26,6 +26,7 @@
 
 #include "lkm.h"
 #include "fs.h"
+#include "version.h"
 
 #define MAX_PROCFS_SIZE PAGE_SIZE
 #define MAX_MAGIC_WORD_SIZE 16
@@ -41,7 +42,7 @@
 #ifndef PRCTIMEOUT
 /**
  * default timeout seconds
- * before /proc/kovid is removed
+ * before /proc/<name> is removed
  */
 #define _PRCTIMEOUT 360
 #else
@@ -88,7 +89,6 @@ static struct list_head *mod_list;
 static const struct __lkmmod_t lkmmod = {
     .this_mod = THIS_MODULE,
 };
-
 
 /*
  * kernel structures so the compiler
@@ -736,6 +736,10 @@ static int __init kv_init(void) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
     struct kernel_syscalls *kaddr = NULL;
 #endif
+
+    /** show current version for when running in debug mode */
+    prinfo("KoviD version %s\n", KOVID_VERSION);
+
     if (strlen(PROCNAME) == 0) {
         procname_err = "Empty PROCNAME build parameter. Check Makefile.";
     } else if (!strncmp(PROCNAME, "changeme", 5)) {
