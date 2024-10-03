@@ -65,8 +65,11 @@
     $ echo "-t1" >/proc/test
 
 #19 Fetch the base address of a running process by PID number
-    $ echo "-b <PID>">/proc/kv
-    $ cat /proc/kv
+    $ echo "-b <PID>">/proc/test
+    $ cat /proc/test
+
+#20 Fetch Magik Word
+    $ cat /proc/test
 
 
 
