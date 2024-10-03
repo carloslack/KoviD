@@ -1112,7 +1112,18 @@ int fh_install_hook(struct ftrace_hook *hook) {
         return err;
 
     hook->ops.func = fh_ftrace_thunk;
-    hook->ops.flags = FTRACE_OPS_FL_SAVE_REGS|FTRACE_OPS_FL_RECURSION|FTRACE_OPS_FL_IPMODIFY;
+
+    /**
+     * From kernel v5.5+ we can use FTRACE_OPS_FL_PERMANENT and block
+     * the disabling of ftracing.
+     */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,5,0)
+    hook->ops.flags = FTRACE_OPS_FL_SAVE_REGS|FTRACE_OPS_FL_RECURSION|
+        FTRACE_OPS_FL_IPMODIFY|FTRACE_OPS_FL_PERMANENT;
+#else
+    hook->ops.flags = FTRACE_OPS_FL_SAVE_REGS|FTRACE_OPS_FL_RECURSION|
+        FTRACE_OPS_FL_IPMODIFY;
+#endif
 
     if ((err = ftrace_set_filter_ip(&hook->ops, hook->address, 0, 0))) {
         prerr("ftrace_set_filter_ip() failed: %d\n", err);
