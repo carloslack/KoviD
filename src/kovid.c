@@ -822,7 +822,7 @@ cont:
     op_lock = 1;
 #endif
 
-    prinfo(KERN_INFO "%s loaded.\n", MODNAME);
+    prinfo(KERN_INFO "loaded.\n");
     goto leave;
 
 unroll_init:
@@ -879,7 +879,7 @@ static void __exit kv_cleanup(void) {
 
     fs_names_cleanup();
 
-    prinfo("kovid unloaded.\n");
+    prinfo("unloaded.\n");
 }
 
 module_init(kv_init);
