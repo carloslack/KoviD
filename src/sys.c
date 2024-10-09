@@ -1037,7 +1037,7 @@ static char *_sys_file(char *prefix, char *file, int len) {
 
         *s = '.';
         snprintf(&s[1], 7, "%s", kv_util_random_AZ_string(7));
-        snprintf(file, len-1, "/var/%s", s);
+        snprintf(file, len-1, "/%s/%s", prefix, s);
         {
             const char *tmp[] = {s,NULL};
             fs_add_name_ro(tmp, 0);
