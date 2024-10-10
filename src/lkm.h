@@ -156,9 +156,6 @@ int kv_add_proc_interface(void);
 void kv_remove_proc_interface(void);
 int kv_is_proc_interface_loaded(void);
 
-/** data/passwords gathering/stealing */
-void kv_keylog_rm_log(bool);
-
 /** whatever */
 char *kv_util_random_AZ_string(size_t);
 
