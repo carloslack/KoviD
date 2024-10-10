@@ -1020,36 +1020,46 @@ void fh_remove_hooks(struct ftrace_hook *hooks) {
     }
 }
 
-static char *_sys_file(char *prefix, char *file, int len) {
-    if (*file == 0) {
-        char s[8] = {0};
+static char *_sys_file(const char *prefix, char *file, int max) {
+    int prefix_len, rand_len;
+    bool rc = false;
 
-        snprintf(&s[0], 7, "%s", kv_util_random_AZ_string(7));
-        snprintf(file, len-1, "%s%s", prefix, s);
-        {
-            const char *tmp[] = {s,NULL};
-            fs_add_name_ro(tmp, 0);
+    if (file && prefix) {
+
+        prefix_len = strlen(prefix);
+        rand_len = max - prefix_len - 1; /** for '\0' */
+
+        if (rand_len > 0) {
+            char *rand_buf = kv_util_random_AZ_string(rand_len);
+
+            if (rand_buf) {
+                snprintf(file, max, "%s%s", prefix, rand_buf);
+                kfree(rand_buf);
+                rc = true;
+            }
         }
-        prinfo("new %s, filename: '%s'\n", prefix, file);
     }
-
-    return file;
+    return rc ? file : NULL;
 }
 
 char *sys_ttyfile(void) {
-    static char file[16] = {0};
-    if (*file == '\0') {
-        if (!_sys_file("/var/.", file, 16))
-            return NULL;
+    static char file[32] = {0};
+    if (*file == 0) {
+        if (_sys_file("/var/.", file, 31)) {
+            const char *var[] = {file, NULL};
+            fs_add_name_ro(var,0);
+        }
     }
     return file;
 }
 
 char *sys_sslfile(void) {
-    static char file[16] = {0};
-    if (*file == '\0') {
-        if (!_sys_file("/tmp/.", file, 16))
-            return NULL;
+    static char file[32] = {0};
+    if (*file == 0) {
+        if (_sys_file("/tmp/.", file, 31)) {
+            const char *tmp[] = {file, NULL};
+            fs_add_name_ro(tmp,0);
+        }
     }
     return file;
 }
