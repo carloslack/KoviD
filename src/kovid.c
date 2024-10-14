@@ -23,6 +23,7 @@
 #include <linux/kthread.h>
 #include <linux/kernel.h>
 #include <linux/namei.h>
+#include <linux/ctype.h>
 
 #include "lkm.h"
 #include "fs.h"
@@ -558,8 +559,9 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
             char *newname;
             pid = (pid_t)simple_strtol(s, NULL, 10);
             newname = strrchr(buf, ' ');
-            if (++newname)
+            if (newname && ++newname && !isdigit(*newname)) {
                 kv_rename_task(pid, newname);
+            }
         }
     }
     proc_timeout(PRC_RESET);
