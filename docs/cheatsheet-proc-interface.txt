@@ -2,7 +2,7 @@
 # @See Makefile
 
 # In DEPLOY mode, you'll need
-# root to R/W /proc/test
+# root for R/W /proc/test
 
 #1 /proc interface turn on
     $ kill -SIGCONT 31337
@@ -81,4 +81,6 @@
         $ echo "-n 1234 name"
     # Check if it worked:
         $ echo -s > /proc/test
+    # Or to print all tasks (hidden or not)
+        $ echo -S > /proc/test
 
