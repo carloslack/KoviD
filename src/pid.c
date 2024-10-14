@@ -451,7 +451,7 @@ void kv_show_saved_tasks(void) {
     }
 }
 
-void __attribute__((unused))kv_show_all_tasks(void) {
+void kv_show_all_tasks(void) {
     struct task_struct *task;
     for_each_process(task) {
         prinfo("PID: %d | Process name: %s\n", task->pid, task->comm);

