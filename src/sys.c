@@ -935,6 +935,11 @@ struct kernel_syscalls *kv_kall_load_addr(void) {
 #endif
         /** zero tainted_mask for the bits we care */
         ks.tainted = (unsigned long*)ks.k_kallsyms_lookup_name("tainted_mask");
+
+
+        ks.k__set_task_comm = (do__set_task_comm_sg)ks.k_kallsyms_lookup_name("__set_task_comm");
+        if (!ks.k__set_task_comm)
+            prwarn("invalid data: __set_task_comm will not work\n");
     }
     return &ks;
 }
