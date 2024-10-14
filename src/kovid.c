@@ -437,7 +437,8 @@ static int proc_timeout(unsigned int t) {
 }
 
 /**
- * Simple commands: hide, <PID>, show
+ * Current ui
+ * XXX this needs to go
  */
 static ssize_t write_cb(struct file *fptr, const char __user *user,
         size_t size, loff_t *offset) {
