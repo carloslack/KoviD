@@ -558,7 +558,7 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
             char *newname;
             pid = (pid_t)simple_strtol(s, NULL, 10);
             newname = strrchr(buf, ' ');
-            if (newname)
+            if (++newname)
                 kv_rename_task(pid, newname);
         }
     }
