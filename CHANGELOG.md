@@ -4,6 +4,21 @@ All notable changes to KoviD will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+- Added -n option to rename a hidden process on-the-fly
+- -S option to list ALL processes in debug mode (useful for -n option)
+
+### Changed
+- Stricter proc interface (root only) when built in release mode
+- The way random magic name is generated, simplified
+
+### Fixed
+- Make sure to remove SSL socket file when KoviD in unloaded
+- Memory leak from random strings
+
+
 ## 2.0.0 - Oct 2 2024
 ### Added
 - Zero `/proc/sys/kernel/tainted`
