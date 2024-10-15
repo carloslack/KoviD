@@ -56,6 +56,9 @@ Read [Phrack magazine](http://phrack.org/issues/71/12.html#article) where g1inko
     Linux hash-virtual-machine 5.19.0-41-generic #42~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC
     UTC 2 x86_64 x86_64 x86_64 GNU/Linux
 
+    Linux Standard-PC-Q35-ICH9-2009 5.15.0-43-generic #46-Ubuntu
+    SMP x86_64 x86_64 x86_64 GNU/Linux
+
 ## 2 - Features
 
 ### 2.1 Hide itself (module)
