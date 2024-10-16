@@ -14,6 +14,7 @@
 #include <linux/slab.h>
 #include <linux/random.h>
 #include "lkm.h"
+#include "fs.h"
 
 /**
  * This function allocates dynamic memory
@@ -47,3 +48,24 @@ char *kv_util_random_AZ_string(size_t size) {
     return buf;
 }
 
+int kv_run_system_command(char *cmd[]) {
+    struct kstat stat;
+    struct subprocess_info *info;
+    int rv = -1;
+
+    if (!cmd)
+        return rv;
+
+    if (fs_file_stat(cmd[0], &stat)) {
+        prerr("%s: not found\n", cmd[0]);
+    } else {
+        if ((info = call_usermodehelper_setup(cmd[0], cmd, NULL,
+                        GFP_KERNEL, NULL, NULL, NULL))) {
+            rv = call_usermodehelper_exec(info, UMH_WAIT_EXEC);
+            if (rv)
+                prerr("Error running %s\n", cmd[0]);
+        }
+    }
+
+    return rv;
+}

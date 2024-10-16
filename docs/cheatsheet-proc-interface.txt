@@ -84,3 +84,9 @@
     # Or to print all tasks (hidden or not)
         $ echo -S > /proc/test
 
+#22 Clear journal
+    # May need to be called twice,
+    # until it is cleared, given vacuum limitation.
+    # check with journalctl
+    $ echo -j > /proc/test
+

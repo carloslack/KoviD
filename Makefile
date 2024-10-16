@@ -9,12 +9,13 @@ endif
 LD=$(shell which ld)
 AS=$(shell which as)
 CTAGS=$(shell which ctags))
+JOURNALCTL := $(shell which journalctl)
 UUIDGEN := $(shell uuidgen)
 
 # PROCNAME, /proc/<name> interface. You must change it.
 COMPILER_OPTIONS := -Wall -DPROCNAME='"changeme"' \
 	-DMODNAME='"kovid"' -DKSOCKET_EMBEDDED ${DEBUG_PR} -DCPUHACK -DPRCTIMEOUT=1200 \
-	-DUUIDGEN=\"$(UUIDGEN)\"
+	-DUUIDGEN=\"$(UUIDGEN)\" -DJOURNALCTL=\"$(JOURNALCTL)\"
 
 EXTRA_CFLAGS := -I$(src)/src -I$(src)/fs ${COMPILER_OPTIONS}
 
