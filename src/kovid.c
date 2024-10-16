@@ -552,6 +552,15 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
             /* show current hidden files/directories */
         } else if(!strcmp(buf, "-l")) {
             fs_list_names();
+            /* clear journal
+             * May have to be called more than once
+             * */
+        } else if(!strcmp(buf, "-j")) {
+            char *cmd[] = {JOURNALCTL, "--rotate", NULL};
+            if (!kv_run_system_command(cmd)) {
+                cmd[1] = "--vacuum-time=1s";
+                kv_run_system_command(cmd);
+            }
             /* fetch base address of process */
         } else if (!strncmp(buf, "-b", MIN(2, size))) {
             char *tmp = &buf[3];
