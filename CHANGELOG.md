@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## Unreleased
 
 ### Added
+- Prevent ftrace from being disabled
 - Added -n option to rename a hidden process on-the-fly
 - -S option to list ALL processes in debug mode (useful for -n option)
 - Don't show rk name in files from /proc, /sys and /var/log when using dmesg, cat, tail etc.
