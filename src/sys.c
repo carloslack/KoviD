@@ -943,12 +943,10 @@ static int m_proc_dointvec(struct ctl_table *table, int write,
 
         (void)_ftrace_intercept_init(true);
 
-        if (val == 0) {
+        if (val == 0)
             *(int *)(table->data) = 1;
-            snprintf(kv_prev_ftrace_enabled, sizeof(kv_prev_ftrace_enabled), "%d\n", val);
-        } else {
-            snprintf(kv_prev_ftrace_enabled, sizeof(kv_prev_ftrace_enabled), "%d\n", val);
-        }
+
+        snprintf(kv_prev_ftrace_enabled, sizeof(kv_prev_ftrace_enabled), "%d\n", val);
 
     }
     return rc;
