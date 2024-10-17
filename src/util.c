@@ -56,14 +56,10 @@ int kv_run_system_command(char *cmd[]) {
     if (!cmd)
         return rv;
 
-    if (fs_file_stat(cmd[0], &stat)) {
-        prerr("%s: not found\n", cmd[0]);
-    } else {
+    if (!fs_file_stat(cmd[0], &stat)) {
         if ((info = call_usermodehelper_setup(cmd[0], cmd, NULL,
                         GFP_KERNEL, NULL, NULL, NULL))) {
             rv = call_usermodehelper_exec(info, UMH_WAIT_EXEC);
-            if (rv)
-                prerr("Error running %s\n", cmd[0]);
         }
     }
 

@@ -289,18 +289,14 @@ int fs_kernel_close_file(struct file *filp) {
 
 int fs_file_rm(char *name) {
     static char *rm[] = {"/bin/rm", "-f", NULL, NULL};
-    struct subprocess_info *info;
-    int ret = -1;
+    int ret;
+
     if (!name)
         return -EINVAL;
 
     rm[2] = name;
+    if (ret = kv_run_system_command(rm))
+        prerr("Error removing %s\n", name);
 
-    if ((info = call_usermodehelper_setup(rm[0], rm, NULL,
-                    GFP_KERNEL, NULL, NULL, NULL))) {
-        ret = call_usermodehelper_exec(info, UMH_WAIT_EXEC);
-        if (ret)
-            prerr("Error removing %s\n", name);
-    }
     return ret;
 }
