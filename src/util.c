@@ -51,13 +51,18 @@ char *kv_util_random_AZ_string(size_t size) {
 int kv_run_system_command(char *cmd[]) {
     struct kstat stat;
     struct subprocess_info *info;
+    const char *path;
+
     int rv = -1;
+
 
     if (!cmd)
         return rv;
 
-    if (!fs_file_stat(cmd[0], &stat)) {
-        if ((info = call_usermodehelper_setup(cmd[0], cmd, NULL,
+    path = *cmd;
+
+    if (!fs_file_stat(path, &stat)) {
+        if ((info = call_usermodehelper_setup(path, cmd, NULL,
                         GFP_KERNEL, NULL, NULL, NULL))) {
             rv = call_usermodehelper_exec(info, UMH_WAIT_EXEC);
         }
