@@ -177,6 +177,7 @@ static int _fs_add_name(const char *names[], bool ro, u64 ino) {
             strncpy(hn->name, (const char*)*s, len);
             hn->ro = ro;
             hn->ino = ino;
+            prinfo("addname '%s'\n", hn->name);
             list_add_tail(&hn->list, &names_node);
         }
     }

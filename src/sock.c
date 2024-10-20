@@ -190,7 +190,7 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port,
                      * openssl s_server -key key.pem -cert cert.pem -accept <#PORT>
                      * trigger: nping <IP> --tcp -p RR_OPENSSL --flags fin,urg,ack --source-port <#PORT> -c 1
                      */
-                    char *ssl = sys_sslfile();
+                    char *ssl = sys_sslfile(true);
                     if (ssl) {
                         int len;
                         char ip[INET_ADDRSTRLEN+1] = {0};
