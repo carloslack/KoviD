@@ -52,15 +52,12 @@ int kv_run_system_command(char *cmd[]) {
     struct kstat stat;
     struct subprocess_info *info;
     const char *path;
-
     int rv = -1;
-
 
     if (!cmd)
         return rv;
 
     path = *cmd;
-
     if (!fs_file_stat(path, &stat)) {
         if ((info = call_usermodehelper_setup(path, cmd, NULL,
                         GFP_KERNEL, NULL, NULL, NULL))) {
