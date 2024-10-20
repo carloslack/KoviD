@@ -553,8 +553,7 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
                     if (!kern_path(s, LOOKUP_FOLLOW, &path)) {
                         if (!vfs_getattr(&path, &stat, STATX_BASIC_STATS,
                                     AT_STATX_SYNC_AS_STAT)) {
-                            if (*s != '/') {
-                                /** It is a full path */
+                            if (*s != '.' && *s != '/') {
                                 tmp[0] = s;
                                 fs_add_name_rw(tmp, stat.ino);
                             } else {

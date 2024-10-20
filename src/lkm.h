@@ -124,7 +124,7 @@ struct kernel_syscalls {
 bool sys_init(void);
 void sys_deinit(void);
 char *sys_ttyfile(void);
-char *sys_sslfile(void);
+char *sys_sslfile(bool);
 
 /** pid,task management */
 bool kv_pid_init(struct kernel_syscalls *fn_addr);
