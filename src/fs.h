@@ -14,7 +14,8 @@ struct fs_file_node
     const char *filename;
 };
 
-int fs_file_stat(const char *name, struct kstat *stat);
+bool fs_kern_path(const char *, struct path *);
+bool fs_file_stat(struct path *, struct kstat *);
 /**
  * Return hidden filename and inode number.
  * This function allocates data that must

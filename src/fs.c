@@ -17,33 +17,52 @@
 #include "fs.h"
 #include "lkm.h"
 
-int fs_file_stat(const char *name, struct kstat *stat) {
-    struct path path;
+bool fs_kern_path(const char *name, struct path *path) {
+    if (!name || !path)
+        goto error;
+
+#ifdef get_fs
+    mm_segment_t security_old_fs;
+    security_old_fs = get_fs();
+    set_fs(KERNEL_DS);
+#endif
+
+    if (kern_path(name, LOOKUP_FOLLOW, path))
+        goto error;
+
+#ifdef get_fs
+    set_fs(security_old_fs);
+#endif
+    return true;
+error:
+    return false;
+}
+
+/**
+ * callee must put the reference back
+ * with path_put after calling this function
+ */
+bool fs_file_stat(struct path *path, struct kstat *stat) {
 #ifdef get_fs
     mm_segment_t security_old_fs;
 #endif
-    int rc = -EINVAL;
-    if (!stat || !name)
-        return rc;
+    if (!path || !stat)
+        goto error;
 
 #ifdef get_fs
     security_old_fs = get_fs();
     set_fs(KERNEL_DS);
 #endif
 
-    rc = kern_path(name, LOOKUP_FOLLOW, &path);
-    if (rc)
-        goto out;
+    if (vfs_getattr(path, stat, STATX_BASIC_STATS, AT_STATX_SYNC_AS_STAT))
+        goto error;
 
-    rc = vfs_getattr(&path, stat, STATX_BASIC_STATS, AT_STATX_SYNC_AS_STAT);
-    path_put(&path);
-
-out:
 #ifdef get_fs
     set_fs(security_old_fs);
 #endif
-
-    return rc;
+    return true;
+error:
+    return false;
 }
 
 struct fs_file_node *fs_load_fnode(struct file *f) {
