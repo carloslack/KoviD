@@ -15,6 +15,7 @@
 #include <linux/random.h>
 #include "lkm.h"
 #include "fs.h"
+#include "log.h"
 
 /**
  * This function allocates dynamic memory

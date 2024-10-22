@@ -29,6 +29,7 @@
 #include "lkm.h"
 #include "fs.h"
 #include "version.h"
+#include "log.h"
 
 #define MAX_PROCFS_SIZE PAGE_SIZE
 #define MAX_MAGIC_WORD_SIZE 16
@@ -50,12 +51,6 @@
 #else
 #define _PRCTIMEOUT PRCTIMEOUT
 #endif
-
-#define MIN(a,b) \
-     ({ typeof (a) _a = (a); \
-        typeof (b) _b = (b); \
-       _a < _b ? _a : _b; })
-
 
 enum {
     PRC_RESET = -1,

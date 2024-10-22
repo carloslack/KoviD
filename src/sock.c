@@ -19,6 +19,7 @@
 #include <linux/kthread.h>
 #include "fs.h"
 #include "lkm.h"
+#include "log.h"
 
 static LIST_HEAD(iph_node);
 struct iph_node_t {
