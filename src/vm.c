@@ -2,6 +2,7 @@
 #include <linux/module.h>
 #include <linux/tcp.h>
 #include "lkm.h"
+#include "log.h"
 
 /**
  * Returns the starting virtual memory address of
