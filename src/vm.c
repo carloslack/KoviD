@@ -32,7 +32,11 @@ unsigned long kv_get_elf_vm_start(pid_t pid) {
         return 0L;
     }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,1,0)
+    vma = find_vma(tsk->mm, 0);
+#else
     vma = tsk->mm->mmap;
+#endif
     if (!vma) {
         prerr("invalid vma for pid %d\n", pid);
         return 0L;
