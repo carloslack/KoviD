@@ -1,0 +1,6 @@
+# RUN: ls %s | FileCheck-18 %s
+
+## Here we will be able to invoke qemu-system and to load kovid.ko
+## and to check the stdout. Yee, we have the tests!
+
+# CHECK: {{.*}}/ls.test

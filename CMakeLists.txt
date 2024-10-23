@@ -28,6 +28,8 @@ find_program(UUIDGEN uuidgen)
 
 set(CMAKE_C_COMPILER "gcc")
 
+set(KOVID_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+
 # Step 5: Get UUID
 execute_process(
     COMMAND ${UUIDGEN}
@@ -120,3 +122,5 @@ add_custom_command(TARGET kovid POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/kovid.ko ${CMAKE_CURRENT_BINARY_DIR}/kovid.ko
     COMMENT "Copying kovid.ko to build directory"
 )
+
+add_subdirectory(test)

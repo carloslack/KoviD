@@ -80,6 +80,26 @@ But lets say we built `linux` in `projects/private/kovid/linux`, we can set up m
 $ make
 ```
 
+### Run tests
+
+Please make sure to install llvm-tools, since we will be using some of the tools for testing infrastructure:
+
+```
+sudo apt-get install llvm-18-dev
+sudo apt-get install llvm-18-tools
+```
+
+Run tests:
+
+```
+$ make check-kovid V=1
+[100%] Running the KOVID regression tests
+
+Testing Time: 0.01s
+  Passed: 1
+[100%] Built target check-kovid
+```
+
 ## Linux Kernel 5.10
 
 1. Hide itself
