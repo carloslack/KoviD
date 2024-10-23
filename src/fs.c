@@ -75,6 +75,9 @@ struct fs_file_node *fs_load_fnode(struct file *f) {
     u32 req_mask = STATX_INO;
     unsigned int query_mask = AT_STATX_SYNC_AS_STAT;
 #endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,8,0)
+    struct mnt_idmap *idmap;
+#endif
 
     if(!f) {
         prerr("Error: Invalid argument\n");
@@ -97,7 +100,10 @@ struct fs_file_node *fs_load_fnode(struct file *f) {
     if(!fnode)
         return NULL;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,3,0)
+    idmap = mnt_idmap(f->f_path.mnt);
+    op->getattr(idmap, &f->f_path, &stat, req_mask, query_mask);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5,12,0)
     op->getattr(task_active_pid_ns(current)->user_ns, &f->f_path, &stat, req_mask, query_mask);
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,11,0)
     op->getattr(&f->f_path, &stat, req_mask, query_mask);
