@@ -77,7 +77,16 @@ But lets say we built `linux` in `projects/private/kovid/linux`, we can set up m
 -- Configuring done
 -- Generating done
 -- Build files have been written to: projects/private/kovid/build_kovid
+$ make PROCNAME="mykovidproc"
+-- Selected PROCNAME is mykovidproc
+```
+
+If you miss the `PROCNAME`, it will emit an error during build time:
+
+```
 $ make
+...
+*** ERROR: PROCNAME is not defined. Please invoke make with PROCNAME="your_process_name".  Stop.
 ```
 
 ### Run tests

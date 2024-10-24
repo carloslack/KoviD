@@ -39,8 +39,6 @@ execute_process(
 
 # Step 6: Define Build Options
 option(DEPLOY "Turn off ring buffer debug" OFF)
-set(PROCNAME "changeme" CACHE STRING "Process name")
-set(MODNAME "kovid" CACHE STRING "Module name")
 
 if(NOT DEPLOY)
     set(DEBUG_PR -DDEBUG_RING_BUFFER)
