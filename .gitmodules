@@ -1,3 +1,6 @@
 [submodule "volundr"]
 	path = volundr
 	url = https://github.com/carloslack/volundr.git
+[submodule "test/test-artefacts"]
+	path = test/test-artefacts
+	url = https://github.com/djolertrk/KoviD-test-artefacts.git

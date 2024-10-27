@@ -1,0 +1,4 @@
+# RUN: FileCheck-18 --input-file=%kovid_testdir/hide-pid.log %s
+
+# CHECK: sh: can't kill pid 31337: No such process
+# CHECK: sh: can't kill pid {{.*}}: No such process

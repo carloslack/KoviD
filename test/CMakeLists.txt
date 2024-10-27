@@ -27,9 +27,16 @@ configure_lit_site_cfg(
         ${CMAKE_CURRENT_SOURCE_DIR}/lit.cfg.py
 )
 
+# Define a custom target to run qemu-runner.sh before tests
+add_custom_target(run-qemu-runner
+    COMMAND bash ${CMAKE_BINARY_DIR}/qemu-runner.sh
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    COMMENT "Running qemu-runner.sh"
+)
+
 add_lit_testsuite(check-kovid "Running the KOVID regression tests"
         ${CMAKE_CURRENT_BINARY_DIR}
-        DEPENDS ${KOVID_TEST_DEPENDS}
+        DEPENDS ${KOVID_TEST_DEPENDS} run-qemu-runner
         )
 set_target_properties(check-kovid PROPERTIES FOLDER "Tests")
 

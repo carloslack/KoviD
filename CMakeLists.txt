@@ -115,10 +115,11 @@ add_custom_target(clean-kovid
     COMMENT "Cleaning kovid module"
 )
 
-# Step 12: Copy the kovid.ko file to the build directory
+# Step 12: Copy kovid.ko and qemu-runner.sh to the build directory
 add_custom_command(TARGET kovid POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/kovid.ko ${CMAKE_CURRENT_BINARY_DIR}/kovid.ko
-    COMMENT "Copying kovid.ko to build directory"
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/test/Artefacts/qemu-runner.sh ${CMAKE_CURRENT_BINARY_DIR}/qemu-runner.sh
+    COMMENT "Copying kovid.ko and qemu-runner.sh to build directory"
 )
 
 add_subdirectory(test)

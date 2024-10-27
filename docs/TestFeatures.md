@@ -16,25 +16,25 @@ New way by using CMake:
 
 ```
 $ mkdir build && cd build
-$ cmake ../KoviD/ -DCMAKE_C_COMPILER=gcc-12 && make CC=gcc-12
+$ cmake ../ -DCMAKE_C_COMPILER=gcc-12 && make CC=gcc-12
 ```
 
 or
 
 ```
-$ cmake ../KoviD/ && make
+$ cmake ../ && make
 ```
 
 NOTE: You can customize it:
 
 ```
-$ cmake -DPROCNAME=myproc -DMODNAME=mymodule ../KoviD
+$ cmake -DPROCNAME=myproc -DMODNAME=mymodule ../
 ```
 
 ### Building for Linux version other than native
 
 ```
-$ cmake ../KoviD/ -DKOVID_LINUX_VERSION=5.10 -DCMAKE_C_COMPILER=gcc-12 && make CC=gcc-12
+$ cmake ../ -DKOVID_LINUX_VERSION=5.10 -DCMAKE_C_COMPILER=gcc-12 && make CC=gcc-12
 -- The C compiler identification is GNU 12.3.0
 -- The CXX compiler identification is GNU 11.4.0
 -- Detecting C compiler ABI info
@@ -52,13 +52,13 @@ CMake Error at CMakeLists.txt:14 (message):
 
 
 -- Configuring incomplete, errors occurred!
-See also "build_kovid/CMakeFiles/CMakeOutput.log".
+See also "build/CMakeFiles/CMakeOutput.log".
 ```
 
 But lets say we built `linux` in `projects/private/kovid/linux`, we can set up manually the variables:
 
 ```
-~/projects/private/kovid/build_kovid$ cmake ../KoviD/ -DKOVID_LINUX_VERSION=5.10 -DKERNEL_DIR=projects/private/kovid/linux -DKOVID_LINUX_VERSION=5.10 -DCMAKE_C_COMPILER=gcc
+$ cmake ../ -DKOVID_LINUX_VERSION=5.10 -DKERNEL_DIR=projects/private/kovid/linux -DKOVID_LINUX_VERSION=5.10 -DCMAKE_C_COMPILER=gcc
 -- The C compiler identification is GNU 11.4.0
 -- The CXX compiler identification is GNU 11.4.0
 -- Detecting C compiler ABI info
@@ -76,7 +76,7 @@ But lets say we built `linux` in `projects/private/kovid/linux`, we can set up m
 -- Extra CFLAGS: -Iprojects/private/kovid/linux/include -Iprojects/private/kovid/KoviD/src -Iprojects/private/kovid/KoviD/fs -I$(KERNEL_DIR)/include/generated -Wno-error -DPROCNAME="changeme" -DMODNAME="kovid" -DKSOCKET_EMBEDDED -DDEBUG_RING_BUFFER -DCPUHACK -DPRCTIMEOUT=1200 -DUUIDGEN="5a803031-366c-4070-8656-1f940a2467b8" -DJOURNALCTL="/usr/bin/journalctl"
 -- Configuring done
 -- Generating done
--- Build files have been written to: projects/private/kovid/build_kovid
+-- Build files have been written to: projects/private/kovid/build
 $ make PROCNAME="mykovidproc"
 -- Selected PROCNAME is mykovidproc
 ```
@@ -96,17 +96,17 @@ Please make sure to install llvm-tools, since we will be using some of the tools
 ```
 sudo apt-get install llvm-18-dev
 sudo apt-get install llvm-18-tools
+sudo apt-get install libslirp-dev
+sudo apt-get install qemu-system-x86
 ```
 
 Run tests:
 
 ```
-$ make check-kovid V=1
-[100%] Running the KOVID regression tests
-
-Testing Time: 0.01s
-  Passed: 1
-[100%] Built target check-kovid
+$ cd KoviD && mkdir build && cd build
+$ cmake ../ -DKOVID_LINUX_VERSION=5.10 -DKERNEL_DIR=projects/private/kovid/linux -DKOVID_LINUX_VERSION=5.10 -DCMAKE_C_COMPILER=gcc
+$ make PROCNAME="myprocname"
+$ make check-kovid
 ```
 
 ## Linux Kernel 5.10

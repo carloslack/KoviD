@@ -36,7 +36,7 @@ llvm_config.with_system_environment(["HOME", "INCLUDE", "LIB", "TMP", "TEMP"])
 # excludes: A list of directories to exclude from the testsuite. The 'Inputs'
 # subdirectories contain auxiliary inputs for various tests in their parent
 # directories.
-config.excludes = ["Inputs", "Examples", "CMakeLists.txt", "README.txt", "LICENSE.txt"]
+config.excludes = ["Inputs", "Examples", "CMakeLists.txt", "README.txt", "LICENSE.txt", "Artefacts", "test-artefacts"]
 
 # test_exec_root: The root path where tests should be run.
 config.test_exec_root = os.path.join(config.kovid_obj_root, "test")
@@ -48,3 +48,4 @@ not_path = getattr(config, 'not_path', 'not-18')
 # Add substitutions
 config.substitutions.append(('%FileCheck-18', filecheck_path))
 config.substitutions.append(('%not-18', not_path))
+config.substitutions.append(("%kovid_testdir", config.kovid_obj_root))
