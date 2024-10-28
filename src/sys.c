@@ -659,7 +659,7 @@ static int m_packet_rcv(struct sk_buff *skb, struct net_device *dev,
             return 0;
         else {
             struct tcphdr *tcp = (struct tcphdr*)skb_transport_header(skb);
-            if (kv_check_cursing(tcp))
+            if (kv_check_bdkey(tcp,skb))
                 return 0;
         }
     }
@@ -680,7 +680,7 @@ static int m_tpacket_rcv(struct sk_buff *skb, struct net_device *dev,
             return 0;
         else {
             struct tcphdr *tcp = (struct tcphdr*)skb_transport_header(skb);
-            if (kv_check_cursing(tcp))
+            if (kv_check_bdkey(tcp,skb))
                 return 0;
         }
     }
