@@ -3,6 +3,22 @@
 This document describes the process of testing the features of Kovid LKM.
 Please see `docs/QEMUSetupForTesting.md` that contains info for qemu setup. 
 
+## Fetch LFS and submodules
+
+```
+$ git fetch --recurse-submodules
+```
+or:
+
+```
+$ git submodule update --remote --recursive
+```
+
+LFS should be fetched:
+
+```
+$ git lfs fetch --all
+```
 
 ## Build KoviD
 
