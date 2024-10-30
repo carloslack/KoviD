@@ -28,6 +28,10 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Update Submodules
+        run: |
+          git submodule update --init --recursive
+
       - name: Install Packages
         run: |
           sudo apt-get update
