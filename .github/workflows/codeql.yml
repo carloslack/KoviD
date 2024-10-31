@@ -23,14 +23,11 @@ jobs:
         language: [ cpp ]
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          submodules: recursive
-
-      - name: Update Submodules
-        run: |
-          git submodule update --init --recursive
+          submodules: true
+          token: ${{ secrets.GH_KOVID_TEST_TOKEN }}
 
       - name: Install Packages
         run: |
