@@ -35,8 +35,9 @@ jobs:
           sudo apt-get install --yes build-essential linux-headers-generic linux-kernel-headers
 
       - name: After Prepare
-        run: export GNU_MAKE=make && echo "GNU_MAKE=$GNU_MAKE" >> $GITHUB_ENV
-        run: export PROCNAME="myprocname" && echo "PROCNAME=$PROCNAME" >> $GITHUB_ENV
+        run: |
+          export GNU_MAKE=make && echo "GNU_MAKE=$GNU_MAKE" >> $GITHUB_ENV
+          export PROCNAME="myprocname" && echo "PROCNAME=$PROCNAME" >> $GITHUB_ENV
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v2
