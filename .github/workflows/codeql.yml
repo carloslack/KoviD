@@ -36,6 +36,7 @@ jobs:
 
       - name: After Prepare
         run: export GNU_MAKE=make && echo "GNU_MAKE=$GNU_MAKE" >> $GITHUB_ENV
+        run: export PROCNAME="myprocname" && echo "PROCNAME=$PROCNAME" >> $GITHUB_ENV
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v2
