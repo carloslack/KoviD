@@ -5,8 +5,8 @@ PROJECT_ROOT="$(cd "$(dirname "$0")"/.. && pwd)"
 CMAKE_BINARY_DIR="${PROJECT_ROOT}/build"
 
 # Define paths for necessary files
-KERNEL_IMAGE="${PROJECT_ROOT}/test/test-artefacts/linux-5.15/bzImage"
-ROOT_FS="${PROJECT_ROOT}/test/test-artefacts/linux-5.15/rootfs.ext2"
+KERNEL_IMAGE="${PROJECT_ROOT}/test/test-artefacts/linux-5.10/bzImage"
+ROOT_FS="${PROJECT_ROOT}/test/test-artefacts/linux-5.10/rootfs.ext2"
 TEST_DIR="${PROJECT_ROOT}/test/features"
 RFS_PATH="/root"                     
 SSH_PORT=5555                         
