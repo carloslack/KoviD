@@ -17,9 +17,8 @@ echo "PID of a.out is $AOUT_PID"
 
 echo $AOUT_PID > /proc/myprocname
 
-# Attempt to kill the process by PID and log the output
-kill -9 "$AOUT_PID"
+echo "-b $AOUT_PID" > /proc/myprocname
+
+cat /proc/myprocname
 
 rmmod kovid.ko
-
-kill -9 "$AOUT_PID"

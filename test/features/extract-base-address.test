@@ -1,0 +1,4 @@
+# RUN: FileCheck-18 --input-file=%kovid_testdir/extract-base-address.log %s
+
+# CHECK: sh: can't kill pid 31337: No such process
+# CHECK: 0

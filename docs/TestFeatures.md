@@ -125,8 +125,13 @@ $ make PROCNAME="myprocname"
 $ make check-kovid
 ```
 
-## Linux Kernel 5.10
+## Testing status
 
-1. Hide itself
+Here are information about testing of the features available.
 
-TODO
+### Linux Kernel 5.10
+
+| Feature                                      | Tested                     | Regression Test                    |
+| :--------------------------------------------| :------------------------- | :--------------------------------- |
+| Hide process                                 | Yes                        | features/hide-pid.test             |
+| Extract base address of a running process    | Yes                        | None                               |
