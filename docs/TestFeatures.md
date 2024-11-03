@@ -134,4 +134,4 @@ Here are information about testing of the features available.
 | Feature                                      | Tested                     | Regression Test                    |
 | :--------------------------------------------| :------------------------- | :--------------------------------- |
 | Hide process                                 | Yes                        | features/hide-pid.test             |
-| Extract base address of a running process    | Yes                        | None                               |
+| Extract base address of a running process    | Yes                        | features/extract-base-address.test |
