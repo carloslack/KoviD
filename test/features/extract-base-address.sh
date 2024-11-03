@@ -15,8 +15,6 @@ sleep 1
 # Output the PID (for debugging or verification)
 echo "PID of a.out is $AOUT_PID"
 
-echo $AOUT_PID > /proc/myprocname
-
 echo "-b $AOUT_PID" > /proc/myprocname
 
 cat /proc/myprocname
