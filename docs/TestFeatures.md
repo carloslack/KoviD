@@ -131,7 +131,14 @@ Here are information about testing of the features available.
 
 ### Linux Kernel 5.10
 
-| Feature                                      | Tested                     | Regression Test                    |
-| :--------------------------------------------| :------------------------- | :--------------------------------- |
-| Hide process                                 | Yes                        | features/hide-pid.test             |
-| Extract base address of a running process    | Yes                        | features/extract-base-address.test |
+| Feature                                            | Tested                         | Regression Test                    |
+| :--------------------------------------------------| :------------------------------| :--------------------------------- |
+| Hide process                                       | Yes                            | features/hide-pid.test             |
+| Extract base address of a running process          | Yes                            | features/extract-base-address.test |
+| anti-rk's that are available (bpf-hookdetect)      | No (hard to test on qemu)      | None                               |
+| anti-rk's that are available (rkspotter)           | No (build for non host kernel) | None                               |
+| anti-rk's that are available (rkbreaker)           | No (build for non host kernel) | None                               |
+| Simple netcat reverse shell                        | No (understand bdclient)       | None                               |
+| Log tty keys and steal passwords over SSH (and FTP)| No (understand bdclient)       | None                               |
+| Simple persistence using ELF infection with Volundr| No (understand bdclient)       | None                               |
+| Hide pre-defined network application               | Yes                            | None                               |
