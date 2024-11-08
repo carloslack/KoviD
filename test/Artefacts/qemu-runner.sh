@@ -20,93 +20,97 @@ if [[ ! -f "$KERNEL_IMAGE" || ! -f "$ROOT_FS" || ! -f "$KOVID_MODULE" ]]; then
     exit 1
 fi
 
-# Create a writable copy of the root filesystem
-TEMP_ROOTFS="/tmp/rootfs_writable.ext2"
-cp "${ROOT_FS}" "${TEMP_ROOTFS}"
-
-# Cleanup function to terminate QEMU and remove temporary files
-cleanup() {
-    echo "Cleaning up..."
-    if [[ -n "$QEMU_PID" ]]; then
-        kill -SIGTERM "$QEMU_PID" 2>/dev/null
-        wait "$QEMU_PID" 2>/dev/null
-    fi
-    rm -f "$TEMP_ROOTFS"
-    echo "QEMU shut down and temporary files cleaned."
-}
-
-# Trap to ensure cleanup runs on exit
-trap cleanup EXIT INT ERR
-
-# Start QEMU in the background
-qemu-system-x86_64 \
-    -kernel "$KERNEL_IMAGE" \
-    -append "root=/dev/sda rw console=ttyS0,115200 init=/sbin/init" \
-    -drive format=raw,file="$TEMP_ROOTFS" \
-    -device e1000,netdev=net0 \
-    -netdev user,id=net0,hostfwd=tcp::${SSH_PORT}-:22 \
-    $QEMU_FLAGS &> qemu_output.log &
-
-QEMU_PID=$!
-
-# Wait for SSH to be available
-echo "Waiting for QEMU && SSH to be ready..."
-for i in {1..20}; do
-    if ssh -i "$SSH_KEY" -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o ConnectTimeout=5 -p ${SSH_PORT} root@localhost 'echo SSH is ready'; then
-        echo "SSH connection to QEMU established."
-        break
-    fi
-    echo "QEMU && SSH not ready, retrying in 3 seconds... (Attempt $i of 20)"
-    sleep 3
-done
-
-# Final check if SSH is still not available
-if ! ssh -i "$SSH_KEY" -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o ConnectTimeout=5 -p ${SSH_PORT} root@localhost 'echo SSH is ready'; then
-    echo "Failed to establish SSH connection to QEMU after multiple attempts. Exiting..."
-    exit 1
-fi
-
-# Transfer kovid.ko to QEMU and load it
-echo "Transferring and loading kovid.ko on QEMU..."
-scp -i "$SSH_KEY" -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -P ${SSH_PORT} "$KOVID_MODULE" root@localhost:"$RFS_PATH/kovid.ko" || {
-    echo "Failed to transfer kovid.ko to QEMU."
-    exit 1
-}
-ssh -i "$SSH_KEY" -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -p ${SSH_PORT} root@localhost "insmod $RFS_PATH/kovid.ko" || {
-    echo "Failed to load kovid.ko on QEMU."
-    exit 1
-}
-
 # Function to execute each test script on QEMU
 execute_test_script() {
     TEST_SCRIPT=$1  # Path to the test script on the host
     TEST_LOG="$(basename "${TEST_SCRIPT%.sh}.log")"  # Log file name on the host
+
+    # Create a writable copy of the root filesystem
+    TEMP_ROOTFS="/tmp/rootfs_writable.ext2"
+    cp "${ROOT_FS}" "${TEMP_ROOTFS}"
+
+    # Start QEMU in the background
+    qemu-system-x86_64 \
+        -kernel "$KERNEL_IMAGE" \
+        -append "root=/dev/sda rw console=ttyS0,115200 init=/sbin/init" \
+        -drive format=raw,file="$TEMP_ROOTFS" \
+        -device e1000,netdev=net0 \
+        -netdev user,id=net0,hostfwd=tcp::${SSH_PORT}-:22 \
+        $QEMU_FLAGS &> qemu_output.log &
+
+    QEMU_PID=$!
+
+    # Wait for SSH to be available
+    echo "Waiting for QEMU && SSH to be ready..."
+    for i in {1..20}; do
+        if ssh -i "$SSH_KEY" -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o ConnectTimeout=5 -p ${SSH_PORT} root@localhost 'echo SSH is ready'; then
+            echo "SSH connection to QEMU established."
+            break
+        fi
+        echo "QEMU && SSH not ready, retrying in 3 seconds... (Attempt $i of 20)"
+        sleep 3
+    done
+
+    # Final check if SSH is still not available
+    if ! ssh -i "$SSH_KEY" -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o ConnectTimeout=5 -p ${SSH_PORT} root@localhost 'echo SSH is ready'; then
+        echo "Failed to establish SSH connection to QEMU after multiple attempts. Exiting..."
+        kill -SIGTERM "$QEMU_PID" 2>/dev/null
+        rm -f "$TEMP_ROOTFS"
+        exit 1
+    fi
+
+    # Transfer kovid.ko to QEMU and load it
+    echo "Transferring and loading kovid.ko on QEMU..."
+    scp -i "$SSH_KEY" -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -P ${SSH_PORT} "$KOVID_MODULE" root@localhost:"$RFS_PATH/kovid.ko" || {
+        echo "Failed to transfer kovid.ko to QEMU."
+        kill -SIGTERM "$QEMU_PID" 2>/dev/null
+        rm -f "$TEMP_ROOTFS"
+        exit 1
+    }
+    ssh -i "$SSH_KEY" -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -p ${SSH_PORT} root@localhost "insmod $RFS_PATH/kovid.ko" || {
+        echo "Failed to load kovid.ko on QEMU."
+        kill -SIGTERM "$QEMU_PID" 2>/dev/null
+        rm -f "$TEMP_ROOTFS"
+        exit 1
+    }
 
     echo "Running test script $(basename "$TEST_SCRIPT") on QEMU..."
 
     # Transfer the test script to QEMU
     scp -i "$SSH_KEY" -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -P ${SSH_PORT} "$TEST_SCRIPT" root@localhost:"$RFS_PATH/$(basename "$TEST_SCRIPT")" || {
         echo "Failed to transfer test script $(basename "$TEST_SCRIPT") to QEMU."
+        kill -SIGTERM "$QEMU_PID" 2>/dev/null
+        rm -f "$TEMP_ROOTFS"
         exit 1
     }
 
-    # Run the test script on QEMU in the background, capturing output and returning immediately
+    # Run the test script on QEMU, capturing output and returning immediately
     ssh -i "$SSH_KEY" -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -p ${SSH_PORT} root@localhost "nohup sh -c 'chmod +x $RFS_PATH/$(basename "$TEST_SCRIPT") && $RFS_PATH/$(basename "$TEST_SCRIPT")' > $RFS_PATH/$TEST_LOG 2>&1 &" || {
         echo "Failed to execute test script $(basename "$TEST_SCRIPT") on QEMU."
+        kill -SIGTERM "$QEMU_PID" 2>/dev/null
+        rm -f "$TEMP_ROOTFS"
         exit 1
     }
 
-    # Wait a brief moment to ensure command starts
-    sleep 1
+    sleep 1  # Wait briefly to ensure the test script starts
 
     # Retrieve the log file from QEMU
     scp -i "$SSH_KEY" -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -P ${SSH_PORT} root@localhost:"$RFS_PATH/$TEST_LOG" . || {
         echo "Failed to retrieve log file $TEST_LOG from QEMU."
+        kill -SIGTERM "$QEMU_PID" 2>/dev/null
+        rm -f "$TEMP_ROOTFS"
         exit 1
     }
 
-    # Ensure the completion message is displayed
+    # Display completion message
     echo "Test script $(basename "$TEST_SCRIPT") completed. Output saved to $TEST_LOG."
+
+    # Cleanup for each test
+    echo "Cleaning up QEMU for $(basename "$TEST_SCRIPT")..."
+    kill -SIGTERM "$QEMU_PID" 2>/dev/null
+    wait "$QEMU_PID" 2>/dev/null
+    rm -f "$TEMP_ROOTFS"
+    echo "QEMU shut down and temporary files cleaned for $(basename "$TEST_SCRIPT")."
 }
 
 # Loop through each .test file and corresponding script in TEST_DIR
@@ -119,6 +123,3 @@ for TEST_FILE in "$TEST_DIR"/*.test; do
         echo "Skipping $(basename "$TEST_SCRIPT") as it or the .test file is missing."
     fi
 done
-
-# After all tests are done, shut down QEMU
-cleanup
