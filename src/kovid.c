@@ -37,10 +37,6 @@
 #ifndef MODNAME
 #pragma message "Missing \'MODNAME\' compilation directive. See Makefile."
 #endif
-#ifndef PROCNAME
-#error "Missing \'PROCNAME\' compilation directive. See Makefile."
-#endif
-
 
 #ifndef PRCTIMEOUT
 /**
