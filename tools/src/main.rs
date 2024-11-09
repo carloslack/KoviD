@@ -6,7 +6,6 @@
 // work in progress...
 
 use anyhow::Context;
-use fork::{daemon, Fork};
 use std::convert::From;
 use std::{
     ffi::OsStr,
