@@ -125,6 +125,14 @@ $ make PROCNAME="myprocname"
 $ make check-kovid
 ```
 
+Run tests in `DEPLOY` mode (some tests are run in this mode only):
+
+```
+$ cmake ../ -DKOVID_LINUX_VERSION=5.10 -DKERNEL_DIR=projects/private/kovid/linux -DKOVID_LINUX_VERSION=5.10 -DCMAKE_C_COMPILER=gcc -DDEPLOY=1
+$ make PROCNAME="myprocname" DEPLOY=1
+$ make check-kovid
+```
+
 ## Testing status
 
 Here are information about testing of the features available.
@@ -142,3 +150,11 @@ Here are information about testing of the features available.
 | Log tty keys and steal passwords over SSH (and FTP)| No (understand bdclient)       | None                               |
 | Simple persistence using ELF infection with Volundr| No (understand bdclient)       | None                               |
 | Hide pre-defined network application               | Yes                            | None                               |
+
+#### 2.1.1 Testing
+
+NOTE: If a test should be executed in `DEPLOY` mode only, `.test` file should contain `# DEPLOY_ONLY` marker.
+
+| Feature                                            | Tested                         | Regression Test                       |
+| :--------------------------------------------------| :------------------------------| :------------------------------------ |
+| No tainted messages/log appear in DEPLOY           | Yes                            | features/no-kovid-logs-in-deploy.test |

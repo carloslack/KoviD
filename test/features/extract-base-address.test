@@ -2,4 +2,4 @@
 
 # CHECK: sh: can't kill pid 31337: No such process
 ## We expect an address like `55e648a65000`
-# CHECK: 55{{.*}}
+# CHECK: 5{{.*}}

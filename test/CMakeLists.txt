@@ -27,9 +27,11 @@ configure_lit_site_cfg(
         ${CMAKE_CURRENT_SOURCE_DIR}/lit.cfg.py
 )
 
+option(DEPLOY "Turn off ring buffer debug" OFF)
+
 # Define a custom target to run qemu-runner.sh before tests
 add_custom_target(run-qemu-runner
-    COMMAND bash ${CMAKE_BINARY_DIR}/qemu-runner.sh
+    COMMAND DEPLOY=${DEPLOY} bash ${CMAKE_BINARY_DIR}/qemu-runner.sh
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     COMMENT "Running qemu-runner.sh"
 )

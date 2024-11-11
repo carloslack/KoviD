@@ -1,0 +1,6 @@
+# DEPLOY_ONLY
+
+# RUN: FileCheck-18 --input-file=%kovid_testdir/no-kovid-logs-in-deploy.log %s
+
+# CHECK-NOT: kv
+# CHECK: rmmod: can't unload module 'kovid': No such file or directory 

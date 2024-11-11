@@ -20,6 +20,8 @@ if [[ ! -f "$KERNEL_IMAGE" || ! -f "$ROOT_FS" || ! -f "$KOVID_MODULE" ]]; then
     exit 1
 fi
 
+DEPLOY=${DEPLOY:-0}
+
 # Function to execute each test script on QEMU
 execute_test_script() {
     TEST_SCRIPT=$1  # Path to the test script on the host
@@ -116,9 +118,20 @@ execute_test_script() {
 # Loop through each .test file and corresponding script in TEST_DIR
 for TEST_FILE in "$TEST_DIR"/*.test; do
     TEST_SCRIPT="${TEST_FILE%.test}.sh"
-    # Ensure both .test and .sh files exist before running the test
+
+    echo "Deploy: ${DEPLOY}. Note that if DEPLOY is 1, we may run more tests"
+
     if [[ -f "$TEST_FILE" && -f "$TEST_SCRIPT" ]]; then
-        execute_test_script "$TEST_SCRIPT"
+        # Check for DEPLOY_ONLY marker
+        if grep -q '^# DEPLOY_ONLY' "$TEST_FILE"; then
+            if [[ "$DEPLOY" == "1" ]]; then
+                execute_test_script "$TEST_SCRIPT"
+            else
+                echo "Skipping $(basename "$TEST_SCRIPT") because it requires DEPLOY=1."
+            fi
+        else
+            execute_test_script "$TEST_SCRIPT"
+        fi
     else
         echo "Skipping $(basename "$TEST_SCRIPT") as it or the .test file is missing."
     fi
