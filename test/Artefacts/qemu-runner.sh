@@ -122,14 +122,26 @@ for TEST_FILE in "$TEST_DIR"/*.test; do
     echo "Deploy: ${DEPLOY}. Note that if DEPLOY is 1, we may run more tests"
 
     if [[ -f "$TEST_FILE" && -f "$TEST_SCRIPT" ]]; then
-        # Check for DEPLOY_ONLY marker
-        if grep -q '^# DEPLOY_ONLY' "$TEST_FILE"; then
+        # Check for DEPLOY_ONLY and DEBUG_ONLY markers
+        DEPLOY_ONLY_MARKER=$(grep -c '^# DEPLOY_ONLY' "$TEST_FILE")
+        DEBUG_ONLY_MARKER=$(grep -c '^# DEBUG_ONLY' "$TEST_FILE")
+
+        if [[ "$DEPLOY_ONLY_MARKER" -gt 0 && "$DEBUG_ONLY_MARKER" -gt 0 ]]; then
+            echo "Skipping $(basename "$TEST_SCRIPT") because it has both DEPLOY_ONLY and DEBUG_ONLY markers."
+        elif [[ "$DEPLOY_ONLY_MARKER" -gt 0 ]]; then
             if [[ "$DEPLOY" == "1" ]]; then
                 execute_test_script "$TEST_SCRIPT"
             else
                 echo "Skipping $(basename "$TEST_SCRIPT") because it requires DEPLOY=1."
             fi
+        elif [[ "$DEBUG_ONLY_MARKER" -gt 0 ]]; then
+            if [[ "$DEPLOY" != "1" ]]; then
+                execute_test_script "$TEST_SCRIPT"
+            else
+                echo "Skipping $(basename "$TEST_SCRIPT") because it's a DEBUG_ONLY test and DEPLOY=1."
+            fi
         else
+            # No marker, run the test regardless of DEPLOY
             execute_test_script "$TEST_SCRIPT"
         fi
     else
