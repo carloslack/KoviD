@@ -114,8 +114,8 @@ Each test consists of a pair of files:
 
 Test Markers:
 
-    - Deploy Mode Tests (# DEPLOY_ONLY): Some tests are run only when the Loadable Kernel Module (LKM) is built in deploy mode. These tests have a .test file marked with # DEPLOY_ONLY at the top.
-    - Debug Mode Tests (# DEBUG_ONLY): Tests that should only run in debug mode are marked with # DEBUG_ONLY in their .test files.
+    - Deploy Mode Tests (# REQUIRES: DEPLOY_ONLY): Some tests are run only when the Loadable Kernel Module (LKM) is built in deploy mode. These tests have a .test file marked with # DEPLOY_ONLY at the top.
+    - Debug Mode Tests (# REQUIRES: DEBUG_ONLY): Tests that should only run in debug mode are marked with # DEBUG_ONLY in their .test files.
     - If a test does not have any of these marker, it will be run in each mode.
 
 ### Run tests
@@ -166,9 +166,10 @@ Here are information about testing of the features available.
 
 #### 2.1.1 Testing
 
-NOTE: If a test should be executed in `DEPLOY` mode only, `.test` file should contain `# DEPLOY_ONLY` marker.
+NOTE: If a test should be executed in `DEPLOY` mode only, `.test` file should contain `# REQUIRES: DEPLOY_ONLY` marker.
 
 | Feature                                            | Tested                         | Regression Test                       |
 | :--------------------------------------------------| :------------------------------| :------------------------------------ |
 | No tainted messages/log appear in DEPLOY           | Yes                            | features/no-kovid-logs-in-deploy.test |
 | kovid (DEPLOY) doesn't appear in /var /sys etc.    | Yes                            | features/no-kovid-found.test          |
+| Hide/Unhide Module Test in DEBUG Mode              | Yes                            | features/hide-unhide-module.test      |

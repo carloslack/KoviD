@@ -49,3 +49,11 @@ not_path = getattr(config, 'not_path', 'not-18')
 config.substitutions.append(('%FileCheck-18', filecheck_path))
 config.substitutions.append(('%not-18', not_path))
 config.substitutions.append(("%kovid_testdir", config.kovid_obj_root))
+
+# Define available features based on the DEPLOY environment variable
+deploy_env = os.environ.get('DEPLOY')
+
+if deploy_env == '1':
+    config.available_features.add('DEPLOY_ONLY')
+else:
+    config.available_features.add('DEBUG_ONLY')

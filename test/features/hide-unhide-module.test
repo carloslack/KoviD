@@ -1,0 +1,10 @@
+# REQUIRES: DEBUG_ONLY
+# Test: Hide/Unhide Module Test in DEBUG Mode
+
+# RUN: FileCheck-18 --input-file=%kovid_testdir/hide-unhide-module.log %s
+
+# CHECK: Checking if kovid module is loaded:
+# CHECK: kovid
+# CHECK: Hiding the kovid module:
+# CHECK: Checking if kovid module is hidden:
+# CHECK-NOT: kovid

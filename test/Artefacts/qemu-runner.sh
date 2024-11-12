@@ -22,6 +22,9 @@ fi
 
 DEPLOY=${DEPLOY:-0}
 
+# Export DEPLOY for use in lit
+export DEPLOY
+
 # Function to execute each test script on QEMU
 execute_test_script() {
     TEST_SCRIPT=$1  # Path to the test script on the host
@@ -119,7 +122,7 @@ execute_test_script() {
 for TEST_FILE in "$TEST_DIR"/*.test; do
     TEST_SCRIPT="${TEST_FILE%.test}.sh"
 
-    echo "Deploy: ${DEPLOY}. Note that if DEPLOY is 1, we may run more tests"
+    echo "Deploy: ${DEPLOY}. Note that if DEPLOY is 1, we may mark some tests as Unsupported"
 
     if [[ -f "$TEST_FILE" && -f "$TEST_SCRIPT" ]]; then
         # Check for DEPLOY_ONLY and DEBUG_ONLY markers
