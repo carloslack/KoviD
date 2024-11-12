@@ -105,6 +105,19 @@ $ make
 *** ERROR: PROCNAME is not defined. Please invoke make with PROCNAME="your_process_name".  Stop.
 ```
 
+### How to Write tests?
+
+Each test consists of a pair of files:
+
+    1) Bash Script (.sh file): A shell script that will be transferred to QEMU. It contains the set of commands we want to test.
+    2) Expected Output (.test file): A file that contains the expected output for the test, which we use to verify that our feature is working as intended.
+
+Test Markers:
+
+    - Deploy Mode Tests (# DEPLOY_ONLY): Some tests are run only when the Loadable Kernel Module (LKM) is built in deploy mode. These tests have a .test file marked with # DEPLOY_ONLY at the top.
+    - Debug Mode Tests (# DEBUG_ONLY): Tests that should only run in debug mode are marked with # DEBUG_ONLY in their .test files.
+    - If a test does not have any of these marker, it will be run in each mode.
+
 ### Run tests
 
 Please make sure to install llvm-tools, since we will be using some of the tools for testing infrastructure:
