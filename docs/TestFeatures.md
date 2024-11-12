@@ -158,3 +158,4 @@ NOTE: If a test should be executed in `DEPLOY` mode only, `.test` file should co
 | Feature                                            | Tested                         | Regression Test                       |
 | :--------------------------------------------------| :------------------------------| :------------------------------------ |
 | No tainted messages/log appear in DEPLOY           | Yes                            | features/no-kovid-logs-in-deploy.test |
+| kovid (DEPLOY) doesn't appear in /var /sys etc.    | Yes                            | features/no-kovid-found.test          |
