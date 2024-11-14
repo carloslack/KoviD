@@ -77,7 +77,7 @@ static struct kv_crypto_st *kvmgc0, *kvmgc1;
 #error "fuuuuuu Support is only for x86-64"
 #endif
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,11,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,16,0)
 #pragma message "!! Warning: Unsupported kernel version GOOD LUCK WITH THAT! !!"
 #endif
 
