@@ -72,12 +72,6 @@ execute_test_script() {
         rm -f "$TEMP_ROOTFS"
         exit 1
     }
-    ssh -i "$SSH_KEY" -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -p ${SSH_PORT} root@localhost "insmod $RFS_PATH/kovid.ko" || {
-        echo "Failed to load kovid.ko on QEMU."
-        kill -SIGTERM "$QEMU_PID" 2>/dev/null
-        rm -f "$TEMP_ROOTFS"
-        exit 1
-    }
 
     echo "Running test script $(basename "$TEST_SCRIPT") on QEMU..."
 
