@@ -896,6 +896,8 @@ static void __exit kv_cleanup(void) {
     /** debug */
     kv_decrypt(kvmgc0);
     kv_decrypt(kvmgc1);
+    kv_decrypt(kvmgc0);
+    kv_decrypt(kvmgc1);
 
     kv_crypto_mgc_deinit(kvmgc0);
     kv_crypto_mgc_deinit(kvmgc1);

@@ -16,6 +16,7 @@ static struct crypto_skcipher *tfm;
  * Setup encryption key
  * Must be called once from KoviD initialization
  */
+#define ENCKEY_LEN 32 /** aes 256 */
 int kv_crypto_key_init(void) {
     static char key[ENCKEY_LEN] = {0};
     int rc;
@@ -35,7 +36,8 @@ int kv_crypto_key_init(void) {
         return 0;
     }
 
-    memcpy(key, ENCKEY, ENCKEY_LEN);
+
+    get_random_bytes(key, ENCKEY_LEN);
 
     /** Finally, set the key */
     rc = crypto_skcipher_setkey(tfm, key, ENCKEY_LEN);
@@ -116,8 +118,14 @@ size_t kv_decrypt(struct kv_crypto_st *kvmgc) {
     if (!kvmgc || !kvmgc->data) {
         prerr("Invalid decrypt ptr\n");
     } else {
+        u8 iv_orig[16] = {0};
         size_t datalen = kvmgc->datalen;
+        u8 data_orig[datalen];
         int err = 0;
+
+        memcpy(iv_orig, kvmgc->iv, sizeof(kvmgc->iv));
+        memcpy(data_orig, kvmgc->data, datalen);
+
 
         sg_init_one(&kvmgc->sg, kvmgc->data, datalen);
         skcipher_request_set_crypt(kvmgc->req, &kvmgc->sg, &kvmgc->sg, datalen, kvmgc->iv);
@@ -138,20 +146,29 @@ size_t kv_decrypt(struct kv_crypto_st *kvmgc) {
         print_hex_dump(KERN_DEBUG, "decrypted text: ",
                 DUMP_PREFIX_NONE, 16, 1, kvmgc->data, datalen, true);
 
-        /** discard data */
-        kfree(kvmgc->data);
-        kvmgc->data = NULL;
+        memcpy(kvmgc->iv, iv_orig, sizeof(kvmgc->iv));
+        memcpy(kvmgc->data, data_orig, datalen);
     }
 
     return copied;
 }
 
+void kv_crypto_free_data(struct kv_crypto_st *kvmgc) {
+    if (kvmgc && kvmgc->data) {
+        kfree(kvmgc->data);
+        kvmgc->data = NULL;
+    }
+}
+
 void kv_crypto_mgc_deinit(struct kv_crypto_st *kvmgc) {
+
     if (kvmgc) {
+        kv_crypto_free_data(kvmgc);
         if (kvmgc->req) {
             kfree(kvmgc->req);
             kvmgc->req = NULL;
         }
+
         kfree(kvmgc);
         kvmgc = NULL;
     }
