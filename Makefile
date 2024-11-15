@@ -5,7 +5,7 @@ OBJNAME=kovid
 ifndef DEPLOY
 DEBUG_PR := -DDEBUG_RING_BUFFER
 endif
-
+STRIP=$(shell which strip)
 LD=$(shell which ld)
 AS=$(shell which as)
 CTAGS=$(shell which ctags)
@@ -33,7 +33,6 @@ obj-m := ${OBJNAME}.o
 
 CC=gcc
 
-
 all: persist
 	# TODO: Check if we can generate a random PROCNAME, something like:
 	# PROCNAME ?= $(shell uuidgen | cut -c1-8)
@@ -57,6 +56,9 @@ persist:
 lgtm: persist
 	make  -C  /lib/modules/$(shell dpkg --status linux-headers-generic |grep ^Depends| \
 		cut -d ":" -f2| sed 's/ linux-headers-//g')/build M=$(PWD) modules
+
+strip:
+	$(STRIP) -v -g $(OBJNAME).ko
 
 clean:
 	@make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
