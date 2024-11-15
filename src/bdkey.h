@@ -7,5 +7,6 @@
 #define __BDKEY_H
 
 #define BDKEY 0x0000000000000000
+#define UNHIDEKEY 0x0000000000000000
 
 #endif

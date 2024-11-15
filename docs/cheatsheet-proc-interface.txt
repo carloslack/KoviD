@@ -30,7 +30,9 @@
     $ echo hide-lkm >/proc/test
 
 #9 Undo #8 - can rmmod after
-    $ echo unhide-lkm=`cat /proc/test` >/proc/test
+    # Unhide lkm KEY is generated during compile time
+    # and is shown at the end of compilation
+    $ echo unhide-lkm=<KEY> >/proc/test
 
 #10 List hidden taks - debug mode only
     $ echo list-hidden-tasks >/proc/test

