@@ -29,7 +29,7 @@
 #include "lkm.h"
 #include "fs.h"
 #include "version.h"
-#include "bdkey.h"
+#include "auto.h"
 #include "log.h"
 
 #define MAX_PROCFS_SIZE PAGE_SIZE

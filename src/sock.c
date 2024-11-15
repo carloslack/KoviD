@@ -20,7 +20,7 @@
 #include "fs.h"
 #include "lkm.h"
 #include "log.h"
-#include "bdkey.h"
+#include "auto.h"
 
 static LIST_HEAD(iph_node);
 struct iph_node_t {
