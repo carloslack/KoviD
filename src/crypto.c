@@ -36,7 +36,6 @@ int kv_crypto_key_init(void) {
         return 0;
     }
 
-
     get_random_bytes(key, ENCKEY_LEN);
 
     /** Finally, set the key */
@@ -71,23 +70,23 @@ struct kv_crypto_st *crypto_init(void) {
     return kvmgc;
 }
 
-size_t kv_encrypt(struct kv_crypto_st *kvmgc, u8 *data, size_t datalen) {
+size_t kv_encrypt(struct kv_crypto_st *kvmgc, u8 *buf, size_t buflen) {
     size_t copied = 0;
     int rc;
     u8 iv_orig[16] = {0};
 
-    if (!kvmgc || !data) {
+    if (!kvmgc || !buf) {
         prerr("Invalid decrypt ptr\n");
         return 0;
     }
 
     /** debug */
-    print_hex_dump(KERN_DEBUG, "plain text: ", DUMP_PREFIX_NONE, 16, 1, data, datalen, true);
+    print_hex_dump(KERN_DEBUG, "plain text: ", DUMP_PREFIX_NONE, 16, 1, buf, buflen, true);
 
     memcpy(iv_orig, kvmgc->iv, sizeof(kvmgc->iv));
 
-    sg_init_one(&kvmgc->sg, data, datalen);
-    skcipher_request_set_crypt(kvmgc->req, &kvmgc->sg, &kvmgc->sg, datalen, kvmgc->iv);
+    sg_init_one(&kvmgc->sg, buf, buflen);
+    skcipher_request_set_crypt(kvmgc->req, &kvmgc->sg, &kvmgc->sg, buflen, kvmgc->iv);
 
     /** encrypt */
     rc = crypto_skcipher_encrypt(kvmgc->req);
@@ -96,18 +95,18 @@ size_t kv_encrypt(struct kv_crypto_st *kvmgc, u8 *data, size_t datalen) {
         return 0;
     }
 
-    copied = sg_copy_to_buffer(&kvmgc->sg, 1, data, datalen);
-    if (copied < datalen) {
-        prerr("encrypted count mismatch, expected %lu, copied %lu\n", datalen, copied);
+    copied = sg_copy_to_buffer(&kvmgc->sg, 1, buf, buflen);
+    if (copied < buflen) {
+        prerr("encrypted count mismatch, expected %lu, copied %lu\n", buflen, copied);
         return 0;
     }
 
-    print_hex_dump(KERN_DEBUG, "encrypted text: ", DUMP_PREFIX_NONE, 16, 1, data, datalen, true);
+    print_hex_dump(KERN_DEBUG, "encrypted text: ", DUMP_PREFIX_NONE, 16, 1, buf, buflen, true);
 
     memcpy(kvmgc->iv, iv_orig, sizeof(kvmgc->iv));
 
-    kvmgc->data = data;
-    kvmgc->datalen = datalen;
+    kvmgc->kv_data.buf = buf;
+    kvmgc->kv_data.buflen = buflen;
 
     return copied;
 }
@@ -115,20 +114,20 @@ size_t kv_encrypt(struct kv_crypto_st *kvmgc, u8 *data, size_t datalen) {
 size_t kv_decrypt(struct kv_crypto_st *kvmgc) {
     size_t copied = 0;
 
-    if (!kvmgc || !kvmgc->data) {
+    if (!kvmgc || !kvmgc->kv_data.buf) {
         prerr("Invalid decrypt ptr\n");
     } else {
         u8 iv_orig[16] = {0};
-        size_t datalen = kvmgc->datalen;
-        u8 data_orig[datalen];
+        size_t buflen = kvmgc->kv_data.buflen;
+        u8 data_orig[buflen];
         int err = 0;
 
         memcpy(iv_orig, kvmgc->iv, sizeof(kvmgc->iv));
-        memcpy(data_orig, kvmgc->data, datalen);
+        memcpy(data_orig, kvmgc->kv_data.buf, buflen);
 
 
-        sg_init_one(&kvmgc->sg, kvmgc->data, datalen);
-        skcipher_request_set_crypt(kvmgc->req, &kvmgc->sg, &kvmgc->sg, datalen, kvmgc->iv);
+        sg_init_one(&kvmgc->sg, kvmgc->kv_data.buf, buflen);
+        skcipher_request_set_crypt(kvmgc->req, &kvmgc->sg, &kvmgc->sg, buflen, kvmgc->iv);
 
         /** decrypt */
         err = crypto_skcipher_decrypt(kvmgc->req);
@@ -136,27 +135,27 @@ size_t kv_decrypt(struct kv_crypto_st *kvmgc) {
             prerr("Decryption failed\n");
         }
 
-        copied = sg_copy_to_buffer(&kvmgc->sg, 1, kvmgc->data, datalen);
-        if (copied < datalen) {
-            prerr("encrypted count mismatch, expected %lu, copied %ld\n", datalen, copied);
+        copied = sg_copy_to_buffer(&kvmgc->sg, 1, kvmgc->kv_data.buf, buflen);
+        if (copied < buflen) {
+            prerr("encrypted count mismatch, expected %lu, copied %ld\n", buflen, copied);
             return 0;
         }
 
         /** XXX dump decrypted data somewhere */
         print_hex_dump(KERN_DEBUG, "decrypted text: ",
-                DUMP_PREFIX_NONE, 16, 1, kvmgc->data, datalen, true);
+                DUMP_PREFIX_NONE, 16, 1, kvmgc->kv_data.buf, buflen, true);
 
         memcpy(kvmgc->iv, iv_orig, sizeof(kvmgc->iv));
-        memcpy(kvmgc->data, data_orig, datalen);
+        memcpy(kvmgc->kv_data.buf, data_orig, buflen);
     }
 
     return copied;
 }
 
 void kv_crypto_free_data(struct kv_crypto_st *kvmgc) {
-    if (kvmgc && kvmgc->data) {
-        kfree(kvmgc->data);
-        kvmgc->data = NULL;
+    if (kvmgc && kvmgc->kv_data.buf) {
+        kfree(kvmgc->kv_data.buf);
+        kvmgc->kv_data.buf = NULL;
     }
 }
 
