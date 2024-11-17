@@ -127,6 +127,7 @@ sudo apt-get install llvm-18-dev
 sudo apt-get install llvm-18-tools
 sudo apt-get install libslirp-dev
 sudo apt-get install qemu-system-x86
+sudo apt install netcat
 ```
 
 Run tests:

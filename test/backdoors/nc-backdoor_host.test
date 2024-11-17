@@ -1,0 +1,7 @@
+# RUN: FileCheck-18 --input-file=%kovid_testdir/nc-backdoor_host.log %s
+
+# CHECK: Connecting to backdoor at localhost:9999...
+# CHECK: Sending command: uname -a
+# CHECK: Received response: Linux buildroot 5.10.0
+# CHECK: Command 'uname -a' executed successfully.
+# CHECK: Backdoor command executed successfully.
