@@ -1,4 +1,8 @@
+# REQUIRES: DEBUG_ONLY
+
 # RUN: FileCheck-18 --input-file=%kovid_testdir/nc-backdoor.log %s
 
 # CHECK: Starting backdoor listener on port 9999
+# CHECK: PID of nc is
 # CHECK: Backdoor listener started
+# CHECK: sh: can't kill pid 31337: No such process
