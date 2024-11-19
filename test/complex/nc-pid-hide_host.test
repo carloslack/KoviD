@@ -1,4 +1,6 @@
 # REQUIRES: DEBUG_ONLY
+# REQUIRES: CROSS_TESTS
+
 # RUN: FileCheck-18 --input-file=%kovid_testdir/nc-backdoor_host.log %s
 
 # CHECK: Connecting to backdoor at localhost:9999...

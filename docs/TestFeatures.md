@@ -3,6 +3,41 @@
 This document describes the process of testing the features of Kovid LKM.
 Please see `docs/QEMUSetupForTesting.md` that contains info for qemu setup. 
 
+## Insall dependecies
+
+```
+$ sudo apt  install cmake
+$ sudo apt install g++
+```
+
+Please make sure to install llvm-tools, since we will be using some of the tools for testing infrastructure:
+
+```
+sudo apt-get install llvm-18-dev
+sudo apt-get install llvm-18-tools
+sudo apt install python3-pip
+sudo apt-get install libslirp-dev
+sudo apt-get install qemu-system-x86
+sudo apt install netcat nmap
+sudo apt-get -y install socat
+```
+
+On an older Ubuntu, follow https://apt.llvm.org/.
+For example:
+
+```
+$ sudo bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
+```
+
+If you do not have `llvm-lit` installed, do:
+
+```
+$ pip3 install lit
+$ sudo ln -s ~/.local/bin/lit /usr/bin/llvm-lit
+$ which llvm-lit
+/usr/bin/llvm-lit
+```
+
 ## Fetch LFS and submodules
 
 ```
@@ -134,17 +169,6 @@ Test Markers:
     - If a test does not have any of these marker, it will be run in each mode.
 
 ### Run tests
-
-Please make sure to install llvm-tools, since we will be using some of the tools for testing infrastructure:
-
-```
-sudo apt-get install llvm-18-dev
-sudo apt-get install llvm-18-tools
-sudo apt-get install libslirp-dev
-sudo apt-get install qemu-system-x86
-sudo apt install netcat nmap
-sudo apt-get -y install socat
-```
 
 Run tests:
 

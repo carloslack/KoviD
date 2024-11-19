@@ -23,8 +23,8 @@ CMAKE_BINARY_DIR="${PROJECT_ROOT}/build"
 # Define paths for necessary files
 KERNEL_IMAGE="${PROJECT_ROOT}/test/test-artefacts/linux-5.10/bzImage"
 ROOT_FS="${PROJECT_ROOT}/test/test-artefacts/linux-5.10/rootfs.ext2"
-TEST_DIR="${PROJECT_ROOT}/test/features"
-TEST_BACKDOOR_DIR="${PROJECT_ROOT}/test/backdoors"  # Directory for backdoor tests
+TEST_DIR="${PROJECT_ROOT}/test/cross"
+TEST_COMPLEX_DIR="${PROJECT_ROOT}/test/complex"
 RFS_PATH="/root"                     
 SSH_PORT=5555                         
 SSH_KEY="${PROJECT_ROOT}/test/Artefacts/id_rsa_qemu" 
@@ -334,12 +334,12 @@ execute_backdoor_tests() {
 
 # Execute Regular Tests
 echo "=============================="
-echo "Starting Regular Tests"
+echo "Starting Regular Tests on QEMU"
 echo "=============================="
 execute_regular_tests "$TEST_DIR"
 
-# Execute Backdoor Tests
+# Execute Complex Tests
 echo "=============================="
-echo "Starting Backdoor Tests"
+echo "Starting Complex Tests on QEMU and host"
 echo "=============================="
-execute_backdoor_tests "$TEST_BACKDOOR_DIR"
+execute_backdoor_tests "$TEST_COMPLEX_DIR"

@@ -1,4 +1,5 @@
 # REQUIRES: DEPLOY_ONLY
+# REQUIRES: CROSS_TESTS
 
 # RUN: FileCheck-18 --input-file=%kovid_testdir/no-kovid-found.log %s
 

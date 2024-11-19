@@ -27,19 +27,43 @@ configure_lit_site_cfg(
         ${CMAKE_CURRENT_SOURCE_DIR}/lit.cfg.py
 )
 
-option(DEPLOY "Turn off ring buffer debug" OFF)
+# Find llvm-lit
+find_program(LLVM_LIT NAMES llvm-lit lit PATHS "${LLVM_TOOLS_BINARY_DIR}" "${LLVM_BUILD_BINARY_DIR}" "/usr/bin" NO_DEFAULT_PATH)
 
-# Define a custom target to run qemu-runner.sh before tests
-add_custom_target(run-qemu-runner
-    COMMAND DEPLOY=${DEPLOY} bash ${CMAKE_BINARY_DIR}/qemu-runner.sh
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    COMMENT "Running qemu-runner.sh"
-)
+if(NOT LLVM_LIT)
+    message(FATAL_ERROR "llvm-lit not found. Please install it or specify its location.")
+else()
+    message(STATUS "Found llvm-lit: ${LLVM_LIT}")
+endif()
 
-add_lit_testsuite(check-kovid "Running the KOVID regression tests"
+# Check and set LLVM_EXTERNAL_LIT
+if(DEFINED LLVM_EXTERNAL_LIT AND EXISTS ${LLVM_EXTERNAL_LIT})
+    message(STATUS "Using LLVM_EXTERNAL_LIT: ${LLVM_EXTERNAL_LIT}")
+else()
+    message(WARNING "LLVM_EXTERNAL_LIT not set or invalid, using LLVM_LIT instead")
+    set(LLVM_EXTERNAL_LIT ${LLVM_LIT} CACHE FILEPATH "Path to llvm-lit" FORCE)
+endif()
+
+# Define the custom target if CROSS_TESTS is ON
+if(CROSS_TESTS)
+    add_custom_target(run-qemu-runner
+        COMMAND DEPLOY=${DEPLOY} bash ${CMAKE_BINARY_DIR}/qemu-runner.sh
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        COMMENT "Running qemu-runner.sh"
+    )
+
+    add_lit_testsuite(check-kovid "Running the KOVID regression tests"
         ${CMAKE_CURRENT_BINARY_DIR}
         DEPENDS ${KOVID_TEST_DEPENDS} run-qemu-runner
-        )
+    )
+else()
+    add_lit_testsuite(check-kovid "Running the KOVID regression tests"
+        ${CMAKE_CURRENT_BINARY_DIR}
+        DEPENDS ${KOVID_TEST_DEPENDS}
+    )
+endif()
+
 set_target_properties(check-kovid PROPERTIES FOLDER "Tests")
 
+# Add the main lit testsuites
 add_lit_testsuites(KOVID ${CMAKE_CURRENT_SOURCE_DIR} DEPENDS ${KOVID_TEST_DEPENDS})
