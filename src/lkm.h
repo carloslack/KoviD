@@ -89,7 +89,7 @@ struct kernel_syscalls {
     unsigned long *tainted;
 };
 
-typedef void (*decrypt_callback)(const u8 * const buf, size_t buflen, void *userdata);
+typedef void (*decrypt_callback)(const u8 * const buf, size_t buflen, size_t copied, void *userdata);
 /** Setup crypto module */
 int kv_crypto_key_init(void);
 struct kv_crypto_st *crypto_init(void);

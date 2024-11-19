@@ -96,7 +96,7 @@ size_t kv_encrypt(struct kv_crypto_st *kvmgc, u8 *buf, size_t buflen) {
     }
 
     copied = sg_copy_to_buffer(&kvmgc->sg, 1, buf, buflen);
-    if (copied < buflen) {
+    if (copied != buflen) {
         prerr("encrypted count mismatch, expected %lu, copied %lu\n", buflen, copied);
         return 0;
     }
@@ -143,7 +143,7 @@ size_t kv_decrypt(struct kv_crypto_st *kvmgc, decrypt_callback cb, void *userdat
         {
             /** user callback */
             const u8 * const buf = kvmgc->kv_data.buf;
-            cb(buf, buflen, userdata);
+            cb(buf, buflen, copied, userdata);
         }
 
         memcpy(kvmgc->iv, iv_orig, sizeof(kvmgc->iv));

