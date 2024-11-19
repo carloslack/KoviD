@@ -195,8 +195,8 @@ Here are information about testing of the features available.
 
 | Feature                                            | Tested                         | Regression Test                    |
 | :--------------------------------------------------| :------------------------------| :--------------------------------- |
-| Hide process                                       | Yes                            | features/hide-pid.test             |
-| Extract base address of a running process          | Yes                            | features/extract-base-address.test |
+| Hide process                                       | Yes                            | cross/hide-pid.test                |
+| Extract base address of a running process          | Yes                            | cross/extract-base-address.test    |
 | anti-rk's that are available (bpf-hookdetect)      | No (hard to test on qemu)      | None                               |
 | anti-rk's that are available (rkspotter)           | No (build for non host kernel) | None                               |
 | anti-rk's that are available (rkbreaker)           | No (build for non host kernel) | None                               |
@@ -211,7 +211,7 @@ NOTE: If a test should be executed in `DEPLOY` mode only, `.test` file should co
 
 | Feature                                            | Tested                         | Regression Test                       |
 | :--------------------------------------------------| :------------------------------| :------------------------------------ |
-| No tainted messages/log appear in DEPLOY           | Yes                            | features/no-kovid-logs-in-deploy.test |
-| kovid (DEPLOY) doesn't appear in /var /sys etc.    | Yes                            | features/no-kovid-found.test          |
-| Hide/Unhide Module Test in DEBUG Mode              | Yes                            | features/hide-unhide-module.test      |
-| backdoor (nc)                                      | Yes                            | backdoors/nc-backdoor{_host}.test     |
+| No tainted messages/log appear in DEPLOY           | Yes                            | cross/no-kovid-logs-in-deploy.test    |
+| kovid (DEPLOY) doesn't appear in /var /sys etc.    | Yes                            | cross/no-kovid-found.test             |
+| Hide/Unhide Module Test in DEBUG Mode              | Yes                            | cross/hide-unhide-module.test         |
+| backdoor (nc)                                      | Yes                            | complex/nc-hide-pid{_host}.test       |
