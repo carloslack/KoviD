@@ -174,7 +174,7 @@ Run tests:
 
 ```
 $ cd KoviD && mkdir build && cd build
-$ cmake ../ -DKOVID_LINUX_VERSION=5.10 -DKERNEL_DIR=projects/private/kovid/linux -DKOVID_LINUX_VERSION=5.10 -DCMAKE_C_COMPILER=gcc
+$ cmake ../ -DKOVID_LINUX_VERSION=5.10 -DKERNEL_DIR=projects/private/kovid/linux -DKOVID_LINUX_VERSION=5.10 -DCROSS_TESTS=ON -DCMAKE_C_COMPILER=gcc
 $ make PROCNAME="myprocname"
 $ make check-kovid
 ```
@@ -182,7 +182,7 @@ $ make check-kovid
 Run tests in `DEPLOY` mode (some tests are run in this mode only):
 
 ```
-$ cmake ../ -DKOVID_LINUX_VERSION=5.10 -DKERNEL_DIR=projects/private/kovid/linux -DKOVID_LINUX_VERSION=5.10 -DCMAKE_C_COMPILER=gcc -DDEPLOY=1
+$ cmake ../ -DKOVID_LINUX_VERSION=5.10 -DKERNEL_DIR=projects/private/kovid/linux -DKOVID_LINUX_VERSION=5.10 -DCROSS_TESTS=ON -DCMAKE_C_COMPILER=gcc -DDEPLOY=1
 $ make PROCNAME="myprocname" DEPLOY=1
 $ make check-kovid
 ```

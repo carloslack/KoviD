@@ -54,3 +54,8 @@ if config.deploy_tests == '1':
     config.available_features.add('DEPLOY_ONLY')
 else:
     config.available_features.add('DEBUG_ONLY')
+
+if config.cross_tests == '1':
+    config.available_features.add('CROSS_TESTS')
+else:
+    config.available_features.add('CROSS_TESTS')

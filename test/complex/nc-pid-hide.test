@@ -1,7 +1,7 @@
 # REQUIRES: DEBUG_ONLY
 # REQUIRES: CROSS_TESTS
 
-# RUN: FileCheck-18 --input-file=%kovid_testdir/nc-backdoor.log %s
+# RUN: FileCheck-18 --input-file=%kovid_testdir/nc-pid-hide.log %s
 
 # CHECK: Starting backdoor listener on port 9999
 # CHECK: PID of nc is

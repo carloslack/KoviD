@@ -339,7 +339,7 @@ echo "=============================="
 execute_regular_tests "$TEST_DIR"
 
 # Execute Complex Tests
-echo "=============================="
+echo "======================================="
 echo "Starting Complex Tests on QEMU and host"
-echo "=============================="
+echo "======================================="
 execute_backdoor_tests "$TEST_COMPLEX_DIR"
