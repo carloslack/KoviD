@@ -55,5 +55,5 @@ if config.deploy_tests == '1':
 else:
     config.available_features.add('DEBUG_ONLY')
 
-if config.cross_tests == '1':
+if config.cross_tests == 'ON':
     config.available_features.add('CROSS_TESTS')
