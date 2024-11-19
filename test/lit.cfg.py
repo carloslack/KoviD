@@ -57,5 +57,3 @@ else:
 
 if config.cross_tests == '1':
     config.available_features.add('CROSS_TESTS')
-else:
-    config.available_features.add('CROSS_TESTS')
