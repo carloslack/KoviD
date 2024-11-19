@@ -20,6 +20,21 @@ LFS should be fetched:
 $ git lfs fetch --all
 ```
 
+Usual set of commands to be used:
+
+```
+$ git clone https://github.com/carloslack/KoviD.git main-KoviD && cd main-KoviD
+$ git submodule update --init test/test-artefacts
+$ mkdir build && cd build
+$ cmake ../ -DKOVID_LINUX_VERSION=5.10 -DKERNEL_DIR=private/kovid/linux -DKOVID_LINUX_VERSION=5.10 -DCMAKE_C_COMPILER=gcc && make PROCNAME="myprocname" && make check-kovid
+```
+
+Or if you do not want to use custom Linux build:
+
+```
+$ cmake ../ -DCMAKE_C_COMPILER=gcc && make PROCNAME="myprocname" && make check-kovid
+```
+
 ## Build KoviD
 
 Old way (using pre-existing GNU Makefile):
@@ -127,7 +142,8 @@ sudo apt-get install llvm-18-dev
 sudo apt-get install llvm-18-tools
 sudo apt-get install libslirp-dev
 sudo apt-get install qemu-system-x86
-sudo apt install netcat
+sudo apt install netcat nmap
+sudo apt-get -y install socat
 ```
 
 Run tests:
