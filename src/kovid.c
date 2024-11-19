@@ -878,7 +878,18 @@ leave:
     return rv;
 }
 
+/** example decrypt */
+void _decrypt_callback(const u8 * const buf, size_t buflen, void *userdata) {
+    if (userdata) {
+        char *name = (char*)userdata;
+        prinfo("Called from: '%s'\n", name);
+    }
+    print_hex_dump(KERN_DEBUG, "decrypted text: ",
+            DUMP_PREFIX_NONE, 16, 1, buf, buflen, true);
+}
 static void __exit kv_cleanup(void) {
+    decrypt_callback cb = (decrypt_callback)_decrypt_callback;
+
     sys_deinit();
     kv_pid_cleanup();
 
@@ -902,10 +913,10 @@ static void __exit kv_cleanup(void) {
     fs_names_cleanup();
 
     /** debug */
-    kv_decrypt(kvmgc0);
-    kv_decrypt(kvmgc1);
-    kv_decrypt(kvmgc0);
-    kv_decrypt(kvmgc1);
+    kv_decrypt(kvmgc0, cb, "debug: kvmgc0");
+    kv_decrypt(kvmgc1, cb, "debug: kvmgc1");
+    kv_decrypt(kvmgc0, cb, "debug: kvmgc0");
+    kv_decrypt(kvmgc1, cb, "debug: kvmgc1");
 
     kv_crypto_mgc_deinit(kvmgc0);
     kv_crypto_mgc_deinit(kvmgc1);

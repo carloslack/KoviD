@@ -5,9 +5,9 @@
 #include <linux/version.h>
 #include <linux/skbuff.h>
 #include <linux/tcp.h>
-#include "lkm.h"
 #include "log.h"
 #include "crypto.h"
+#include "lkm.h"
 
 /** internal use transformation handle */
 static struct crypto_skcipher *tfm;
@@ -111,11 +111,11 @@ size_t kv_encrypt(struct kv_crypto_st *kvmgc, u8 *buf, size_t buflen) {
     return copied;
 }
 
-size_t kv_decrypt(struct kv_crypto_st *kvmgc) {
+size_t kv_decrypt(struct kv_crypto_st *kvmgc, decrypt_callback cb, void *userdata) {
     size_t copied = 0;
 
-    if (!kvmgc || !kvmgc->kv_data.buf) {
-        prerr("Invalid decrypt ptr\n");
+    if (!kvmgc || !kvmgc->kv_data.buf || !cb) {
+        prerr("Invalid decrypt argument\n");
     } else {
         u8 iv_orig[16] = {0};
         size_t buflen = kvmgc->kv_data.buflen;
@@ -124,7 +124,6 @@ size_t kv_decrypt(struct kv_crypto_st *kvmgc) {
 
         memcpy(iv_orig, kvmgc->iv, sizeof(kvmgc->iv));
         memcpy(data_orig, kvmgc->kv_data.buf, buflen);
-
 
         sg_init_one(&kvmgc->sg, kvmgc->kv_data.buf, buflen);
         skcipher_request_set_crypt(kvmgc->req, &kvmgc->sg, &kvmgc->sg, buflen, kvmgc->iv);
@@ -136,14 +135,16 @@ size_t kv_decrypt(struct kv_crypto_st *kvmgc) {
         }
 
         copied = sg_copy_to_buffer(&kvmgc->sg, 1, kvmgc->kv_data.buf, buflen);
-        if (copied < buflen) {
+        if (copied != buflen) {
             prerr("encrypted count mismatch, expected %lu, copied %ld\n", buflen, copied);
             return 0;
         }
 
-        /** XXX dump decrypted data somewhere */
-        print_hex_dump(KERN_DEBUG, "decrypted text: ",
-                DUMP_PREFIX_NONE, 16, 1, kvmgc->kv_data.buf, buflen, true);
+        {
+            /** user callback */
+            const u8 * const buf = kvmgc->kv_data.buf;
+            cb(buf, buflen, userdata);
+        }
 
         memcpy(kvmgc->iv, iv_orig, sizeof(kvmgc->iv));
         memcpy(kvmgc->kv_data.buf, data_orig, buflen);
