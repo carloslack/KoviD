@@ -51,13 +51,12 @@ endif()
 # since we support linux 5.10 only for this kind of tests.
 option(CROSS_TESTS "Turn ON cross tests on qemu" OFF)
 
-option(NATIVE_TESTS "Turn ON native tests" OFF)
+option(NATIVE_TESTS "Turn ON native tests" ON)
 
 # Check if KOVID_LINUX and KERNEL_DIR variables are set
 if(DEFINED KOVID_LINUX AND "${KOVID_LINUX}" STREQUAL "5.10" AND DEFINED KERNEL_DIR AND NOT "${KERNEL_DIR}" STREQUAL "")
     set(CROSS_TESTS ON CACHE BOOL "Turn ON cross tests on qemu" FORCE)
-else()
-    set(NATIVE_TESTS ON CACHE BOOL "Turn ON native tests" FORCE)
+    set(NATIVE_TESTS ON CACHE BOOL "Turn OFF native tests" FORCE)
 endif()
 
 # Print status messages to verify settings
