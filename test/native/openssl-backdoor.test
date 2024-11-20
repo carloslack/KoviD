@@ -6,13 +6,10 @@
 # RUN: FileCheck-18 --input-file=%t.log %s
 
 sudo dmesg -c
-sleep 10
+sleep 20
 sudo insmod ../../../build/kovid.ko
+sudo timeout 10 ../../../scripts/bdclient.sh openssl localhost 9999
 sudo rmmod kovid
 dmesg
 
-# CHECK: kv: using kprobe for kallsyms_lookup_name
-# CHECK: Waiting for event
-# CHECK: loaded
-# CHECK: Got event
-# CHECK: unloaded
+# CHECK: hide [{{.*}}] openssl {{.*}}

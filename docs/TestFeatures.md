@@ -289,3 +289,5 @@ NOTE: If a test should be executed in `DEPLOY` mode only, `.test` file should co
 | Hide/Unhide Module Test in DEBUG Mode              | Yes                            | cross/hide-unhide-module.test         |
 | Hide nc process                                    | Yes                            | complex/nc-hide-pid{_host}.test       |
 | nc backdoor                                        | Yes                            | native/nc-backdoor.test               |
+| openssl backdoor                                   | Yes                            | native/openssl-backdoor.test          |
+| tty backdoor                                       | Yes                            | native/tty-backdoor.test              |

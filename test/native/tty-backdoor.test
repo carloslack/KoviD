@@ -1,0 +1,22 @@
+# REQUIRES: 0
+# REQUIRES: DEBUG_ONLY
+# REQUIRES: NATIVE_TESTS
+
+# RUN: bash %s > %t.log
+# RUN: FileCheck-18 --input-file=%t.log %s
+
+sudo dmesg -c
+sleep 20
+sudo insmod ../../../build/kovid.ko
+sudo timeout 10 ../../../scripts/bdclient.sh tty localhost 9999
+sudo rmmod kovid
+dmesg
+
+# CHECK: Got event
+# CHECK: hide {{.*}} tail : {{.*}}
+# CHECK: hide {{.*}} socat : {{.*}}
+# CHECK: Waiting for event
+# CHECK: Got event
+# CHECK: Waiting for event
+# CHECK: unhide {{.*}} tail : {{.*}}
+# CHECK: unhide {{.*}} socat : {{.*}}
