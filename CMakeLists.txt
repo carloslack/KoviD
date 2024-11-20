@@ -38,10 +38,12 @@ execute_process(
 )
 
 # Step 6: Define Build Options
-option(DEPLOY "Turn off ring buffer debug" OFF)
+option(DEPLOY "Build in Deploy mode" OFF)
+option(DEBUG "Build in Debug mode " OFF)
 
 if(NOT DEPLOY)
     set(DEBUG_PR -DDEBUG_RING_BUFFER)
+    set(DEBUG ON CACHE BOOL "Build in Debug mode" FORCE)
 endif()
 
 # Cross tests are the ones we run on qemu.
@@ -49,15 +51,23 @@ endif()
 # since we support linux 5.10 only for this kind of tests.
 option(CROSS_TESTS "Turn ON cross tests on qemu" OFF)
 
+option(NATIVE_TESTS "Turn ON native tests" OFF)
+
 # Check if KOVID_LINUX and KERNEL_DIR variables are set
 if(DEFINED KOVID_LINUX AND "${KOVID_LINUX}" STREQUAL "5.10" AND DEFINED KERNEL_DIR AND NOT "${KERNEL_DIR}" STREQUAL "")
     set(CROSS_TESTS ON CACHE BOOL "Turn ON cross tests on qemu" FORCE)
+else()
+    set(NATIVE_TESTS ON CACHE BOOL "Turn ON native tests" FORCE)
 endif()
 
 # Print status messages to verify settings
 message(STATUS "KOVID_LINUX: ${KOVID_LINUX}")
 message(STATUS "KERNEL_DIR: ${KERNEL_DIR}")
 message(STATUS "CROSS_TESTS: ${CROSS_TESTS}")
+message(STATUS "NATIVE_TESTS: ${NATIVE_TESTS}")
+
+message(STATUS "DEPLOY build: ${DEPLOY}")
+message(STATUS "DEBUG build: ${DEBUG}")
 
 # Define COMPILER_OPTIONS as a list
 set(COMPILER_OPTIONS

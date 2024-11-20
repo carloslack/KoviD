@@ -57,3 +57,5 @@ else:
 
 if config.cross_tests == 'ON':
     config.available_features.add('CROSS_TESTS')
+if config.native_tests == 'ON':
+    config.available_features.add('NATIVE_TESTS')
