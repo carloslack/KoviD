@@ -116,6 +116,8 @@ $ make
     $ make check-kovid -j1
     ```
 
+NOTE: You will be asked for `sudo` password.
+
 ## Cross Tests
 
 These tests run on a QEMU emulator, allowing testing on different Linux kernel versions or architectures.
@@ -244,7 +246,7 @@ This type of tests consists only one `.test` file, that contains both `bash` com
 
 ## Run tests
 
-Run tests:
+Run tests (for `native` tests, you will be asked for `sudo` password):
 
 ```
 $ make check-kovid -j1
