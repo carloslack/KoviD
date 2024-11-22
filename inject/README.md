@@ -1,19 +1,13 @@
-Steps:
+##  1 Build steps
 
-1 - Build KoviD
+### 1.1 Build KoviD
 
-    $ export PROCNAME=kovid
+        cd ../ && PROCNAME=kovid make && make strip && cd -
 
-    $ make
+## 2 Build payload
 
-    $ make strip
+        ./update.sh && make
 
-2 - Build assembly code
+## 3 Test
 
-    $ ./update.sh && make
-
-3 - Test it
-
-    $ sudo ./kv_embed
-
-4 - Check dmesg for KoviD if it's been loaded
+        sudo ./kv_embed ; dmesg
