@@ -9,7 +9,7 @@ sleep 10
 sudo insmod ../../../build/kovid.ko
 sudo timeout 10 ../../../scripts/bdclient.sh nc localhost 9999
 sudo rmmod kovid
-dmesg
+sudo dmesg
 
 # CHECK: kv: using kprobe for kallsyms_lookup_name
 # CHECK: Waiting for event
