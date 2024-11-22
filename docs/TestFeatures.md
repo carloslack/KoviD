@@ -225,6 +225,19 @@ $ which llvm-lit
 /usr/bin/llvm-lit
 ```
 
+NOTE: Make sure you set up `openssl` before running tests.
+
+## Some potential issues
+
+On Ubuntu 20.04, if you see:
+
+```
+$ sudo scripts/bdclient.sh nc localhost 9999
+nc: getnameinfo: Temporary failure in name resolution
+```
+
+Just fix DNS server, e.g. by adding `0.0.0.0 localhost` into `/etc/hosts`.
+
 ## How to Write tests?
 
 ### Cross (marker `CROSS_TESTS`)
@@ -291,3 +304,5 @@ NOTE: If a test should be executed in `DEPLOY` mode only, `.test` file should co
 | nc backdoor                                        | Yes                            | native/nc-backdoor.test               |
 | openssl backdoor                                   | Yes                            | native/openssl-backdoor.test          |
 | tty backdoor                                       | Yes                            | native/tty-backdoor.test              |
+| backdoor echo -s                                   | Yes                            | native/nc-backdoor-echo-s.test        |
+| Hide/Unhide Module                                 | Yes                            | native/hide-unhide-module.test        |
