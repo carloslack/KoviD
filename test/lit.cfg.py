@@ -49,3 +49,14 @@ not_path = getattr(config, 'not_path', 'not-18')
 config.substitutions.append(('%FileCheck-18', filecheck_path))
 config.substitutions.append(('%not-18', not_path))
 config.substitutions.append(("%kovid_testdir", config.kovid_obj_root))
+
+if config.deploy_tests == '1':
+    config.available_features.add('DEPLOY_ONLY')
+else:
+    config.available_features.add('DEBUG_ONLY')
+
+if config.cross_tests == 'ON':
+    config.available_features.add('CROSS_TESTS')
+
+if config.native_tests == 'ON':
+    config.available_features.add('NATIVE_TESTS')

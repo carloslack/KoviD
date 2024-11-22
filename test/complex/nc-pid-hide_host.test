@@ -1,0 +1,10 @@
+# REQUIRES: DEBUG_ONLY
+# REQUIRES: CROSS_TESTS
+
+# RUN: FileCheck-18 --input-file=%kovid_testdir/nc-pid-hide_host.log %s
+
+# CHECK: Connecting to backdoor at localhost:9999...
+# CHECK: Sending command: ps -a
+# CHECK: Received response: PID   USER     COMMAND
+# CHECK: 'ps -a' executed successfully: '/bin/nc' not found in the output.
+# CHECK: Backdoor test passed: /bin/nc is not present in the process list.

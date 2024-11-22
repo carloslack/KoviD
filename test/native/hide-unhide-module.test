@@ -1,0 +1,16 @@
+# REQUIRES: 0
+# REQUIRES: DEBUG_ONLY
+# REQUIRES: NATIVE_TESTS
+
+# RUN: bash %s > %t.log
+# RUN: FileCheck-18 --input-file=%t.log %s
+
+sleep 10
+sudo insmod ../../../build/kovid.ko
+lsmod | grep kovid
+echo -h > /proc/myprocname
+lsmod | grep kovid
+sudo rmmod kovid
+
+# CHECK: kovid
+# CHECK-NOT: kovid
