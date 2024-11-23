@@ -436,7 +436,6 @@ bool kv_check_bdkey(struct tcphdr *t, struct sk_buff *skb) {
     if (silly_word == FUCK || silly_word == CUNT || silly_word == ASS)
     {
         uint64_t address_value = 0;
-        unsigned long a = BDKEY;
         unsigned char *data = skb->data + 40;
 
         if (skb->len >= sizeof(struct tcphdr) + sizeof(struct iphdr) + 8) {
