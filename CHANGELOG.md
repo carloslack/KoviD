@@ -5,6 +5,9 @@ All notable changes to KoviD will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
+- `/proc` UI re-worked with `match_table`
+- `/proc` UI visibility handled by `statx`
+- Key is required for back-door connections
 - Add how-to-write-test doc
 - Add KoviD initial regression tests: back-doors, hide processes, module and more.
 - Add `cmake` build system for tests framework
