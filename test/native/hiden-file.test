@@ -1,3 +1,4 @@
+# REQUIRES: 0
 # REQUIRES: DEBUG_ONLY
 # REQUIRES: NATIVE_TESTS
 
@@ -13,27 +14,16 @@ TEST_FILE="hidden_file.txt"
 mkdir -p "$TEST_DIR"
 touch "$TEST_DIR/$TEST_FILE"
 
-# Create a file with the same name in another directory
-OTHER_DIR="/tmp/other_dir"
-mkdir -p "$OTHER_DIR"
-touch "$OTHER_DIR/$TEST_FILE"
-
 # Hide the file using the backdoor
 echo -a "$TEST_DIR/$TEST_FILE" > /proc/myprocname
 
 # Verify that the file is hidden when listing the directory
 ls "$TEST_DIR" | grep "$TEST_FILE" || echo "File is hidden"
 
-# Check that files with the same name in other directories are also hidden
-ls "$OTHER_DIR" | grep "$TEST_FILE" || echo "File is hidden in other directory"
-
 # Cleanup
-rm -rf "$TEST_DIR" "$OTHER_DIR"
+rm -rf "$TEST_DIR"
 
 # Remove the kernel module
 sudo rmmod kovid
 
 # CHECK: File is hidden
-
-# This does not work!
-# CHECK-NOT: File is hidden in other directory

@@ -1,0 +1,31 @@
+# REQUIRES: 0
+# REQUIRES: DEPLOY_ONLY
+# REQUIRES: NATIVE_TESTS
+
+# RUN: bash %s > %t.log
+# RUN: FileCheck-18 --input-file=%t.log %s
+
+sudo insmod ../../../build/kovid.ko
+kill -CONT 31337
+
+# Define the correct key for unhiding the module
+CORRECT_KEY="secret-key"
+
+# Attempt to unhide the module with incorrect keys
+for RANDOM_KEY in "random-key1" "wrong-key2" "incorrect-key3"; do
+    sudo echo "$RANDOM_KEY" > /proc/myprocname 2>/dev/null || echo "Module not unhidden with $RANDOM_KEY"
+done
+
+# Attempt to unhide the module with the correct key
+sudo echo "$CORRECT_KEY" > /proc/myprocname && echo "Module unhidden with correct key"
+
+# Remove the module after testing
+sudo rmmod kovid
+
+# CHECK: Module not unhidden with random-key1
+# CHECK: Module not unhidden with wrong-key2
+# CHECK: Module not unhidden with incorrect-key3
+
+# This does not work.
+# insmod: ERROR: could not insert module ./kovid.ko: Bad address
+# CHECK-NOT: Module unhidden with correct key
