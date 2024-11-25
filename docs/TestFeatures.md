@@ -306,3 +306,4 @@ NOTE: If a test should be executed in `DEPLOY` mode only, `.test` file should co
 | tty backdoor                                       | Yes                            | native/tty-backdoor.test              |
 | backdoor echo -s                                   | Yes                            | native/nc-backdoor-echo-s.test        |
 | Hide/Unhide Module                                 | Yes                            | native/hide-unhide-module.test        |
+| backdoor + PID                                     | Yes                            | native/nc-backdoor-plus-pid.test      |
