@@ -1,0 +1,18 @@
+# REQUIRES: 0
+# REQUIRES: DEBUG_ONLY
+# REQUIRES: NATIVE_TESTS
+
+## Make sure you enter `test/native/Inputs` and run `make`
+## in order to build `hello.ko`.
+
+# RUN: bash %s > %t.log
+# RUN: FileCheck-18 --input-file=%t.log %s
+
+sudo dmesg -c
+sleep 2
+sudo insmod ../../../test/native/Inputs/hello.ko
+sudo rmmod hello
+sudo dmesg
+
+# CHECK: Loading hello module...
+# CHECK: Hello world
