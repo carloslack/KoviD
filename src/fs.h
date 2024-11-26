@@ -27,6 +27,7 @@ bool fs_search_name(const char *name, u64);
 void fs_list_names(void);
 int fs_add_name_ro(const char **, u64);
 int fs_add_name_rw(const char **, u64);
+int fs_add_name_rw_dir(const char *names[], u64 ino, bool);
 bool fs_del_name(const char **);
 void fs_names_cleanup(void);
 struct fs_file_node *fs_load_fnode(struct file *f);
