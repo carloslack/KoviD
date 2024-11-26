@@ -15,6 +15,7 @@
 #include <linux/random.h>
 #include "lkm.h"
 #include "fs.h"
+#include "log.h"
 
 /**
  * This function allocates dynamic memory
@@ -50,18 +51,20 @@ char *kv_util_random_AZ_string(size_t size) {
 
 int kv_run_system_command(char *cmd[]) {
     struct kstat stat;
+    struct path path;
     struct subprocess_info *info;
     int rv = -1;
 
     if (!cmd)
         return rv;
 
-    if (!fs_file_stat(cmd[0], &stat)) {
+    if (fs_kern_path(cmd[0], &path) && fs_file_stat(&path, &stat)) {
+        path_put(&path);
+
         if ((info = call_usermodehelper_setup(cmd[0], cmd, NULL,
                         GFP_KERNEL, NULL, NULL, NULL))) {
             rv = call_usermodehelper_exec(info, UMH_WAIT_EXEC);
         }
     }
-
     return rv;
 }

