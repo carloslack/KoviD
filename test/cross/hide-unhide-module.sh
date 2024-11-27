@@ -12,7 +12,7 @@ kill -CONT 31337
 
 # Hide the module
 echo "Hiding the kovid module:"
-echo -h > /proc/myprocname
+echo hide-lkm > /proc/myprocname
 
 # Verify that the module is hidden
 echo "Checking if kovid module is hidden:"
