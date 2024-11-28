@@ -29,8 +29,8 @@
 #8 Hide KoviD module from lsmod/sysfs  if not built with DEPLOY=1
     $ echo hide-lkm >/proc/test
 
-#9 Undo #8 - can rmmod after
-    $ echo unhide-lkm=`cat /proc/test` >/proc/test
+#9 Undo #8 - can rmmod after (KEY is shown after compilation)
+    $ echo unhide-lkm=<KEY> >/proc/test
 
 #10 List hidden taks - debug mode only
     $ echo list-hidden-tasks >/proc/test
