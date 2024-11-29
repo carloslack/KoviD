@@ -17,7 +17,7 @@ ifndef TEST_ENV
 BDKEY := 0x$(shell od -vAn -N8 -tx8 < /dev/urandom | tr -d ' \n')
 UNHIDEKEY := 0x$(shell od -vAn -N8 -tx8 < /dev/urandom | tr -d ' \n')
 else
-BDKEY=0x1
+BDKEY=0x7d3b1cb572f16425
 UNHIDEKEY=0x2
 endif
 
