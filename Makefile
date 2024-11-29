@@ -61,8 +61,10 @@ lgtm: persist
 clean:
 	@make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
 	@rm -f *.o src/*.o $(persist)
-	@git checkout src/persist.S 2>/dev/null || true
-	@git checkout src/auto.h 2>/dev/null || true
+	@git checkout a6333fdc9e9d647b7d64e9e9cb1e6c0237a8967f \
+		-- src/persist.S 2>/dev/null || true
+	@git checkout b5b1976947f16e4f8ac1e1778ef5984a7c47b824 \
+		-- src/auto.h 2>/dev/null || true
 	@echo "Clean."
 
 tags:
