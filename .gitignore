@@ -1,3 +1,25 @@
+# VI files
+*.swc
+*.swd
+*.swe
+*.swf
+*.swg
+*.swh
+*.swi
+*.swj
+*.swk
+*.swl
+*.swm
+*.swn
+*.swo
+*.swp
+
+# Yes you read it
+*~
+
+# Patch, instead
+*.diff
+
 # Prerequisites
 *.d
 
