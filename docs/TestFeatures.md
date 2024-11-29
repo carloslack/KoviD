@@ -309,4 +309,4 @@ NOTE: If a test should be executed in `DEPLOY` mode only, `.test` file should co
 | backdoor + PID                                     | Yes                            | native/nc-backdoor-plus-pid.test      |
 | hide file                                          | Yes                            | native/hiden-file.test                |
 | hide file (2)                                      | Yes                            | native/hiden-file-in-all-dirs.test    |
-| unhide module                                      | Yes (but does not work)        | native/unhide-module.test             |
+| unhide module                                      | Yes                            | native/hide-unhide-module.test        |
