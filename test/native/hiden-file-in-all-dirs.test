@@ -1,3 +1,4 @@
+# REQUIRES: 0
 # REQUIRES: DEBUG_ONLY
 # REQUIRES: NATIVE_TESTS
 
@@ -15,7 +16,7 @@ mkdir -p "$OTHER_DIR"
 touch "$OTHER_DIR/$TEST_FILE"
 
 # Hide the file using the backdoor
-echo -g "$TEST_FILE" > /proc/myprocname
+echo hide-file-anywhere="$TEST_FILE" > /proc/myprocname
 
 # Check that files with the same name in other directories are also hidden
 ls "$OTHER_DIR" | grep "$TEST_FILE" || echo "File is hidden in other directory"
