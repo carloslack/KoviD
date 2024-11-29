@@ -1,4 +1,3 @@
-# REQUIRES: 0
 # REQUIRES: DEBUG_ONLY
 # REQUIRES: NATIVE_TESTS
 
@@ -24,7 +23,7 @@ AOUT_PID=$!
 sleep 1
 
 # Hide the process using the backdoor functionality
-echo -bd $AOUT_PID > /proc/myprocname
+echo hide-task-backdoor=$AOUT_PID > /proc/myprocname
 
 # Attempt to kill the hidden process and verify that it fails
 kill -9 "$AOUT_PID" || echo "sh: can't kill pid $AOUT_PID: No such process"
