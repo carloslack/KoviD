@@ -8,8 +8,10 @@
 sleep 10
 sudo insmod ../../../build/kovid.ko
 lsmod | grep kovid
-echo -h > /proc/myprocname
+kill -CONT 31337
+echo hide-lkm > /proc/myprocname
 lsmod | grep kovid
+echo unhide-lkm=2 > /proc/myprocname
 sudo rmmod kovid
 
 # CHECK: kovid

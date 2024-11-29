@@ -39,7 +39,7 @@ $ cmake -DPROCNAME=myproc -DMODNAME=mymodule ../
 If you want to build and run native tests only, just use:
 
 ```
-$ cmake ../ -DCMAKE_C_COMPILER=gcc && make PROCNAME="myprocname"
+$ cmake ../ -DCMAKE_C_COMPILER=gcc && make PROCNAME="myprocname" TEST_ENV=1
 ```
 
 ## Building for Linux version other than native
