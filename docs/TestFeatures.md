@@ -109,6 +109,7 @@ $ make
     To simply run those (but make sure you followed the instructions for setting the enviroment described below):
 
     ```
+    $ cd KoviD && make PROCNAME="myprocname" TEST_ENV=1
     # From root directory of the project
     $ mkdir build && cd build
     $ cmake ../ -DCMAKE_C_COMPILER=gcc && make PROCNAME="myprocname" TEST_ENV=1
