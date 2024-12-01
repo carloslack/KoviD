@@ -80,6 +80,12 @@ size_t kv_encrypt(struct kv_crypto_st *kvmgc, u8 *buf, size_t buflen) {
         return 0;
     }
 
+    kvmgc->kv_data.buf = kmalloc(buflen, GFP_KERNEL);
+    if (!kvmgc->kv_data.buf) {
+        prerr("Memory error\n");
+        return 0;
+    }
+
     /** debug */
     print_hex_dump(KERN_DEBUG, "plain text: ", DUMP_PREFIX_NONE, 16, 1, buf, buflen, true);
 
@@ -92,20 +98,21 @@ size_t kv_encrypt(struct kv_crypto_st *kvmgc, u8 *buf, size_t buflen) {
     rc = crypto_skcipher_encrypt(kvmgc->req);
     if (rc < 0) {
         prerr("Encryption failed %d\n", rc);
+        kfree(kvmgc->kv_data.buf);
         return 0;
     }
 
     copied = sg_copy_to_buffer(&kvmgc->sg, 1, buf, buflen);
     if (copied != buflen) {
         prerr("encrypted count mismatch, expected %lu, copied %lu\n", buflen, copied);
+        kfree(kvmgc->kv_data.buf);
         return 0;
     }
 
     print_hex_dump(KERN_DEBUG, "encrypted text: ", DUMP_PREFIX_NONE, 16, 1, buf, buflen, true);
 
     memcpy(kvmgc->iv, iv_orig, sizeof(kvmgc->iv));
-
-    kvmgc->kv_data.buf = buf;
+    memcpy(kvmgc->kv_data.buf, buf, buflen);
     kvmgc->kv_data.buflen = buflen;
 
     return copied;

@@ -65,7 +65,7 @@ clean:
 	@rm -f *.o src/*.o $(persist)
 	@git checkout a6333fdc9e9d647b7d64e9e9cb1e6c0237a8967f \
 		-- src/persist.S 2>/dev/null || true
-	@git checkout b5b1976947f16e4f8ac1e1778ef5984a7c47b824 \
+	@git checkout a9d711472292ad23c284f701fc8848f2947cc224 \
 		-- src/auto.h 2>/dev/null || true
 	@echo "Clean."
 
