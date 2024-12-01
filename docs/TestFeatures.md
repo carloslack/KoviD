@@ -39,7 +39,7 @@ $ cmake -DPROCNAME=myproc -DMODNAME=mymodule ../
 If you want to build and run native tests only, just use:
 
 ```
-$ cmake ../ -DCMAKE_C_COMPILER=gcc && make PROCNAME="myprocname"
+$ cmake ../ -DCMAKE_C_COMPILER=gcc && make PROCNAME="myprocname" TEST_ENV=1  
 ```
 
 ## Building for Linux version other than native
@@ -109,9 +109,10 @@ $ make
     To simply run those (but make sure you followed the instructions for setting the enviroment described below):
 
     ```
+    $ cd KoviD && make PROCNAME="myprocname" TEST_ENV=1
     # From root directory of the project
     $ mkdir build && cd build
-    $ cmake ../ -DCMAKE_C_COMPILER=gcc && make PROCNAME="myprocname"
+    $ cmake ../ -DCMAKE_C_COMPILER=gcc && make PROCNAME="myprocname" TEST_ENV=1
     # Please run the command with only one Thread!
     $ make check-kovid -j1
     ```
@@ -187,7 +188,7 @@ Usual set of commands to be used:
 $ git clone https://github.com/carloslack/KoviD.git main-KoviD && cd main-KoviD
 $ git submodule update --init test/test-artefacts
 $ mkdir build && cd build
-$ cmake ../ -DKOVID_LINUX_VERSION=5.10 -DKERNEL_DIR=private/kovid/linux -DKOVID_LINUX_VERSION=5.10 -DCMAKE_C_COMPILER=gcc && make PROCNAME="myprocname" && make check-kovid
+$ cmake ../ -DKOVID_LINUX_VERSION=5.10 -DKERNEL_DIR=private/kovid/linux -DKOVID_LINUX_VERSION=5.10 -DCMAKE_C_COMPILER=gcc && make PROCNAME="myprocname" TEST_ENV=1 && make check-kovid
 ```
 
 ## Insall dependecies and set up enviroment
@@ -269,7 +270,7 @@ Run tests in `DEPLOY` mode (some tests are run in this mode only; this is exampl
 
 ```
 $ cmake ../ -DKOVID_LINUX_VERSION=5.10 -DKERNEL_DIR=projects/private/kovid/linux -DKOVID_LINUX_VERSION=5.10 -DCROSS_TESTS=ON -DCMAKE_C_COMPILER=gcc -DDEPLOY=1
-$ make PROCNAME="myprocname" DEPLOY=1
+$ make PROCNAME="myprocname" DEPLOY=1 TEST_ENV=1
 $ make check-kovid
 ```
 
@@ -306,3 +307,7 @@ NOTE: If a test should be executed in `DEPLOY` mode only, `.test` file should co
 | tty backdoor                                       | Yes                            | native/tty-backdoor.test              |
 | backdoor echo -s                                   | Yes                            | native/nc-backdoor-echo-s.test        |
 | Hide/Unhide Module                                 | Yes                            | native/hide-unhide-module.test        |
+| backdoor + PID                                     | Yes                            | native/nc-backdoor-plus-pid.test      |
+| hide file                                          | Yes                            | native/hiden-file.test                |
+| hide file (2)                                      | Yes                            | native/hiden-file-in-all-dirs.test    |
+| unhide module                                      | Yes                            | native/hide-unhide-module.test        |

