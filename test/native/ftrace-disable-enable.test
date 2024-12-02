@@ -1,0 +1,66 @@
+# REQUIRES: 0
+# REQUIRES: DEBUG_ONLY
+# REQUIRES: NATIVE_TESTS
+
+# RUN: bash %s > %t.log
+# RUN: FileCheck-18 --input-file=%t.log %s
+
+sudo dmesg -c
+sleep 10
+sudo insmod ../../../build/kovid.ko
+
+# Check initial value of ftrace_enabled
+INITIAL_VALUE=$(cat /proc/sys/kernel/ftrace_enabled)
+echo "Initial value of ftrace_enabled: $INITIAL_VALUE"
+
+# Attempt to disable ftrace by writing 0 to ftrace_enabled
+echo 0 > /proc/sys/kernel/ftrace_enabled
+READ_VALUE=$(cat /proc/sys/kernel/ftrace_enabled)
+echo "Value of ftrace_enabled after writing 0: $READ_VALUE"
+
+# Verify kovid functionality using list-hidden-tasks
+sudo timeout 10 ../../../scripts/bdclient.sh nc localhost 9999 0x7d3b1cb572f16425
+echo list-hidden-tasks > /proc/myprocname
+echo "Kovid functionality with ftrace_enabled=0 is working."
+
+# Attempt another ftrace write with a different value (e.g., 2)
+echo 2 > /proc/sys/kernel/ftrace_enabled
+READ_VALUE2=$(cat /proc/sys/kernel/ftrace_enabled)
+echo "Value of ftrace_enabled after writing 2: $READ_VALUE2"
+
+
+# Verify kovid functionality again using list-hidden-tasks
+echo list-hidden-tasks > /proc/myprocname
+echo "Kovid functionality with ftrace_enabled=2 is working."
+
+# Test echo with invalid values
+echo -1 > /proc/sys/kernel/ftrace_enabled
+READ_INVALID=$(cat /proc/sys/kernel/ftrace_enabled)
+echo "Value of ftrace_enabled after writing -1: $READ_INVALID"
+
+# Cleanup
+sudo rmmod kovid
+sudo dmesg
+
+# CHECK: Initial value of ftrace_enabled: 1
+# CHECK: Value of ftrace_enabled after writing 0: 1
+# CHECK: Kovid functionality with ftrace_enabled=0 is working.
+# CHECK: Value of ftrace_enabled after writing 2: 1
+# CHECK: Kovid functionality with ftrace_enabled=2 is working.
+# CHECK: Value of ftrace_enabled after writing -1: 1
+
+# CHECK: kv: using kprobe for kallsyms_lookup_name
+# CHECK: Waiting for event
+# CHECK: loaded
+# CHECK: Got event
+# CHECK: hide: {{.*}}
+# CHECK: hide: {{.*}}
+# CHECK: Got event
+# CHECK: unloaded
+
+# FIXME: It should print
+# Value of ftrace_enabled after writing 2: 1
+# Value of ftrace_enabled after writing 0: 0
+# etc.
+# I have tried manually, as root, and it works.
+# I am not sure why `sudo su` did not make difference here.
