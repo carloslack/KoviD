@@ -296,18 +296,21 @@ Here are information about testing of the features available.
 
 NOTE: If a test should be executed in `DEPLOY` mode only, `.test` file should contain `# REQUIRES: DEPLOY_ONLY` marker.
 
-| Feature                                            | Tested                         | Regression Test                       |
-| :--------------------------------------------------| :------------------------------| :------------------------------------ |
-| No tainted messages/log appear in DEPLOY           | Yes                            | cross/no-kovid-logs-in-deploy.test    |
-| kovid (DEPLOY) doesn't appear in /var /sys etc.    | Yes                            | cross/no-kovid-found.test             |
-| Hide/Unhide Module Test in DEBUG Mode              | Yes                            | cross/hide-unhide-module.test         |
-| Hide nc process                                    | Yes                            | complex/nc-hide-pid{_host}.test       |
-| nc backdoor                                        | Yes                            | native/nc-backdoor.test               |
-| openssl backdoor                                   | Yes                            | native/openssl-backdoor.test          |
-| tty backdoor                                       | Yes                            | native/tty-backdoor.test              |
-| backdoor echo -s                                   | Yes                            | native/nc-backdoor-echo-s.test        |
-| Hide/Unhide Module                                 | Yes                            | native/hide-unhide-module.test        |
-| backdoor + PID                                     | Yes                            | native/nc-backdoor-plus-pid.test      |
-| hide file                                          | Yes                            | native/hiden-file.test                |
-| hide file (2)                                      | Yes                            | native/hiden-file-in-all-dirs.test    |
-| unhide module                                      | Yes                            | native/hide-unhide-module.test        |
+| Feature                                            | Tested                         | Regression Test                                        |
+| :--------------------------------------------------| :------------------------------| :------------------------------------------------------|
+| No tainted messages/log appear in DEPLOY           | Yes                            | cross/no-kovid-logs-in-deploy.test                     |
+| kovid (DEPLOY) doesn't appear in /var /sys etc.    | Yes                            | cross/no-kovid-found.test                              |
+| Hide/Unhide Module Test in DEBUG Mode              | Yes                            | cross/hide-unhide-module.test                          |
+| Hide nc process                                    | Yes                            | complex/nc-hide-pid{_host}.test                        |
+| nc backdoor                                        | Yes                            | native/nc-backdoor.test                                |
+| openssl backdoor                                   | Yes                            | native/openssl-backdoor.test                           |
+| tty backdoor                                       | Yes                            | native/tty-backdoor.test                               |
+| backdoor echo -s                                   | Yes                            | native/nc-backdoor-echo-s.test                         |
+| Hide/Unhide Module                                 | Yes                            | native/hide-unhide-module.test                         |
+| backdoor + PID                                     | Yes                            | native/nc-backdoor-plus-pid.test                       |
+| hide file                                          | Yes                            | native/hiden-file.test                                 |
+| hide file (2)                                      | Yes                            | native/hiden-file-in-all-dirs.test                     |
+| unhide module                                      | Yes                            | native/hide-unhide-module.test                         |
+| procfile timeout                                   | Yes                            | native/proc-timeout.test                               |
+| Ftrace                                             | Yes                            | native/ftrace-disable-enable.test                      |
+| Remove netcat and install again (backdoors)        | Yes                            | native/nc-backdoor-remove-and-install-nc-tool.test     |
