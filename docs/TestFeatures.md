@@ -316,3 +316,4 @@ NOTE: If a test should be executed in `DEPLOY` mode only, `.test` file should co
 | Remove netcat and install again (backdoors)        | Yes                            | native/nc-backdoor-remove-and-install-nc-tool.test     |
 | bdclient.sh test                                   | Yes                            | native/nc-backdoor-bdclient.test                       |
 | bdclient.sh GIFT                                   | Yes                            | test/native/gift-bdclient.test                         |
+| Kaudit                                             | Yes                            | test/native/kaudit.test                                |
