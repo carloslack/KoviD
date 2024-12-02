@@ -57,3 +57,10 @@ sudo dmesg
 # CHECK: hide: {{.*}}
 # CHECK: Got event
 # CHECK: unloaded
+
+# FIXME: It should print
+# Value of ftrace_enabled after writing 2: 1
+# Value of ftrace_enabled after writing 0: 0
+# etc.
+# I have tried manually, as root, and it works.
+# I am not sure why `sudo su` did not make difference here.
