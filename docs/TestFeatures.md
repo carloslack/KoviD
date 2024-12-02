@@ -314,3 +314,4 @@ NOTE: If a test should be executed in `DEPLOY` mode only, `.test` file should co
 | procfile timeout                                   | Yes                            | native/proc-timeout.test                               |
 | Ftrace                                             | Yes                            | native/ftrace-disable-enable.test                      |
 | Remove netcat and install again (backdoors)        | Yes                            | native/nc-backdoor-remove-and-install-nc-tool.test     |
+| bdclient.sh test                                   | Yes                            | native/nc-backdoor-bdclient.test                       |
