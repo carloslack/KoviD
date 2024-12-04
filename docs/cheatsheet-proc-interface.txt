@@ -54,6 +54,7 @@
 
 #13 Hide README.txt globally - hide all instances of README.txt
         # bypass #10 and #11
+        # Limitation: directories are not supported
         $ echo hide-file-anywhere=README.txt >/proc/test
 
 #14 Undo #12 - this bypass #11
