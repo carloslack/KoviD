@@ -44,29 +44,38 @@
     # At full-path
         $ echo hide-file=/home/files/README.txt >/proc/test
 
-#12 Hide README.txt globally - hide all instances of README.txt
+#12 Hide/Unhide directories
+    # Hide At $PWD
+        $ echo hide-directory=README.txt >/proc/test
+    # Full-path
+        $ echo hide-directory=/home/files/Dir1 >/proc/test
+    # Unhide
+        $ echo unhide-directory=Dir1 >/proc/test
+
+#13 Hide README.txt globally - hide all instances of README.txt
         # bypass #10 and #11
+        # Limitation: directories are not supported
         $ echo hide-file-anywhere=README.txt >/proc/test
 
-#15 Undo #12 - this bypass #11
+#14 Undo #12 - this bypass #11
     $ echo unhide-file=README.txt >/proc/test
 
-#16 List hidden tasks - debug mode only
+#15 List hidden tasks - debug mode only
     $ echo list-hidden-tasks >/proc/test
     $ dmesg
 
-#17 List hidden files and directories - debug mode only
+#16 List hidden files and directories - debug mode only
     $ echo list-hidden-files >/proc/test
     $ dmesg
 
-#18 Fetch the base address of a running process by PID number
+#17 Fetch the base address of a running process by PID number
     $ echo base-address=<pid> >/proc/test
     $ cat /proc/test
 
-#19 Fetch Magik Word
+#18 Fetch Magik Word
     $ cat /proc/test
 
-#20 Rename a hidden process
+#19 Rename a hidden process
     # First hide 1234 pid:
         $ echo 1234 >/proc/test
     # Then rename it at any time
@@ -76,7 +85,7 @@
     # Or to print all tasks (hidden or not)
         $ echo list-all-tasks > /proc/test
 
-#23 Clear journal
+#20 Clear journal
     # May need to be called twice,
     # until it is cleared, given vacuum limitation.
     # check with journalctl

