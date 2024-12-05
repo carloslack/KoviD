@@ -119,6 +119,8 @@ $ make
 
 NOTE: You will be asked for `sudo` password.
 
+If you want to enable `KASAN`, use `$ make PROCNAME="myprocname" TEST_ENV=1 ENABLE_KASAN=1`.
+
 ## Cross Tests
 
 These tests run on a QEMU emulator, allowing testing on different Linux kernel versions or architectures.
