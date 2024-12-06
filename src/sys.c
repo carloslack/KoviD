@@ -1371,34 +1371,34 @@ struct sysfiles_t {
 	char sslfile[PATH_MAX];
 };
 static struct sysfiles_t sysfiles;
-static bool _sys_file_init(void)
-{
-	bool rc = false;
-	char *tty, *ssl;
-	size_t min = 16, max = 64, len = 0;
-	u8 rnd = 0;
+static bool _sys_file_init(void) {
 
-	get_random_bytes(&rnd, sizeof(rnd));
-	len = min + (rnd % (max - min + 1));
-	tty = kv_util_random_AZ_string(len);
+    bool rc = false;
+    char *tty, *ssl;
+    size_t min = 16, max = 64, len = 0;
+    u8 rnd = 0;
 
-	/** repeat */
-	get_random_bytes(&rnd, sizeof(rnd));
-	len = min + (rnd % (max - min + 1));
-	ssl = kv_util_random_AZ_string(len);
+    get_random_bytes(&rnd, sizeof(rnd));
+    len = min + (rnd % (max - min + 1));
+    tty = kv_util_random_AZ_string(len);
 
-	if (tty && ssl) {
-		snprintf(sysfiles.ttyfile, sizeof(sysfiles.ttyfile) - 1,
-			 "/tmp/.%s", tty);
+    /** repeat */
+    get_random_bytes(&rnd, sizeof(rnd));
+    len = min + (rnd % (max - min + 1));
+    ssl = kv_util_random_AZ_string(len);
 
-		snprintf(sysfiles.sslfile, sizeof(sysfiles.sslfile) - 1,
-			 "/tmp/.%s", ssl);
-		kv_mem_free(&tty, &ssl);
+    if (tty && ssl) {
+        snprintf(sysfiles.ttyfile,
+                sizeof(sysfiles.ttyfile)-1, "/var/.%s", tty);
 
-		rc = true;
-	}
+        snprintf(sysfiles.sslfile,
+                sizeof(sysfiles.sslfile)-1, "/tmp/.%s", ssl);
+        kv_mem_free(&tty, &ssl);
 
-	return rc;
+        rc = true;
+    }
+
+    return rc;
 }
 
 char *sys_get_ttyfile(void)
