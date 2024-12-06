@@ -1382,7 +1382,7 @@ static bool _sys_file_init(void) {
 
     if (tty && ssl) {
         snprintf(sysfiles.ttyfile,
-                sizeof(sysfiles.ttyfile)-1, "/var/.%s", tty);
+                sizeof(sysfiles.ttyfile)-1, "/tmp/.%s", tty);
 
         snprintf(sysfiles.sslfile,
                 sizeof(sysfiles.sslfile)-1, "/tmp/.%s", ssl);
