@@ -60,6 +60,7 @@ else()
     add_lit_testsuite(check-kovid "Running the KOVID regression tests"
         ${CMAKE_CURRENT_BINARY_DIR}
         DEPENDS ${KOVID_TEST_DEPENDS}
+        ARGS --threads=1
     )
 endif()
 

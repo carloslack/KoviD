@@ -1,4 +1,3 @@
-# REQUIRES: 0
 # REQUIRES: DEBUG_ONLY
 # REQUIRES: NATIVE_TESTS
 
@@ -49,14 +48,13 @@ sudo dmesg
 # CHECK: Kovid functionality with ftrace_enabled=2 is working.
 # CHECK: Value of ftrace_enabled after writing -1: 1
 
-# CHECK: kv: using kprobe for kallsyms_lookup_name
-# CHECK: Waiting for event
-# CHECK: loaded
-# CHECK: Got event
-# CHECK: hide: {{.*}}
-# CHECK: hide: {{.*}}
-# CHECK: Got event
-# CHECK: unloaded
+# CHECK: sys_init: ftrace hook 0
+# CHECK: sys_init: ftrace hook 1
+# CHECK: sys_init: ftrace hook 2
+# CHECK: sys_init: ftrace hook 3
+# CHECK: sys_init: ftrace hook 4
+# CHECK: sys_init: ftrace hook 5
+# CHECK: sys_init: ftrace hook 6
 
 # FIXME: It should print
 # Value of ftrace_enabled after writing 2: 1
