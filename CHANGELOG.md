@@ -5,16 +5,26 @@ All notable changes to KoviD will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
-- `/proc` UI re-worked with `match_table`
-- `/proc` UI visibility handled by `statx`
-- Key is required for back-door connections
-- Add how-to-write-test doc
-- Add KoviD initial regression tests: back-doors, hide processes, module and more.
-- Add `cmake` build system for tests framework
+### Fixed
+- test: False positive for `BUG: unable to handle page fault` related to `llvm.lit` test runner
+
+### Changed
+- Encrypt back-door key
+- `/proc` command names replaced, break backwards compatibility.
+- `statx` returns `No such file or directory` for `/proc` interface.
+
+### Added
+- Feature: tamper kstat `nlink` to decrement counter for hidden directories
+- Feature: basic encryption
+- Tools: x86-64 lkm loader
+- Tests: `ftrace`, back-doors, `proc`, `Kaudit`
+- Tests: KoviD initial regression tests: back-doors, hide processes, module.
+- Tests:`cmake` build system for tests framework
+- Tests: Native tests
 
 ## 2.1.1 - Oct 19 2024
 ### Fixed
--  Fix backdoors deinit from 4ea5cd27
+-  Bug: back-doors deinit
 
 ## 2.1.0 - Oct 18 2024
 ### Added
@@ -31,7 +41,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Fixed
 - Make sure to remove SSL socket file when KoviD in unloaded
 - Memory leak from random strings
-
 
 ## 2.0.0 - Oct 2 2024
 ### Added
