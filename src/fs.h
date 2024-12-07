@@ -22,6 +22,7 @@ bool fs_file_stat(struct path *, struct kstat *);
  */
 struct fs_file_node *fs_get_file_node(const struct task_struct *);
 bool fs_search_name(const char *, u64);
+const char *fs_get_basename(const char *);
 void fs_list_names(void);
 int fs_add_name_ro(const char *, u64);
 int fs_add_name_rw(const char *, u64);
