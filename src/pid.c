@@ -81,9 +81,6 @@ static int _hide_task(void *data) {
 
     prinfo("hide [%p] %s : %d\n", ht->task, ht->task->comm, ht->task->pid);
 
-    fs_add_name_rw_dir(pidnum, 0, 0 /**XXX*/, true);
-
-
     /** debug */
 #ifdef DEBUG_RING_BUFFER
     ++ht_num;
