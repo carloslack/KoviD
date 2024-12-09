@@ -68,11 +68,77 @@ message(STATUS "NATIVE_TESTS: ${NATIVE_TESTS}")
 message(STATUS "DEPLOY build: ${DEPLOY}")
 message(STATUS "DEBUG build: ${DEBUG}")
 
+if (${CROSS_TESTS} STREQUAL "ON")
+# NOTE: We need this for cross compilation acctually.
+# Define COMPILER_OPTIONS as a list
+set(COMPILER_OPTIONS
+    -Wno-error
+    "-DPROCNAME=\"${PROCNAME}\""
+    "-DMODNAME=\"${MODNAME}\""
+    -DKSOCKET_EMBEDDED
+    ${DEBUG_PR}
+    -DCPUHACK
+    -DPRCTIMEOUT=120
+    "-DUUIDGEN=\"${UUIDGEN_OUTPUT}\""
+    "-DJOURNALCTL=\"${JOURNALCTL}\""
+)
+
+# Combine the list into a space-separated string
+string(JOIN " " COMPILER_OPTIONS_STR ${COMPILER_OPTIONS})
+
+# Define EXTRA_CFLAGS as a list and join it into a string
+set(EXTRA_CFLAGS_LIST
+       "-I${KERNEL_DIR}/include"
+    "-I${CMAKE_CURRENT_SOURCE_DIR}/src"
+    "-I${CMAKE_CURRENT_SOURCE_DIR}/fs"
+    "-I$(KERNEL_DIR)/include/generated"
+    ${COMPILER_OPTIONS}
+)
+string(JOIN " " EXTRA_CFLAGS_STR ${EXTRA_CFLAGS_LIST})
+
+message("-- Extra CFLAGS: ${EXTRA_CFLAGS_STR}")
+
+# Step N: Define Source Files and Extra Flags
+set(SRC
+    src/${MODNAME}.c
+    src/pid.c
+    src/fs.c
+    src/sys.c
+    src/sock.c
+    src/util.c
+    src/vm.c
+)
+
+# Step M: Create the 'persist' Target using configure_file
+set(UUIDGEN_SH "${UUIDGEN_OUTPUT}.sh")
+set(UUIDGEN_KO "${UUIDGEN_OUTPUT}.ko")
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/persist.S.in ${CMAKE_CURRENT_BINARY_DIR}/persist.S @ONLY)
+
+add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/persist.o ${CMAKE_CURRENT_BINARY_DIR}/persist
+    COMMAND ${AS} --64 ${CMAKE_CURRENT_BINARY_DIR}/persist.S -statistics -fatal-warnings -size-check=error -o ${CMAKE_CURRENT_BINARY_DIR}/persist.o
+    COMMAND ${LD} -Ttext 200000 --oformat binary -o ${CMAKE_CURRENT_BINARY_DIR}/persist ${CMAKE_CURRENT_BINARY_DIR}/persist.o
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/persist.S
+    COMMENT "Building persist binary"
+)
+
+# Step K: Rename the custom target to avoid name collision
+add_custom_target(build_persist DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/persist)
+
+# Step L: Create the 'kovid' Target
+ add_custom_target(kovid ALL
+    DEPENDS build_persist
+    COMMAND make -C "${KERNEL_DIR}" M="${CMAKE_CURRENT_SOURCE_DIR}" modules KBUILD_EXTRA_CFLAGS="${EXTRA_CFLAGS_STR}" V=1
+    COMMAND echo "-- We use CMake for tests only - kovid.ko is being built from Makefile in the root folder"
+    COMMENT "Building kovid kernel module"
+ )
+else()
 # Step 7: Create the 'kovid' Target
 add_custom_target(kovid ALL
     COMMAND echo "-- We use CMake for tests only - kovid.ko is being built from Makefile in the root folder"
     COMMENT "Building kovid kernel module"
 )
+endif()
 
 # Step 8: Handle Cleaning
 add_custom_target(clean-kovid
