@@ -1,4 +1,4 @@
-find_package(LLVM 18 REQUIRED CONFIG)
+find_package(LLVM 18.0.0 REQUIRED CONFIG)
 
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
