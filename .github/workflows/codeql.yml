@@ -71,7 +71,7 @@ jobs:
           make clean
           make PROCNAME="myprocname" TEST_ENV=1
           mkdir build_tests && cd build_tests
-          cmake ..
+          cmake -DCICD_MACHINE=ON ..
           make PROCNAME="myprocname" TEST_ENV=1
           make check-kovid -j1
           cd ..
