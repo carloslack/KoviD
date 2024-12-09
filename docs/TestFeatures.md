@@ -269,7 +269,7 @@ $ make check-kovid -j1
 Run tests in `DEPLOY` mode (some tests are run in this mode only; this is example for `cross` tests):
 
 ```
-$ cmake ../ -DKOVID_LINUX_VERSION=5.10 -DKERNEL_DIR=projects/private/kovid/linux -DKOVID_LINUX_VERSION=5.10 -DCROSS_TESTS=ON -DCMAKE_C_COMPILER=gcc -DDEPLOY=1
+$ cmake ../ -DKOVID_LINUX_VERSION=5.10 -DKERNEL_DIR=projects/private/kovid/linux -DKOVID_LINUX_VERSION=5.10 -DCROSS_TESTS=ON -DCMAKE_C_COMPILER=gcc -DDEPLOY=1 -DNATIVE_TESTS=OFF
 $ make PROCNAME="myprocname" DEPLOY=1 TEST_ENV=1
 $ make check-kovid
 ```

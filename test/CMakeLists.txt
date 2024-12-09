@@ -1,4 +1,11 @@
+option(CICD_MACHINE "Set to ON when building in a CI/CD environment" OFF)
+message(STATUS "CICD_MACHINE is ${CICD_MACHINE}")
+
+if(CICD_MACHINE)
+find_package(LLVM 18.1.8 REQUIRED CONFIG)
+else()
 find_package(LLVM REQUIRED CONFIG)
+endif()
 
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 

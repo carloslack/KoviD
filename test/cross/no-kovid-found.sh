@@ -4,7 +4,7 @@
 insmod kovid.ko 2> /dev/null
 
 # Search for 'kovid' in critical system directories
+echo "Finding LKM"
 find /sys /proc /etc /var -name 'kovid'
 
-# Attempt to remove the kovid module
 rmmod kovid
