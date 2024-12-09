@@ -44,6 +44,8 @@ jobs:
           sudo bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
           pip3 install lit
           sudo ln -s ~/.local/bin/lit /usr/bin/llvm-lit
+          sudo apt-get install llvm-18-dev
+          sudo apt-get install llvm-18-tools
 
       - name: After Prepare
         run: |
