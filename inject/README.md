@@ -2,7 +2,7 @@
 
 ### 1.1 Build KoviD
 
-        cd ../ && PROCNAME=kovid make && make strip && cd -
+        cd ../ && PROCNAME=kv make && make strip && cd -
 
 ## 2 Build payload
 
