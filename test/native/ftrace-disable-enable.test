@@ -4,9 +4,6 @@
 # RUN: bash %s > %t.log
 # RUN: FileCheck-18 --input-file=%t.log %s
 
-ls ../../../
-echo $PWD
-
 sudo dmesg -c
 sleep 10
 sudo insmod ../../../build/kovid.ko
