@@ -33,6 +33,17 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes build-essential linux-headers-generic linux-kernel-headers
+          sudo apt-get install --yes cmake
+          sudo apt-get install --yes g++
+          sudo apt-get install --yes python3-pip
+          sudo apt-get install --yes libslirp-dev
+          sudo apt-get install --yes qemu-system-x86
+          sudo apt-get install --yes netcat
+          sudo apt-get install --yes nmap
+          sudo apt-get install --yes socat
+          sudo bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
+          pip3 install lit
+          sudo ln -s ~/.local/bin/lit /usr/bin/llvm-lit
 
       - name: After Prepare
         run: |
@@ -52,3 +63,13 @@ jobs:
         uses: github/codeql-action/analyze@v2
         with:
           category: "/language:${{ matrix.language }}"
+
+      - name: Build and Run tests
+        run: |
+          make clean
+          make PROCNAME="myprocname" TEST_ENV=1
+          mkdir build_tests && cd build_tests
+          cmake ..
+          make PROCNAME="myprocname" TEST_ENV=1
+          make check-kovid -j1
+          cd ..
