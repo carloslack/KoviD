@@ -75,7 +75,7 @@ struct fs_file_node *fs_load_fnode(struct file *f) {
     u32 req_mask = STATX_INO;
     unsigned int query_mask = AT_STATX_SYNC_AS_STAT;
 #endif
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,8,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,3,0)
     struct mnt_idmap *idmap;
 #endif
 
