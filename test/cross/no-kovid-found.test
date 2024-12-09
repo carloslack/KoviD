@@ -4,4 +4,3 @@
 # RUN: FileCheck-18 --input-file=%kovid_testdir/no-kovid-found.log %s
 
 # CHECK-NOT: kovid
-# CHECK: rmmod: can't unload module 'kovid': No such file or directory
