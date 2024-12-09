@@ -32,7 +32,7 @@ void fs_names_cleanup(void);
 struct fs_file_node *fs_load_fnode(struct file *);
 struct file *fs_kernel_open_file(const char *);
 u64 fs_get_parent_inode(struct path *);
-int fs_is_dir_inode_hidden(const char *name, u64 ino);
+int fs_is_dir_inode_hidden(u64 ino);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
 ssize_t fs_kernel_write_file(struct file *, const void *, size_t, loff_t *);
