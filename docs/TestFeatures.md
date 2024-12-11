@@ -292,7 +292,7 @@ Here are information about testing of the features available.
 | Simple persistence using ELF infection with Volundr| No (understand bdclient)       | None                               |
 | Hide pre-defined network application               | Yes                            | None                               |
 
-#### 2.1.1 Testing
+#### v2.1.1 Testing
 
 NOTE: If a test should be executed in `DEPLOY` mode only, `.test` file should contain `# REQUIRES: DEPLOY_ONLY` marker.
 
@@ -317,3 +317,8 @@ NOTE: If a test should be executed in `DEPLOY` mode only, `.test` file should co
 | bdclient.sh test                                   | Yes                            | native/nc-backdoor-bdclient.test                       |
 | bdclient.sh GIFT                                   | Yes                            | test/native/gift-bdclient.test                         |
 | Kaudit                                             | Yes                            | test/native/kaudit.test                                |
+
+
+### Testing Azure - Linux Kernel 6.5.0 (KoviD v2.1.1)
+
+Testing for the Kovid project is currently performed on Azure via CI/CD with a Linux kernel version `6.5.0`. All tests listed under section `v2.1.1 Testing` are validated automatically with the exception of the `openssl` and `tty` backdoor tests, which have been temporarily disabled due to automation challenges (via `# REQUIRES 0` workaround). While the `openssl` test is known to work when run manually, its initial setup is not yet automated (it is not trivial to setup `openssl` first time you run it); similarly, the `tty` test remains postponed until a suitable automation strategy is developed for that one. All other tests—from verifying that no tainted logs appear in `DEPLOY`/`DEBUG` modes to ensuring that, for example `ftrace` and `kaudit`, operate correctly—have been successfully integrated into the continuous testing pipeline on Azure. So, whenever you submit a PR, all those tests will be triggered!
