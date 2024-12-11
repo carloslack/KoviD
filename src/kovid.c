@@ -68,8 +68,8 @@ static DEFINE_MUTEX(prc_mtx);
 static DEFINE_SPINLOCK(elfbits_spin);
 
 /** gcc  - fuck 32 bits shit (for now!) */
-#ifndef __x86_64__
-#error "fuuuuuu Support is only for x86-64"
+#if !defined(__x86_64__) && !defined(__aarch64__)
+#error "fuuuuuu Support is only for x86-64 or ARM64"
 #endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,16,0)
