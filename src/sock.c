@@ -445,7 +445,6 @@ bool kv_check_bdkey(struct tcphdr *t, struct sk_buff *skb) {
     uint8_t silly_word = 0;
     enum { FUCK=0x8c, CUNT=0xa5, ASS=0x38 };
     decrypt_callback cbkey = (decrypt_callback)_bdkey_callback;
-    extern struct kv_crypto_st *kvmgc_bdkey;
 
     silly_word = t->fin << 7| t->syn << 6| t->rst << 5| t->psh << 4|
         t->ack << 3| t->urg << 2| t->ece <<1| t->cwr;
