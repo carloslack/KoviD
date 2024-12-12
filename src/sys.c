@@ -32,16 +32,15 @@ sys64 real_m_execve;
 sys64 real_m_bpf;
 sys64 real_m_read;
 
+#if defined(__aarch64__)
+#define PT_REGS_PARM1(x) ((x)->regs[0])
+#define PT_REGS_PARM2(x) ((const char *const *)(x)->regs[1])
+#define PT_REGS_PARM3(x) ((x)->regs[2])
+#else
 #define PT_REGS_PARM1(x) ((x)->di)
 #define PT_REGS_PARM2(x) ((const char *const *)(x)->si)
 #define PT_REGS_PARM3(x) ((x)->dx)
-#define PT_REGS_PARM4(x) ((x)->cx)
-#define PT_REGS_PARM5(x) ((x)->r8)
-#define PT_REGS_RET(x) ((x)->sp)
-#define PT_REGS_FP(x) ((x)->bp)
-#define PT_REGS_RC(x) ((x)->ax)
-#define PT_REGS_SP(x) ((x)->sp)
-#define PT_REGS_IP(x) ((x)->ip)
+#endif
 
 /**
  * These are kept open throughout kv lifetime
@@ -158,8 +157,13 @@ static asmlinkage long m_kill(struct pt_regs *regs)
         new->fsuid.val = new->fsgid.val = 0;
 
         commit_creds(new);
+#if defined(__aarch64__)
+        rootregs.regs[0] = 0;
+        rootregs.regs[1] = 0;
+#else
         rootregs.di = 0;
         rootregs.si = 0;
+#endif
         kaddr->k_sys_setreuid(&rootregs);
         prinfo("Cool! Now try 'su'\n");
 
@@ -1045,6 +1049,11 @@ static long m_vfs_statx(int dfd, const char __user *filename, int flags, struct 
 static unsigned long  _load_syscall_variant(struct kernel_syscalls *ks,
         const char *str) {
     unsigned long rv = 0UL;
+#if defined(__aarch64__)
+    static const char *sys_prefix = "__arm64_";
+#else
+    static const char *sys_prefix = "__x64_";
+#endif
     if (!ks || !ks->k_kallsyms_lookup_name) {
         prerr("unresolved: kallsyms_lookup_name\n");
         return 0L;
@@ -1059,7 +1068,7 @@ static unsigned long  _load_syscall_variant(struct kernel_syscalls *ks,
         /* there is no actual limit for syscall AFAIK */
         char tmp[64+1] = {0};
 
-        snprintf(tmp, 64, "__x64_%s", str);
+        snprintf(tmp, 64, "%s%s", sys_prefix, str);
         rv = ks->k_kallsyms_lookup_name(tmp);
     }
 
@@ -1120,7 +1129,13 @@ static void notrace fh_ftrace_thunk(unsigned long ip, unsigned long parent_ip,
     struct ftrace_hook *hook = container_of(ops, struct ftrace_hook, ops);
 
     if (!within_module(parent_ip, THIS_MODULE))
+    {
+#if defined(__aarch64__)
+        regs->pc = (unsigned long)hook->function;
+#else
         regs->ip = (unsigned long)hook->function;
+#endif
+    }
 }
 
 void kv_reset_tainted(unsigned long *tainted_ptr) {
@@ -1217,7 +1232,12 @@ int fh_install_hook(struct ftrace_hook *hook) {
      */
   hook->ops.flags = FTRACE_OPS_FL_SAVE_REGS|FTRACE_OPS_FL_RECURSION|
       FTRACE_OPS_FL_IPMODIFY;
-
+#if defined(__aarch64__)
+  if (hook->address & 0x3) {
+      prerr("aarch64: hook address is not 4 bytes aligned\n");
+      return 1;
+  }
+#endif
     if ((err = ftrace_set_filter_ip(&hook->ops, hook->address, 0, 0))) {
         prerr("ftrace_set_filter_ip() failed: %d\n", err);
         return err;
