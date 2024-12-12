@@ -1204,11 +1204,19 @@ struct kernel_syscalls *kv_kall_load_addr(void) {
 }
 
 static struct ftrace_hook ft_hooks[] = {
+#if defined(__x86_64__)
     {"sys_exit_group", m_exit_group, &real_m_exit_group, true},
     {"sys_clone", m_clone, &real_m_clone, true},
     {"sys_kill", m_kill, &real_m_kill, true},
     {"sys_read", m_read, &real_m_read, true},
     {"sys_bpf", m_bpf, &real_m_bpf, true},
+#elif defined(__aarch64__)
+    {"__arm64_sys_exit_group", m_exit_group, &real_m_exit_group, true},
+    {"__arm64_sys_clone", m_clone, &real_m_clone, true},
+    {"__arm64_sys_kill", m_kill, &real_m_kill, true},
+    {"__arm64_sys_read", m_read, &real_m_read, true},
+    {"__arm64_sys_bpf", m_bpf, &real_m_bpf, true},
+#endif
     {"tcp4_seq_show", m_tcp4_seq_show, &real_m_tcp4_seq_show},
     {"udp4_seq_show", m_udp4_seq_show, &real_m_udp4_seq_show},
     {"tcp6_seq_show", m_tcp6_seq_show, &real_m_tcp6_seq_show},
