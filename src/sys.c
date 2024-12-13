@@ -891,7 +891,7 @@ static int _key_update(uid_t uid, char byte, int flags)
 			node->buf[node->offset++] = '\n';
 			node->buf[node->offset] = 0;
 
-			_tty_write_log(uid, 0, node->buf, strlen(node->buf));
+            _tty_write_log(uid, node->buf, strlen(node->buf));
 
 			list_del(&node->list);
 			kfree(node);
