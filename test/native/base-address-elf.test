@@ -1,0 +1,32 @@
+# REQUIRES: DEBUG_ONLY
+# REQUIRES: NATIVE_TESTS
+
+# RUN: bash %s > %t.log
+# RUN: FileCheck-18 --input-file=%t.log %s
+
+sudo insmod ../../../build/kovid.ko
+kill -CONT 31337
+
+# Run the a.out executable in the background
+../../../test/native/Inputs/a.testexe &
+AOUT_PID=$!  # Capture the PID of a.out
+
+# Wait briefly to ensure a.out has started
+# sleep 1
+
+# Output the PID (for debugging or verification)
+echo "PID of a.out is $AOUT_PID"
+
+echo base-address=$AOUT_PID > /proc/myprocname
+
+cat /proc/myprocname
+
+echo "Deleting kovid"
+sudo rmmod kovid
+
+kill -9 $AOUT_PID
+
+# CHECK: PID of a.out is
+## We expect an address like `55e648a65000`
+# CHECK: 5{{.*}}
+# Deleting kovid
