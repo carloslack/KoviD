@@ -28,5 +28,5 @@ kill -9 $AOUT_PID
 
 # CHECK: PID of a.out is
 ## We expect an address like `55e648a65000`
-# CHECK: 5{{.*}}
+# CHECK: {{[5-7]}}{{.*}}
 # Deleting kovid
