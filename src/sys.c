@@ -604,7 +604,6 @@ static int m_udp4_seq_show(struct seq_file *seq, void *v) {
     return real_m_tcp4_seq_show(seq, v);
 }
 
-#pragma message "tcp6_seq_show untested"
 static int (*real_m_tcp6_seq_show)(struct seq_file *seq, void *v);
 static int m_tcp6_seq_show(struct seq_file *seq, void *v) {
 
@@ -619,7 +618,6 @@ static int m_tcp6_seq_show(struct seq_file *seq, void *v) {
     return real_m_tcp6_seq_show(seq, v);
 }
 
-#pragma message "udp6_seq_show untested"
 static int (*real_m_udp6_seq_show)(struct seq_file *seq, void *v);
 static int m_udp6_seq_show(struct seq_file *seq, void *v) {
 
