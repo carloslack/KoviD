@@ -41,6 +41,10 @@
 #pragma message "Missing \'MODNAME\' compilation directive. See Makefile."
 #endif
 
+#ifdef DEBUG_RING_BUFFER
+#pragma message "!!! Be careful: Build kovid in DEBUG mode !!!"
+#endif
+
 #ifndef PRCTIMEOUT
 /**
  * default timeout seconds
