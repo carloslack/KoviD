@@ -3,8 +3,6 @@
 
 #ifdef DEBUG_RING_BUFFER
 
-#pragma message "!!! Be careful: Build kovid in DEBUG mode !!!"
-
 #define prinfo(fmt, ...) pr_info(fmt, ##__VA_ARGS__);
 #define prwarn(fmt, ...) pr_warn(fmt, ##__VA_ARGS__);
 #define prerr(fmt, ...) pr_err(fmt, ##__VA_ARGS__);

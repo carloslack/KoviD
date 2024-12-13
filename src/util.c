@@ -26,15 +26,16 @@ char *kv_util_random_AZ_string(size_t size)
 	static const char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 				      "abcdefghijklmnopqrstuvwxyz"
 				      "0123456789";
-	int i;
-	u8 byte;
+    int i;
+    u8 byte;
+    char *buf;
 
 	if (size < 2) {
 		prerr("Invalid argument\n");
 		return NULL;
 	}
 
-	char *buf = kmalloc(size, GFP_KERNEL);
+	buf = kmalloc(size, GFP_KERNEL);
 	if (!buf) {
 		prerr("Memory error\n");
 		return NULL;
