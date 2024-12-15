@@ -71,19 +71,19 @@ struct kv_crypto_st *crypto_init(void) {
 }
 
 size_t kv_encrypt(struct kv_crypto_st *kvmgc, u8 *buf, size_t buflen) {
-    size_t copied = 0;
+    size_t copied = 0, total = 0;
     int rc;
     u8 iv_orig[16] = {0};
 
     if (!kvmgc || !buf) {
         prerr("Invalid decrypt ptr\n");
-        return 0;
+        goto leave;
     }
 
     kvmgc->kv_data.buf = kmalloc(buflen, GFP_KERNEL);
     if (!kvmgc->kv_data.buf) {
         prerr("Memory error\n");
-        return 0;
+        goto leave;
     }
 
     /** debug */
@@ -98,36 +98,47 @@ size_t kv_encrypt(struct kv_crypto_st *kvmgc, u8 *buf, size_t buflen) {
     rc = crypto_skcipher_encrypt(kvmgc->req);
     if (rc < 0) {
         prerr("Encryption failed %d\n", rc);
-        kfree(kvmgc->kv_data.buf);
-        return 0;
+        kv_mem_free(&kvmgc->kv_data.buf);
+        goto cleanup;
     }
 
-    copied = sg_copy_to_buffer(&kvmgc->sg, 1, buf, buflen);
-    if (copied != buflen) {
+    total = sg_copy_to_buffer(&kvmgc->sg, 1, buf, buflen);
+    if (total != buflen) {
         prerr("encrypted count mismatch, expected %lu, copied %lu\n", buflen, copied);
-        kfree(kvmgc->kv_data.buf);
-        return 0;
+        kv_mem_free(&kvmgc->kv_data.buf);
+        goto cleanup;
     }
+
+    /** We're good to go */
+    copied = total;
 
     print_hex_dump(KERN_DEBUG, "encrypted text: ", DUMP_PREFIX_NONE, 16, 1, buf, buflen, true);
 
-    memcpy(kvmgc->iv, iv_orig, sizeof(kvmgc->iv));
     memcpy(kvmgc->kv_data.buf, buf, buflen);
     kvmgc->kv_data.buflen = buflen;
 
+cleanup:
+    memcpy(kvmgc->iv, iv_orig, sizeof(kvmgc->iv));
+
+leave:
     return copied;
 }
 
 size_t kv_decrypt(struct kv_crypto_st *kvmgc, decrypt_callback cb, void *userdata) {
-    size_t copied = 0;
+    size_t copied = 0, total = 0;
 
     if (!kvmgc || !kvmgc->kv_data.buf || !cb) {
         prerr("Invalid decrypt argument\n");
     } else {
+        int err = 0;
         u8 iv_orig[16] = {0};
         size_t buflen = kvmgc->kv_data.buflen;
-        u8 data_orig[buflen];
-        int err = 0;
+
+        u8 *data_orig = kmalloc(buflen, GFP_KERNEL);
+        if (!data_orig) {
+            prerr("Memory error\n");
+            goto leave;
+        }
 
         memcpy(iv_orig, kvmgc->iv, sizeof(kvmgc->iv));
         memcpy(data_orig, kvmgc->kv_data.buf, buflen);
@@ -139,13 +150,17 @@ size_t kv_decrypt(struct kv_crypto_st *kvmgc, decrypt_callback cb, void *userdat
         err = crypto_skcipher_decrypt(kvmgc->req);
         if (err) {
             prerr("Decryption failed\n");
+            goto cleanup;
         }
 
-        copied = sg_copy_to_buffer(&kvmgc->sg, 1, kvmgc->kv_data.buf, buflen);
-        if (copied != buflen) {
+        total = sg_copy_to_buffer(&kvmgc->sg, 1, kvmgc->kv_data.buf, buflen);
+        if (total != buflen) {
             prerr("encrypted count mismatch, expected %lu, copied %ld\n", buflen, copied);
-            return 0;
+            goto cleanup;
         }
+
+        /** We're good to go */
+        copied = total;
 
         {
             /** user callback */
@@ -153,10 +168,13 @@ size_t kv_decrypt(struct kv_crypto_st *kvmgc, decrypt_callback cb, void *userdat
             cb(buf, buflen, copied, userdata);
         }
 
+cleanup:
         memcpy(kvmgc->iv, iv_orig, sizeof(kvmgc->iv));
         memcpy(kvmgc->kv_data.buf, data_orig, buflen);
+        kfree(data_orig);
     }
 
+leave:
     return copied;
 }
 
