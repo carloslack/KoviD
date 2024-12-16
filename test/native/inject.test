@@ -1,0 +1,22 @@
+# REQUIRES: 0
+# REQUIRES: DEBUG_ONLY
+# REQUIRES: NATIVE_TESTS
+
+# RUN: bash %s &> %t.log
+# RUN: FileCheck-18 --input-file=%t.log %s
+
+# This would break other tests, due to make
+# command, so this can be run individually.
+
+sudo dmesg -c
+
+cd ../../../inject
+cd ../ && PROCNAME=kv make && make strip
+cd -
+./update.sh && make
+sudo ./kv_embed ; dmesg
+cd ../../../build
+sudo rmmod kovid
+
+# CHECK: loaded
+# CHECK: unloaded
