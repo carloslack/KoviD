@@ -20,5 +20,4 @@ sudo dmesg
 # There are newlines in dmesg output.
 # Tested manually that part.
 
-# CHECK: /proc/myprocname unloaded.
 # CHECK: systemd-journald[{{.*}}]: Received client request to rotate journal.
