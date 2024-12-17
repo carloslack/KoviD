@@ -17,14 +17,14 @@ static struct crypto_skcipher *tfm;
  * Must be called once from KoviD initialization
  */
 #define ENCKEY_LEN 32 /** aes 256 */
-int kv_crypto_key_init(void) {
+int kv_crypto_init(void) {
     static char key[ENCKEY_LEN] = {0};
-    int rc;
+    int rc = -1;
 
     /** Allocate AES-CBC */
     if (!crypto_has_skcipher("cbc(aes)", 0, 0)) {
         prerr("Cipher not found\n");
-        return 0;
+        return rc;
     }
 
     /** Allocate for transformation
@@ -33,7 +33,7 @@ int kv_crypto_key_init(void) {
     tfm = crypto_alloc_skcipher("cbc(aes)", 0, 0);
     if (IS_ERR(tfm)) {
         prerr("Failed to allocate cipher %ld\n", PTR_ERR(tfm));
-        return 0;
+        return rc;
     }
 
     get_random_bytes(key, ENCKEY_LEN);
@@ -43,7 +43,6 @@ int kv_crypto_key_init(void) {
     if (rc < 0) {
         prerr("Key init error %d\n", rc);
         crypto_free_skcipher(tfm);
-        return 0;
     }
 
     return rc;
