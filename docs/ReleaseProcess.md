@@ -14,8 +14,8 @@ This document outlines the steps required to prepare, validate, and publish a ne
 1. Determine the next release version according to the versioning policy.
 2. Update the version number.
 
-### 2. Update Release Notes
-1. Open `docs/ReleaseNotes.md`.
+### 2. Update Changelog
+1. Open `CHANGELOG.md`.
 2. Add a summary of changes, including new features, bug fixes, and any known issues since the last release.
 3. Ensure notes are clear, accurate, and helpful.
 
@@ -85,7 +85,7 @@ Replace vX.Y.Z with your new version.
 
 1. Create a new release on GitHub.
 2. Use the newly created tag.
-3. Include ReleaseNotes.md content in the release description.
+3. Include CHANGELOG.md content in the release description.
 4. Optionally attach binary.
 
 ### 8. Announcement (Optional)
