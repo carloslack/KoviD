@@ -86,7 +86,7 @@ struct kernel_syscalls {
 typedef void (*decrypt_callback)(const u8 *const buf, size_t buflen,
 				 size_t copied, void *userdata);
 /** Setup crypto module */
-int kv_crypto_key_init(void);
+int kv_crypto_init(void);
 struct kv_crypto_st *crypto_init(void);
 size_t kv_encrypt(struct kv_crypto_st *, u8 *, size_t);
 size_t kv_decrypt(struct kv_crypto_st *, decrypt_callback, void *userdata);
