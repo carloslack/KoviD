@@ -5,12 +5,22 @@ All notable changes to KoviD will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
-- `/proc` UI re-worked with `match_table`
-- `/proc` UI visibility handled by `statx`
-- Key is required for back-door connections
-- Add how-to-write-test doc
-- Add KoviD initial regression tests: back-doors, hide processes, module and more.
-- Add `cmake` build system for tests framework
+### Fixed
+- test: False positive for `BUG: unable to handle page fault` related to `llvm.lit` test runner
+
+### Changed
+- protect, with encryption, memory stored back-door Key
+- proc UI re-designed
+- black-list proc UI from directory stats
+
+### Added
+- Feature: tamper stat's counter (`Links:`) for hidden hard-links
+- Feature: basic encryption
+- Tools: x86-64 lkm loader under `inject/`
+- Tests: `ftrace`, back-doors, `proc`, `Kaudit`
+- Tests: KoviD initial regression tests: back-doors, hide processes, module
+- Tests:`cmake` build system for tests framework
+- Tests: Native tests
 
 ## 2.1.1 - Oct 19 2024
 ### Fixed
