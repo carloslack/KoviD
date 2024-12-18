@@ -804,7 +804,10 @@ static int __init kv_init(void) {
 cont:
 #endif
     /** Init crypto engine */
-    kv_crypto_key_init();
+    if (kv_crypto_key_init() < 0) {
+        prerr("Failed to initialise crypto engine\n");
+        goto crypto_error;
+    }
 
 
     tsk_sniff = kv_sock_start_sniff();
@@ -840,20 +843,24 @@ cont:
 
 unroll_init:
     prerr("Could not load basic functionality.\n");
-    _unroll_init();
-    rv = -EFAULT;
-    goto leave;
+    goto error;
 addr_error:
     prerr("Could not get kernel function address, proc file not created.\n");
-    rv = -EFAULT;
-    goto leave;
+    goto error;
 sys_init_error:
     prerr("Could not load syscalls hooks\n");
-    rv = -EFAULT;
-    goto leave;
+    goto error;
 procname_missing:
     prerr("%s\n", procname_err);
+    goto error;
+crypto_error:
+    prerr("Crypto init error\n");
+
+error:
+    prerr("Unrolling\n");
+    _unroll_init();
     rv = -EFAULT;
+
 leave:
     return rv;
 }
