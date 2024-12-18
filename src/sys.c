@@ -1130,18 +1130,11 @@ static unsigned long _load_syscall_variant(struct kernel_syscalls *ks,
 		return 0L;
 	}
 
-	if (!(rv = ks->k_kallsyms_lookup_name(str))) {
-		/* there is no actual limit for syscall AFAIK */
-		char tmp[64 + 1] = { 0 };
-
-		snprintf(tmp, 64, "__x64_%s", str);
-		rv = ks->k_kallsyms_lookup_name(tmp);
-	}
-
+	rv = ks->k_kallsyms_lookup_name(str);
 	if (rv) {
 		struct sys_addr_list *sl;
-		sl = kcalloc(1, sizeof(struct sys_addr_list), GFP_KERNEL);
-		if (sl) {
+		sl = kcalloc(1, sizeof(struct sys_addr_list) , GFP_KERNEL);
+		if(sl) {
 			sl->addr = rv;
 			prinfo("add sysaddr: %lx\n", sl->addr);
 			list_add_tail(&sl->list, &sys_addr);
@@ -1215,6 +1208,12 @@ void kv_reset_tainted(unsigned long *tainted_ptr)
 	test_and_clear_bit(TAINT_WARN, tainted_ptr);
 }
 
+#ifdef __x86_64__
+#define _sys_arch(s) "__x64_" s
+#else
+#define _sys_arch(s) s
+#endif
+
 struct kernel_syscalls *kv_kall_load_addr(void)
 {
 	static struct kernel_syscalls ks;
@@ -1269,11 +1268,11 @@ struct kernel_syscalls *kv_kall_load_addr(void)
 }
 
 static struct ftrace_hook ft_hooks[] = {
-	{ "sys_exit_group", m_exit_group, &real_m_exit_group, true },
-	{ "sys_clone", m_clone, &real_m_clone, true },
-	{ "sys_kill", m_kill, &real_m_kill, true },
-	{ "sys_read", m_read, &real_m_read, true },
-	{ "sys_bpf", m_bpf, &real_m_bpf, true },
+	{_sys_arch("sys_exit_group"), m_exit_group, &real_m_exit_group, true},
+	{_sys_arch("sys_clone"), m_clone, &real_m_clone, true},
+	{_sys_arch("sys_kill"), m_kill, &real_m_kill, true},
+	{_sys_arch("sys_read"), m_read, &real_m_read, true},
+	{_sys_arch("sys_bpf"), m_bpf, &real_m_bpf, true},
 	{ "tcp4_seq_show", m_tcp4_seq_show, &real_m_tcp4_seq_show },
 	{ "udp4_seq_show", m_udp4_seq_show, &real_m_udp4_seq_show },
 	{ "tcp6_seq_show", m_tcp6_seq_show, &real_m_tcp6_seq_show },
