@@ -4,7 +4,7 @@ All notable changes to KoviD will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## v3.0.0 - Dec 19 2024
 ### Fixed
 - test: False positive for `BUG: unable to handle page fault` related to `llvm.lit` test runner
 
