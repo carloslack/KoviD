@@ -1,10 +1,11 @@
 This file contains a list of people who have made meaningful contributions
 
 Author
-	chash <carloslack@gmail.com>
+	hash 			<carloslack@gmail.com>
 
-Contributions/bugfixes
-	Hork <aliyuchang33@outlook.com>
+Contributions
+	djolertrk 		<djolertrk@gmail.com>
+	Hork 			<aliyuchang33@outlook.com>
 
 Tests/Ideas/Validation
 	C0dak
