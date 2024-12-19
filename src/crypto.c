@@ -17,7 +17,7 @@ static struct crypto_skcipher *tfm;
  * Must be called once from KoviD initialization
  */
 #define ENCKEY_LEN 32 /** aes 256 */
-int kv_crypto_init(void) {
+int kv_crypto_engine_init(void) {
     static char key[ENCKEY_LEN] = {0};
     int rc = -1;
 
@@ -50,7 +50,7 @@ int kv_crypto_init(void) {
 
 /** Encryption init
  * Called for each encryption operation */
-struct kv_crypto_st *crypto_init(void) {
+struct kv_crypto_st *kv_crypto_mgc_init(void) {
     struct kv_crypto_st *kvmgc = kmalloc(sizeof(struct kv_crypto_st), GFP_KERNEL);
     if (!kvmgc) {
         prerr("Failed to allocate memory for vars\n");
@@ -198,7 +198,7 @@ void kv_crypto_mgc_deinit(struct kv_crypto_st *kvmgc) {
     }
 }
 
-void kv_crypto_deinit(void) {
+void kv_crypto_engine_deinit(void) {
     if (tfm) {
         kfree(tfm);
         tfm = NULL;

@@ -818,24 +818,24 @@ static int __init kv_init(void) {
 #endif
     tsk_prc = kthread_run(_proc_watchdog, NULL, THREAD_PROC_NAME);
     if (!tsk_prc)
-        goto unroll_init;
+        goto background_error;
 
     tsk_tainted = kthread_run(_reset_tainted, NULL, THREAD_TAINTED_NAME);
     if (!tsk_tainted)
-        goto unroll_init;
+        goto background_error;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
 cont:
 #endif
     /** Init crypto engine */
-    if (kv_crypto_init() < 0) {
+    if (kv_crypto_engine_init() < 0) {
         prerr("Failed to initialise crypto engine\n");
         goto crypto_error;
     }
 
-    if (!(kvmgc_unhidekey = crypto_init())) {
+    if (!(kvmgc_unhidekey = kv_crypto_mgc_init())) {
         prerr("Failed to encrypt unhidekey\n");
-        kv_crypto_deinit();
+        kv_crypto_engine_deinit();
         goto crypto_error;
     }
 
@@ -847,7 +847,7 @@ cont:
 
     tsk_sniff = kv_sock_start_sniff();
     if (!tsk_sniff)
-        goto unroll_init;
+        goto background_error;
 
     if (!kv_sock_start_fw_bypass()) {
         prwarn("Error loading fw_bypass\n");
@@ -876,21 +876,20 @@ cont:
     prinfo("loaded.\n");
     goto leave;
 
-unroll_init:
-    prerr("Could not load basic functionality.\n");
+crypto_error:
+    prerr("Crypto init error\n");
     goto error;
-addr_error:
-    prerr("Could not get kernel function address, proc file not created.\n");
+background_error:
+    prerr("Could not load basic functionality.\n");
     goto error;
 sys_init_error:
     prerr("Could not load syscalls hooks\n");
     goto error;
+addr_error:
+    prerr("Could not get kernel function address, proc file not created.\n");
+    goto error;
 procname_missing:
     prerr("%s\n", procname_err);
-    goto error;
-crypto_error:
-    prerr("Crypto init error\n");
-
 error:
     prerr("Unrolling\n");
     _unroll_init();
@@ -924,7 +923,7 @@ static void __exit kv_cleanup(void) {
 
     fs_names_cleanup();
 
-    kv_crypto_deinit();
+    kv_crypto_engine_deinit();
 
     prinfo("unloaded.\n");
 }

