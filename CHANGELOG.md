@@ -24,7 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## 2.1.1 - Oct 19 2024
 ### Fixed
--  Fix backdoors deinit from 4ea5cd27
+-  Bug: back-doors deinit
 
 ## 2.1.0 - Oct 18 2024
 ### Added
@@ -41,7 +41,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Fixed
 - Make sure to remove SSL socket file when KoviD in unloaded
 - Memory leak from random strings
-
 
 ## 2.0.0 - Oct 2 2024
 ### Added

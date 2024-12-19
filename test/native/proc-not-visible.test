@@ -1,0 +1,17 @@
+# REQUIRES: DEBUG_ONLY
+# REQUIRES: NATIVE_TESTS
+
+# RUN: bash %s &> %t.log
+# RUN: FileCheck-18 --input-file=%t.log %s
+
+sudo insmod ../../../build/kovid.ko
+kill -CONT 31337
+
+ls /proc/myprocname
+stat /proc/myprocname
+
+echo "Deleting kovid"
+sudo rmmod kovid
+
+# CHECK: No such file or directory
+# CHECK: No such file or directory

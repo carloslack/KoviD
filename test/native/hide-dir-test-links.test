@@ -1,0 +1,82 @@
+# REQUIRES: DEBUG_ONLY
+# REQUIRES: NATIVE_TESTS
+
+# RUN: bash %s > %t.log
+# RUN: FileCheck-18 --input-file=%t.log %s
+
+# Insert the kernel module
+sudo insmod ../../../build/kovid.ko
+kill -CONT 31337
+
+PROCNAME="myprocname"
+TEST_DIR="/tmp/test_hide_dir"
+SUBDIR1="subdir1"
+SUBDIR2="subdir2"
+
+# Clean up if something was left from a previous run
+rm -rf "$TEST_DIR"
+mkdir -p "$TEST_DIR/$SUBDIR1"
+mkdir -p "$TEST_DIR/$SUBDIR2"
+
+# Function to get directory link count
+get_link_count() {
+    stat -c %h "$1"
+}
+
+echo "==== Initial State ===="
+
+# Check initial link count
+# A directory typically has at least 2 links: "." and ".."
+initial_links=$(get_link_count "$TEST_DIR")
+echo "Links before hiding: $initial_links"
+
+# CHECK: Links before hiding:
+# This checks we have an initial reference point. We won't assert exact counts in these tests,
+# just verify the logic of increment/decrement.
+
+echo "==== Hide One Directory ===="
+# Hide SUBDIR1
+echo "hide-directory=$TEST_DIR/$SUBDIR1" > /proc/$PROCNAME
+
+after_hide_one=$(get_link_count "$TEST_DIR")
+echo "Links after hiding one directory: $after_hide_one"
+
+# CHECK: Links after hiding one directory:
+# Expect a decrement in link count by 1 (not explicitly checked here, but observed by the tester).
+
+echo "==== Hide Another Directory ===="
+# Hide SUBDIR2
+echo "hide-directory=$TEST_DIR/$SUBDIR2" > /proc/$PROCNAME
+
+after_hide_two=$(get_link_count "$TEST_DIR")
+echo "Links after hiding two directories: $after_hide_two"
+
+# CHECK: Links after hiding two directories:
+# The link count should have decreased again, but must never be less than 2.
+if [ "$after_hide_two" -lt 2 ]; then
+    echo "ERROR: Link count dropped below 2!"
+    exit 1
+fi
+
+echo "==== Un-hide One Directory ===="
+# Unhide SUBDIR1
+echo unhide-directory=$TEST_DIR/$SUBDIR1 > /proc/myprocname
+
+after_unhide_one=$(get_link_count "$TEST_DIR")
+echo "Links after un-hiding one directory: $after_unhide_one"
+
+# CHECK: Links after un-hiding one directory:
+# Should have increased back by 1.
+
+echo "==== Remove Module to Un-hide All ===="
+# Removing the module should restore everything
+sudo rmmod kovid
+
+final_links=$(get_link_count "$TEST_DIR")
+echo "Links after removing module: $final_links"
+
+# CHECK: Links after removing module:
+# Should match the initial count again.
+
+# Cleanup
+rm -rf "$TEST_DIR"

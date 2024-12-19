@@ -38,7 +38,7 @@ jobs:
           sudo apt-get install --yes python3-pip
           sudo apt-get install --yes libslirp-dev
           sudo apt-get install --yes qemu-system-x86
-          sudo apt-get install --yes netcat
+          sudo apt-get install --yes netcat-traditional
           sudo apt-get install --yes nmap
           sudo apt-get install --yes socat
           sudo bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
