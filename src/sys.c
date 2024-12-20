@@ -1005,15 +1005,13 @@ static long (*real_vfs_statx)(int, struct filename  *, int, struct kstat *, u32)
 static long m_vfs_statx(int dfd, struct filename *filename, int flags, struct kstat *stat, u32 request_mask) {
 #endif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
-    char target[PROCNAME_MAXLEN+6] = {0};
+    const char target[PROCNAME_MAXLEN+6] = {0};
 #else
-    char *target = filename ? filename->name : NULL;
+    const char *target = filename ? filename->name : "";
 #endif
 
     /* call original first, I need stat */
     long rv = real_vfs_statx(dfd, filename, flags, stat, request_mask);
-
-    if (!target) goto leave;
 
     /**
      *  Return not found to userspace if target is present (file,dir),
@@ -1024,7 +1022,7 @@ static long m_vfs_statx(int dfd, struct filename *filename, int flags, struct ks
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
     if (name != NULL && !copy_from_user((void*)name, filename, PROCNAME_MAXLEN-1)) {
 #endif
-        const char *name = fs_get_basename((const char*)target);
+        const char *name = fs_get_basename(target);
         if (fs_search_name(name, stat->ino)) {
             rv = -ENOENT;
             goto leave;
