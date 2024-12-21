@@ -1027,8 +1027,7 @@ static long m_vfs_statx(int dfd, struct filename *filename, int flags, struct ks
      * */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
-    if (!name) goto leave;
-    if (!copy_from_user((void*)name, filename, sizeof(name)-1)) {
+    if (name != NULL && !copy_from_user((void*)name, filename, PROCNAME_MAXLEN-1)) {
 #endif
         if (strlen(name) > 0 && S_ISDIR(stat->mode)) {
             int count = fs_is_dir_inode_hidden((const char *)name, stat->ino);
@@ -1042,10 +1041,8 @@ static long m_vfs_statx(int dfd, struct filename *filename, int flags, struct ks
             rv = -ENOENT;
         }
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
-    }
-    if (name)
         kfree(name);
-leave:
+    }
 #endif
     return rv;
 }
