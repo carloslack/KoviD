@@ -46,6 +46,17 @@ jobs:
           sudo ln -s ~/.local/bin/lit /usr/bin/llvm-lit
           sudo apt-get install llvm-18-dev
           sudo apt-get install llvm-18-tools
+          sudo apt-get install clang-format-18
+
+      - name: Check code formatting with clang-format
+        run: |
+          clang-format-18 --version
+
+          clang-format-18 -i src/*.c
+          clang-format-18 -i src/*.h
+
+          # Fail if the code got reformatted
+          git diff --exit-code
 
       - name: After Prepare
         run: |
