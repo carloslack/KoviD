@@ -260,7 +260,6 @@ bool fs_del_name(const char *name) {
             if (node->name)
                 kfree(node->name);
             kfree(node);
-            node = NULL;
             ++deleted;
         }
     }
@@ -275,7 +274,6 @@ void fs_names_cleanup(void) {
         if (node->name)
             kfree(node->name);
         kfree(node);
-        node = NULL;
     }
 }
 
