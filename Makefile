@@ -72,7 +72,7 @@ strip:
 reset-auto:
 	@git checkout a6333fdc9e9d647b7d64e9e9cb1e6c0237a8967f \
 		-- src/persist.S 2>/dev/null || true
-	@git checkout 9009bdf26631788551490a77ff9066acf4109f4d \
+	@git checkout 1520b99c4fa2fc2ee6a1d11c50de4e1591321a71 \
 		-- src/auto.h 2>/dev/null || true
 
 clean: reset-auto
