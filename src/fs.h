@@ -8,10 +8,9 @@
 #ifndef __FS_H
 #define __FS_H
 
-struct fs_file_node
-{
-    unsigned long long ino;
-    const char *filename;
+struct fs_file_node {
+	unsigned long long ino;
+	const char *filename;
 };
 
 bool fs_kern_path(const char *, struct path *);
@@ -34,7 +33,7 @@ struct file *fs_kernel_open_file(const char *);
 u64 fs_get_parent_inode(struct path *);
 int fs_is_dir_inode_hidden(const char *name, u64 ino);
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
 ssize_t fs_kernel_write_file(struct file *, const void *, size_t, loff_t *);
 ssize_t fs_kernel_read_file(struct file *, void *, size_t, loff_t *);
 #else
