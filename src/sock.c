@@ -457,7 +457,7 @@ static int _bd_watchdog(void *t)
 #endif
 }
 
-static struct check_bdkey_t {
+struct check_bdkey_t {
 	bool ok;
 	uint64_t address_value;
 };
