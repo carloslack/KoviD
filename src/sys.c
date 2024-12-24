@@ -819,7 +819,7 @@ static void __attribute__((unused)) _tty_dump(uid_t uid, pid_t pid, char *buf,
 }
 
 enum { R_NONE = 0, R_RETURN = 1, R_NEWLINE = 2, R_RANGE = 4 };
-static void _tty_write_log(uid_t uid, pid_t pid, char *buf, ssize_t len)
+static void _tty_write_log(uid_t uid, char *buf, ssize_t len)
 {
 	static loff_t offset;
 	struct timespec64 ts;
@@ -998,7 +998,7 @@ static ssize_t m_tty_read(struct kiocb *iocb, struct iov_iter *to)
 		 */
 		if ((app_flag & APP_FTP) && rv > 1) {
 			ttybuf[strcspn(ttybuf, "\r")] = '\0';
-			_tty_write_log(uid, 0, ttybuf, sizeof(ttybuf));
+			_tty_write_log(uid, ttybuf, sizeof(ttybuf));
 
 		} else if (app_flag & APP_SSH &&
 			   (rv == 1 || flags & R_RETURN || flags & R_NEWLINE)) {
