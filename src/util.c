@@ -26,9 +26,9 @@ char *kv_util_random_AZ_string(size_t size)
 	static const char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 				      "abcdefghijklmnopqrstuvwxyz"
 				      "0123456789";
-    int i;
-    u8 byte;
-    char *buf;
+	int i;
+	u8 byte;
+	char *buf;
 
 	if (size < 2) {
 		prerr("Invalid argument\n");
