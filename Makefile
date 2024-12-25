@@ -69,6 +69,9 @@ lgtm: persist
 strip:
 	$(STRIP) -v -g $(OBJNAME).ko
 
+clang-format:
+	clang-format-18 -i src/*.[ch]
+
 clean:
 	@make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
 	@rm -f *.o src/*.o $(persist)
