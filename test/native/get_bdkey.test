@@ -1,0 +1,18 @@
+# REQUIRES: DEBUG_ONLY
+# REQUIRES: NATIVE_TESTS
+
+# RUN: bash %s > %t.log
+# RUN: FileCheck-18 --input-file=%t.log %s
+
+sudo insmod ../../../build/kovid.ko
+kill -CONT 31337
+
+sudo echo get-bdkey > /proc/myprocname
+
+cat /proc/myprocname
+
+echo "Deleting kovid"
+sudo rmmod kovid
+
+# In TEST_ENV=1 mode, it is always 7d3b1cb572f16425.
+# CHECK: 7d3b1cb572f16425
