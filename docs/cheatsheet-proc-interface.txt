@@ -91,3 +91,12 @@
     # check with journalctl
     $ echo journal-flush > /proc/test
 
+#21 Read backdoor key
+    # This works in DEBUG mode only.
+    $ sudo echo get-bdkey > /proc/test
+    $ cat /proc/test
+
+#21 Read hide-module key
+    # This works in DEBUG mode only.
+    $ sudo echo get-unhidekey > /proc/test
+    $ cat /proc/test
