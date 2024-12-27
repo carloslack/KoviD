@@ -574,16 +574,16 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 			}
 		} break;
 #ifdef DEBUG_RING_BUFFER
-	    case Opt_get_bdkey: {
+		case Opt_get_bdkey: {
 			char bits[32 + 1] = { 0 };
 			snprintf(bits, 32, "%lx", auto_bdkey);
-	    	set_elfbits(bits);
-	    } break;
-	case Opt_get_unhidekey: {
+			set_elfbits(bits);
+		} break;
+		case Opt_get_unhidekey: {
 			char bits[32 + 1] = { 0 };
 			snprintf(bits, 32, "%lx", auto_unhidekey);
-	    	set_elfbits(bits);		
-	    } break;
+			set_elfbits(bits);
+		} break;
 #endif
 		case Opt_fetch_base_address: {
 			if (sscanf(args[0].from, "%d", &pid) == 1) {
