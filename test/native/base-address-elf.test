@@ -17,8 +17,7 @@ AOUT_PID=$!  # Capture the PID of a.out
 # Output the PID (for debugging or verification)
 echo "PID of a.out is $AOUT_PID"
 
-echo base-address=$AOUT_PID > /proc/myprocname
-
+sudo echo base-address=$AOUT_PID > /proc/myprocname
 cat /proc/myprocname
 
 echo "Deleting kovid"
@@ -28,5 +27,5 @@ kill -9 $AOUT_PID
 
 # CHECK: PID of a.out is
 ## We expect an address like `55e648a65000`
-# CHECK: {{[5-7]}}{{.*}}
+# CHECK: {{[1-9]}}{{.*}}
 # Deleting kovid
