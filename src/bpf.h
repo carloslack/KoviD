@@ -9,11 +9,13 @@
 #ifndef __BPF_H
 #define __BPF_H
 
+#ifndef u64_to_user_ptr
 #define u64_to_user_ptr(x)                                                     \
 	({                                                                     \
 		typecheck(u64, (x));                                           \
 		(void __user *)(uintptr_t)(x);                                 \
 	})
+#endif
 
 #ifndef offsetof
 #define offsetof(TYPE, MEMBER) ((unsigned long)&((TYPE *)0)->MEMBER)

