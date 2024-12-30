@@ -1090,8 +1090,8 @@ static long m_vfs_statx(int dfd, struct filename *filename, int flags,
 		}
 
 		/* nothing found for this entry.
-         * Tamper 'nlink', if needed.
-         */
+		* Tamper 'nlink', if needed.
+		**/
 		if (S_ISDIR(stat->mode)) {
 			int count = fs_is_dir_inode_hidden(stat->ino);
 			if (count > 0) {

