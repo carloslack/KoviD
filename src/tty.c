@@ -24,7 +24,6 @@ static void _keylog_cleanup_list(struct list_head *head)
 	list_for_each_entry_safe (node, node_safe, head, list) {
 		list_del(&node->list);
 		kfree(node);
-		node = NULL;
 	}
 }
 
