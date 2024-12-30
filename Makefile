@@ -81,7 +81,7 @@ clang-format:
 reset-auto:
 	@git checkout a6333fdc9e9d647b7d64e9e9cb1e6c0237a8967f \
 		-- src/persist.S 2>/dev/null || true
-	@git checkout 1520b99c4fa2fc2ee6a1d11c50de4e1591321a71 \
+	@git checkout 0c14e07b0470209b29242b43ac4394ef46c4d77b \
 		-- src/auto.h 2>/dev/null || true
 
 clean: reset-auto
