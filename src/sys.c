@@ -1133,8 +1133,9 @@ struct kernel_syscalls *kv_kall_load_addr(void)
 		if (!ks.k_bpf_map_get)
 			prwarn("invalid data: bpf_map_get will not work\n");
 
-		ks.k_sys_setreuid =
-			(sys64)_load_syscall_variant(&ks, "sys_setreuid");
+		/** Direct call. @see m_kill */
+		ks.k_sys_setreuid = (sys64)_load_syscall_variant(
+			&ks, _sys_arch("sys_setreuid"));
 		;
 		if (!ks.k_sys_setreuid)
 			prwarn("invalid data: syscall hook setreuid will not work\n");
