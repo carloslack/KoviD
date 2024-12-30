@@ -20,7 +20,7 @@ static struct crypto_skcipher *tfm;
 
 int kv_crypto_engine_init(void)
 {
-	static char key[ENCKEY_LEN] = {0};
+	static char key[ENCKEY_LEN] = { 0 };
 	int rc = -1;
 
 	/** Allocate AES-CBC */
@@ -54,7 +54,8 @@ int kv_crypto_engine_init(void)
  * Called for each encryption operation */
 struct kv_crypto_st *kv_crypto_mgc_init(void)
 {
-	struct kv_crypto_st *kvmgc = kmalloc(sizeof(struct kv_crypto_st), GFP_KERNEL);
+	struct kv_crypto_st *kvmgc =
+		kmalloc(sizeof(struct kv_crypto_st), GFP_KERNEL);
 	if (!kvmgc) {
 		prerr("Failed to allocate memory for vars\n");
 		return NULL;

