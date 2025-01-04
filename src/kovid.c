@@ -619,8 +619,6 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 			struct kv_crypto_st *mgc =
 				(tok == Opt_get_unhidekey ? kvmgc_unhidekey :
 							    kv_sock_get_mgc());
-			decrypt_callback user_cb = (decrypt_callback)_crypto_cb;
-
 			validate.op = tok;
 			kv_decrypt(mgc, user_cb, &validate);
 		} break;
