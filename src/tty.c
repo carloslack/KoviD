@@ -12,10 +12,10 @@
 static DEFINE_SPINLOCK(tty_lock);
 
 struct keylog_t {
-	char buf[KEY_LOG_BUF_MAX + 2]; /** newline+'\0' */
-	int offset;
 	uid_t uid;
+	int offset;
 	struct list_head list;
+	char buf[KEY_LOG_BUF_MAX + 2]; /** newline+'\0' */
 };
 
 static void _keylog_cleanup_list(struct list_head *head)

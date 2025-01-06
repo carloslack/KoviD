@@ -481,9 +481,9 @@ static const match_table_t tokens = {
 };
 
 struct userdata_t {
-	bool ok;
-	int op;
 	uint64_t address_value;
+	int op;
+	bool ok;
 };
 
 void _crypto_cb(const u8 *const buf, size_t buflen, size_t copied,

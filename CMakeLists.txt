@@ -107,6 +107,7 @@ set(SRC
     src/sock.c
     src/util.c
     src/vm.c
+    src/tty.c
 )
 
 # Step M: Create the 'persist' Target using configure_file
