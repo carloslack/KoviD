@@ -17,6 +17,36 @@
 #define prwarn_once(fmt, ...) pr_warn_once(fmt, ##__VA_ARGS__);
 #define prerr_once(fmt, ...) pr_err_once(fmt, ##__VA_ARGS__);
 
+/**
+ * _testlog: macros for logging test-related information.
+ *
+ * Used for testing purposes and prefixes log messages with, suggestion,
+ * "<test name>:<component name>" and the provided module name.
+ * The format string and additional
+ * arguments follow the standard `pr_` logging mechanism.
+ *
+ * Once this macro is used in the code (or modified from the standard,
+ * example,`prinfo`), any further modifications to its content
+ * should be agreed upon with the testers.
+ *
+ * module: The name of the module or test name (e.g., "my_module") to be included in the log.
+ * fmt: The format string for the log message, followed by any additional arguments.
+ */
+#define prinfo_testlog(test, module, fmt, ...) pr_info("%s:%s: " fmt, test, module, ##__VA_ARGS__);
+#define prwarn_testlog(test, module, fmt, ...) pr_warn("%s:%s: " fmt, test, module, ##__VA_ARGS__);
+#define prerr_testlog(test, module, fmt, ...) pr_err("%s:%s: " fmt, test, module, ##__VA_ARGS__);
+#define premerg_testlog(test, module, fmt, ...) pr_emerg("%s:%s: " fmt, test, module, ##__VA_ARGS__);
+#define pralert_testlog(test, module, fmt, ...) pr_alert("%s:%s: " fmt, test, module, ##__VA_ARGS__);
+#define prcrit_testlog(test, module, fmt, ...) pr_crit("%s:%s: " fmt, test, module, ##__VA_ARGS__);
+#define prnotice_testlog(test, module, fmt, ...) pr_notice("%s:%s: " fmt, test, module, ##__VA_ARGS__);
+
+#define prinfo_ratelimited_testlog(test, module, fmt, ...) pr_info_ratelimited("%s:%s: " fmt, test, module, ##__VA_ARGS__);
+#define prwarn_ratelimited_testlog(test, module, fmt, ...) pr_warn_ratelimited("%s:%s: " fmt, test, module, ##__VA_ARGS__);
+#define prerr_ratelimited_testlog(test, module, fmt, ...) pr_err_ratelimited("%s:%s: " fmt, test, module, ##__VA_ARGS__);
+#define prinfo_once_testlog(test, fmt, module, ...) pr_info_once("%s:%s: " fmt, test, module, ##__VA_ARGS__);
+#define prwarn_once_testlog(test, fmt, module, ...) pr_warn_once("%s:%s: " fmt, test, module, ##__VA_ARGS__);
+#define prerr_once_testlog(test, fmt, module, ...) pr_err_once("%s:%s: " fmt, test, module, ##__VA_ARGS__);
+
 #else
 
 /** Quiet */
