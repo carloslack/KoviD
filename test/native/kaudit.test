@@ -15,5 +15,5 @@ sudo dmesg
 
 # CHECK: loaded.
 # CHECK: Cool! Now try 'su'
-# CHECK: Uninstalling: 'sys_exit_group' syscall=1
+# CHECK: Uninstalling: '__x64_sys_exit_group' syscall=1
 # CHECK: unloaded.

