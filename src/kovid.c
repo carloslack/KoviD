@@ -484,7 +484,7 @@ static const match_table_t tokens = {
 #ifdef DEBUG_RING_BUFFER
 	{ Opt_get_bdkey, "get-bdkey" },
 	{ Opt_get_unhidekey, "get-unhidekey" },
-#endi
+#endif
 	{ Opt_socket_filter, "socket-filter" },
 	{ Opt_unknown, NULL }
 };
