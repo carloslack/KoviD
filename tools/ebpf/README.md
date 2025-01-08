@@ -19,7 +19,7 @@ $ make all
 
 ## Usage
 
-Make sure you have libbpf, libelf, and zlib installed (e.g., sudo apt-get install libbpf-dev libelf-dev zlib1g-dev on Debian/Ubuntu).
+Make sure you have libbpf, libelf, and zlib installed (e.g., `sudo apt-get install libbpf-dev libelf-dev zlib1g-dev clang` on Debian/Ubuntu).
 
 ```bash
 $ sudo ./socket_filter
@@ -35,5 +35,8 @@ Port 443 => 5 packets
 Since this eBPF program runs completely in user space, we can run the program from our LKM with `call_usermodehelper` . For example:
 
 ```
+$ sudo cp ./socket_filter /usr/bin/
+$ sudo cp ./socket_filter_bpf.o /usr/bin/
+
 echo "monitor-http-tcp" > /proc/myprocname
 ```
