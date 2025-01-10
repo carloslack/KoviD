@@ -1,10 +1,12 @@
-// This file defines a simple eBPF socket filter program that monitors IPv4 TCP
-// traffic. If the destination port is 22 (SSH) or 443 (HTTPS), it increments
-// a counter in the port_count_map. The program then passes the packet up
-// the stack (returns skb->len) without modifying or dropping it.
-// To compile it, use:
-// $ clang   -O2 -g -Wall   -target bpf   -D__TARGET_ARCH_x86   -c
-// socket_filter_bpf.c -o socket_filter_bpf.o -I ./
+// This file defines a simple eBPF socket filter program that:
+//   - Increments counters for SSH(22) / HTTPS(443) traffic (port_count_map).
+//   - Captures 8 bytes from the first packet of HTTP (port 8080) traffic
+//     and stores them in http_snippet_map for user space to retrieve.
+//
+// Caveats:
+//   - Assumes minimal IP/TCP headers (offset 54 for TCP payload).
+//   - Only captures 8 bytes from a single packet. No reassembly.
+//   - Overwrites the snippet each time we see a new port-8080 packet.
 
 #include <linux/types.h>
 
@@ -12,9 +14,9 @@
 #include <bpf/bpf_helpers.h>
 #include <linux/bpf.h>
 #include <linux/if_ether.h>
-#include <linux/in.h>
+#include <linux/in.h> // IPPROTO_TCP
 
-// Map to store packet counts keyed by a port number
+// 1) Existing map for counting packets on SSH/HTTPS
 struct {
   __uint(type, BPF_MAP_TYPE_HASH);
   __uint(max_entries, 256);
@@ -22,7 +24,22 @@ struct {
   __type(value, __u64);
 } port_count_map SEC(".maps");
 
-// Helper function to read a 16-bit value at the given offset
+// 2) New map for storing an 8-byte HTTP snippet
+struct http_snippet {
+  __u8 data[8]; // 8-byte snippet
+  __u32 used;   // 1 => valid, 0 => no snippet
+};
+
+// We'll store only one snippet at [key=0], overwriting each time we see port
+// 8080
+struct {
+  __uint(type, BPF_MAP_TYPE_ARRAY);
+  __uint(max_entries, 1);
+  __type(key, __u32);
+  __type(value, struct http_snippet);
+} http_snippet_map SEC(".maps");
+
+// Helper to read 16 bits at a given offset
 static __always_inline int read_u16(struct __sk_buff *ctx, int offset,
                                     __u16 *val) {
   return bpf_skb_load_bytes(ctx, offset, val, 2);
@@ -30,13 +47,12 @@ static __always_inline int read_u16(struct __sk_buff *ctx, int offset,
 
 SEC("socket")
 int socket_filter_prog(struct __sk_buff *ctx) {
-  // The packet length (in bytes)
+  // 1) Basic checks: must at least have Ethernet header
   if (ctx->len < sizeof(struct ethhdr)) {
-    // Not enough for even an Ethernet header
-    return 0; // TODO: or return ctx->len if you prefer passing
+    return 0; // or return ctx->len
   }
 
-  // Check ethertype (offset 12..13 in Ethernet header)
+  // Check ethertype at offset 12..13 => must be IPv4
   __u16 eth_type;
   if (read_u16(ctx, 12, &eth_type) < 0) {
     return 0;
@@ -47,31 +63,29 @@ int socket_filter_prog(struct __sk_buff *ctx) {
     return ctx->len;
   }
 
-  // Now check if we have enough bytes for IPv4 minimum header
-  // Ethernet header is 14 bytes. IP min header is 20 bytes => 34 total
+  // We need at least 34 bytes for Eth(14) + IP(20) to check IP protocol
+  // offset=23
   if (ctx->len < 34) {
     return ctx->len;
   }
 
-  // IP protocol field is at offset 23 from the Ethernet start:
-  // [ Ethernet(14) + IP(9) = 23 total offset to ip->protocol ]
-  __u8 ip_protocol;
-  if (bpf_skb_load_bytes(ctx, 23, &ip_protocol, 1) < 0) {
+  // IP protocol at offset 23 => must be TCP (0x06)
+  __u8 ip_proto;
+  if (bpf_skb_load_bytes(ctx, 23, &ip_proto, 1) < 0) {
     return ctx->len;
   }
-  if (ip_protocol != IPPROTO_TCP) {
+  if (ip_proto != IPPROTO_TCP) {
     return ctx->len;
   }
 
-  // For a minimal approach, let's assume no IP options:
-  // TCP header starts at offset 34 => we can read ports at
-  // offsets 34..35, 36..37. TCP dest port is offset 36..37
+  // TCP dest port offset => 36..37
   __u16 dest_port;
   if (bpf_skb_load_bytes(ctx, 36, &dest_port, 2) < 0) {
     return ctx->len;
   }
   dest_port = bpf_ntohs(dest_port);
 
+  // 2) If it's SSH(22) or HTTPS(443), increment counters
   if (dest_port == 22 || dest_port == 443) {
     __u64 init_val = 1, *count;
     count = bpf_map_lookup_elem(&port_count_map, &dest_port);
@@ -82,7 +96,33 @@ int socket_filter_prog(struct __sk_buff *ctx) {
     }
   }
 
-  // Let the packet pass
+  // 3) If it's HTTP (port 8080), capture 8 bytes from the TCP payload offset=54
+  //    (assuming no IP/TCP options: 14 + 20 + 20 = 54).
+  // TODO: Make dest_port dynamic.
+  if (dest_port == 8080) {
+    // Make sure the packet is at least 54 + 8
+    if (ctx->len >= 54 + 8) {
+      // We'll do 8 single-byte reads so older verifiers are more likely to
+      // allow it
+      __u8 snippet[8];
+#pragma unroll
+      for (int i = 0; i < 8; i++) {
+        bpf_skb_load_bytes(ctx, 54 + i, &snippet[i], 1);
+      }
+
+      // Store snippet in http_snippet_map[0]
+      __u32 key = 0;
+      struct http_snippet s = {};
+#pragma unroll
+      for (int i = 0; i < 8; i++) {
+        s.data[i] = snippet[i];
+      }
+      s.used = 1; // Mark as valid
+      bpf_map_update_elem(&http_snippet_map, &key, &s, BPF_ANY);
+    }
+  }
+
+  // Finally, pass the packet
   return ctx->len;
 }
 
