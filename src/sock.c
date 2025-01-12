@@ -321,6 +321,8 @@ static int _bd_add_new_iph(struct iphdr *iph, struct tcphdr *tcph)
 	ip->iph = iph;
 	ip->tcph = tcph;
 	ip->established = false;
+	prinfo("Adding new connection port source=%u, dest=%u\n",
+	       ntohs(ip->tcph->source), ntohs(ip->tcph->dest));
 	list_add_tail(&ip->list, &iph_node);
 	return 0;
 error:

