@@ -14,7 +14,7 @@
 #include <bpf/bpf_helpers.h>
 #include <linux/bpf.h>
 #include <linux/if_ether.h>
-#include <linux/in.h> // IPPROTO_TCP
+#include <linux/in.h>
 
 // 1) Existing map for counting packets on SSH/HTTPS
 struct {
@@ -25,8 +25,9 @@ struct {
 } port_count_map SEC(".maps");
 
 // 2) New map for storing an 8-byte HTTP snippet
+#define HTTP_MAX_BYTES 64
 struct http_snippet {
-  __u8 data[8]; // 8-byte snippet
+  __u8 data[HTTP_MAX_BYTES];
   __u32 used;   // 1 => valid, 0 => no snippet
 };
 
@@ -96,17 +97,17 @@ int socket_filter_prog(struct __sk_buff *ctx) {
     }
   }
 
-  // 3) If it's HTTP (port 8080), capture 8 bytes from the TCP payload offset=54
+  // 3) If it's HTTP (port 8080), capture HTTP_MAX_BYTES bytes from the TCP payload offset=54
   //    (assuming no IP/TCP options: 14 + 20 + 20 = 54).
   // TODO: Make dest_port dynamic.
   if (dest_port == 8080) {
-    // Make sure the packet is at least 54 + 8
-    if (ctx->len >= 54 + 8) {
-      // We'll do 8 single-byte reads so older verifiers are more likely to
+    // Make sure the packet is at least 54 + HTTP_MAX_BYTES
+    if (ctx->len >= 54 + HTTP_MAX_BYTES) {
+      // We'll do HTTP_MAX_BYTES single-byte reads so older verifiers are more likely to
       // allow it
-      __u8 snippet[8];
+      __u8 snippet[HTTP_MAX_BYTES];
 #pragma unroll
-      for (int i = 0; i < 8; i++) {
+      for (int i = 0; i < HTTP_MAX_BYTES; i++) {
         bpf_skb_load_bytes(ctx, 54 + i, &snippet[i], 1);
       }
 
@@ -114,7 +115,7 @@ int socket_filter_prog(struct __sk_buff *ctx) {
       __u32 key = 0;
       struct http_snippet s = {};
 #pragma unroll
-      for (int i = 0; i < 8; i++) {
+      for (int i = 0; i < HTTP_MAX_BYTES; i++) {
         s.data[i] = snippet[i];
       }
       s.used = 1; // Mark as valid
