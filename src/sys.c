@@ -567,7 +567,8 @@ static asmlinkage long m_recvmsg(struct pt_regs *regs)
 		/** It is dest port for us, but for back-door it is source */
 		if (kv_bd_search_iph_source_port(idm->id.idiag_dport)) {
 			/** Just print and do nothing else, for now */
-			prinfo("netlink: Got match for port %d\n", ntohs(idm->id.idiag_dport))
+			prinfo("netlink: Got match for port %d\n",
+			       ntohs(idm->id.idiag_dport))
 		}
 	}
 

