@@ -22,7 +22,7 @@ $ make all
 Make sure you have libbpf, libelf, and zlib installed (e.g., sudo apt-get install libbpf-dev libelf-dev zlib1g-dev on Debian/Ubuntu).
 
 ```bash
-$ sudo ./socket_filter_user
+$ sudo ./socket_filter
 Port 22 => 3 packets
 Port 443 => 5 packets
 ------
