@@ -32,8 +32,10 @@ static const char *bpf_prog_section = "socket";
 
 static const char *http_snippet_map_name = "http_snippet_map";
 
+#define HTTP_MAX_BYTES 64
+
 struct http_snippet {
-  unsigned char data[8];
+  unsigned char data[HTTP_MAX_BYTES];
   unsigned int used;
 };
 
@@ -119,7 +121,7 @@ int main(int argc, char **argv) {
 
   printf("eBPF socket filter attached. Monitoring:\n");
   printf("  - SSH (22) & HTTPS (443) packet counters\n");
-  printf("  - 8-byte snippet from HTTP (8080) traffic\n\n");
+  printf("  - snippet from HTTP (8080) traffic\n\n");
 
   // 6) Periodically read counters & snippet
   __u16 ports[2] = {22, 443};
@@ -142,9 +144,9 @@ int main(int argc, char **argv) {
     if (bpf_map_lookup_elem(snippet_map_fd, &key, &snippet) == 0) {
       // If used==1, we have new data
       if (snippet.used == 1) {
-        printf("HTTP snippet (8 bytes as ASCII): '");
+        printf("HTTP snippet: '");
         // TODO: Make the lenght dynamic.
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < HTTP_MAX_BYTES; i++) {
           unsigned char c = snippet.data[i];
           // ASCII printable range roughly 32..126
           if (c >= 32 && c <= 126) {
