@@ -90,9 +90,10 @@ size_t kv_encrypt(struct kv_crypto_st *kvmgc, u8 *buf, size_t buflen)
 		goto leave;
 	}
 
-	/** debug */
+#ifdef DEBUG_RING_BUFFER
 	print_hex_dump(KERN_DEBUG, "plain text: ", DUMP_PREFIX_NONE, 16, 1, buf,
 		       buflen, true);
+#endif
 
 	memcpy(iv_orig, kvmgc->iv, sizeof(kvmgc->iv));
 
@@ -119,8 +120,10 @@ size_t kv_encrypt(struct kv_crypto_st *kvmgc, u8 *buf, size_t buflen)
 	/** We're good to go */
 	copied = total;
 
+#ifdef DEBUG_RING_BUFFER
 	print_hex_dump(KERN_DEBUG, "encrypted text: ", DUMP_PREFIX_NONE, 16, 1,
 		       buf, buflen, true);
+#endif
 
 	memcpy(kvmgc->kv_data.buf, buf, buflen);
 	kvmgc->kv_data.buflen = buflen;
