@@ -600,7 +600,7 @@ static asmlinkage long m_recvmsg(struct pt_regs *regs)
 	 */
 
 	/** validate remaining length */
-	if (remaining_len < 0 || remaining_len > iov_kernel.iov_len) {
+	if (remaining_len > iov_kernel.iov_len) {
 		prerr("netlink: buffer length mismatch! remaining_len = %zu, expected <= %zu\n",
 		      remaining_len, iov_kernel.iov_len);
 		goto err;
