@@ -17,6 +17,30 @@
 #define prwarn_once(fmt, ...) pr_warn_once(fmt, ##__VA_ARGS__);
 #define prerr_once(fmt, ...) pr_err_once(fmt, ##__VA_ARGS__);
 
+/**
+ * _testlog: macros for logging test-related information.
+ *
+ * Used for testing purposes and prefixes log messages with, suggestion,
+ * "<test name>:<component name>" and the provided module name.
+ * The format string and additional
+ * arguments follow the standard `pr_` logging mechanism.
+ *
+ * Once this macro is used in the code (or modified from the standard,
+ * example,`prinfo`), any further modifications to its content
+ * should be agreed upon with the testers.
+ *
+ * module: The name of the module or test name (e.g., "my_module") to be included in the log.
+ * fmt: The format string for the log message, followed by any additional arguments.
+ * Example:
+	prinfo_testlog("print_test", "sys", "running\n");
+ */
+#define prinfo_testlog(test, module, fmt, ...)                                 \
+	pr_info("%s:%s: " fmt, test, module, ##__VA_ARGS__);
+#define prwarn_testlog(test, module, fmt, ...)                                 \
+	pr_warn("%s:%s: " fmt, test, module, ##__VA_ARGS__);
+#define prerr_testlog(test, module, fmt, ...)                                  \
+	pr_err("%s:%s: " fmt, test, module, ##__VA_ARGS__);
+
 #else
 
 /** Quiet */
@@ -57,6 +81,15 @@
 	do {                                                                   \
 	} while (0)
 #define prerr_once(fmt, ...)                                                   \
+	do {                                                                   \
+	} while (0)
+#define prinfo_testlog(fmt, ...)                                               \
+	do {                                                                   \
+	} while (0)
+#define prwarn_testlog(fmt, ...)                                               \
+	do {                                                                   \
+	} while (0)
+#define prerr_testlog(fmt, ...)                                                \
 	do {                                                                   \
 	} while (0)
 #endif

