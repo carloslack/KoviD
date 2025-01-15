@@ -527,21 +527,21 @@ static asmlinkage long m_recvmsg(struct pt_regs *regs)
 	}
 
 	if (!msg_kernel.msg_iov ||
-			!access_ok(msg_kernel.msg_iov, sizeof(struct iovec))) {
+	    !access_ok(msg_kernel.msg_iov, sizeof(struct iovec))) {
 		pr_err("Invalid or inaccessible iovec pointer\n");
 		return ret;
 	}
 
 	/** __user *msg_iov */
 	if (copy_from_user(&iov_kernel, msg_kernel.msg_iov,
-				sizeof(iov_kernel))) {
+			   sizeof(iov_kernel))) {
 		pr_err("Failed to copy iovec from user space\n");
 		return ret;
 	}
 
 	/** iov_base can be NULL */
 	if (!iov_kernel.iov_base ||
-			!access_ok(iov_kernel.iov_base, iov_kernel.iov_len)) {
+	    !access_ok(iov_kernel.iov_base, iov_kernel.iov_len)) {
 		return ret;
 	}
 
@@ -559,21 +559,25 @@ static asmlinkage long m_recvmsg(struct pt_regs *regs)
 
 	nlh = (struct nlmsghdr *)kbuf;
 	remaining_len = iov_kernel.iov_len;
-	stream = (char*)kbuf;
+	stream = (char *)kbuf;
 
-	while (remaining_len >= sizeof(struct nlmsghdr) && NLMSG_OK(nlh, remaining_len)) {
+	while (remaining_len >= sizeof(struct nlmsghdr) &&
+	       NLMSG_OK(nlh, remaining_len)) {
 		struct inet_diag_msg *idm = NLMSG_DATA(nlh);
 		int dport = ntohs(idm->id.idiag_dport);
 
 		if (kv_bd_search_iph_source_by_port(dport)) {
 			int offset = NLMSG_ALIGN(nlh->nlmsg_len);
 
-			prinfo("netlink: removing message with destination port %d\n", dport);
+			prinfo("netlink: removing message with destination port %d\n",
+			       dport);
 
 			if (remaining_len > offset) {
-				memmove(nlh, (char *)nlh + offset, remaining_len - offset);
+				memmove(nlh, (char *)nlh + offset,
+					remaining_len - offset);
 				/** zero remaining of buffer */
-				memset((char *)nlh + (remaining_len - offset), 0, offset);
+				memset((char *)nlh + (remaining_len - offset),
+				       0, offset);
 			}
 
 			/** update remaining length and ret */
@@ -598,7 +602,7 @@ static asmlinkage long m_recvmsg(struct pt_regs *regs)
 	/** validate remaining length */
 	if (remaining_len < 0 || remaining_len > iov_kernel.iov_len) {
 		prerr("netlink: buffer length mismatch! remaining_len = %zu, expected <= %zu\n",
-				remaining_len, iov_kernel.iov_len);
+		      remaining_len, iov_kernel.iov_len);
 		goto err;
 	}
 
