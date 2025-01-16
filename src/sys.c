@@ -382,8 +382,6 @@ static unsigned long _get_sys_addr(unsigned long addr)
 	return 0UL;
 }
 
-//XXX
-//long sys_bpf(int cmd, union bpf_attr *attr, unsigned int size);
 static asmlinkage long m_bpf(struct pt_regs *regs)
 {
 	long ret = 0;
@@ -600,7 +598,7 @@ static asmlinkage long m_recvmsg(struct pt_regs *regs)
 	 */
 
 	/** validate remaining length */
-	if (remaining_len < 0 || remaining_len > iov_kernel.iov_len) {
+	if (remaining_len > iov_kernel.iov_len) {
 		prerr("netlink: buffer length mismatch! remaining_len = %zu, expected <= %zu\n",
 		      remaining_len, iov_kernel.iov_len);
 		goto err;
