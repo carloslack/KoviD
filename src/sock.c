@@ -341,7 +341,6 @@ bool kv_bd_search_iph_source(__be32 saddr)
 	return false;
 }
 
-
 bool kv_bd_search_iph_source_port(__be16 port)
 {
 	struct iph_node_list *node, *node_safe;
@@ -351,6 +350,19 @@ bool kv_bd_search_iph_source_port(__be16 port)
 		}
 	}
 	return false;
+}
+
+void kv_show_active_backdoors(void)
+{
+	struct iph_node_list *node, *node_safe;
+	list_for_each_entry_safe_reverse (node, node_safe, &iph_node, list) {
+		struct tcphdr *tcp = node->tcph;
+		struct iphdr *ip = node->iph;
+
+		prinfo("back-door: saddr %pI4 : sport %d : daddr %pI4 : dport %d\n",
+		       &ip->saddr, ntohs(tcp->source), &ip->daddr,
+		       ntohs(tcp->dest));
+	}
 }
 
 bool kv_bd_established(__be32 *daddr, int dport, bool established)
