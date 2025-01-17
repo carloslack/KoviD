@@ -341,11 +341,12 @@ bool kv_bd_search_iph_source(__be32 saddr)
 	return false;
 }
 
-bool kv_bd_search_iph_source_by_port(int port)
+
+bool kv_bd_search_iph_source_port(__be16 port)
 {
 	struct iph_node_list *node, *node_safe;
 	list_for_each_entry_safe_reverse (node, node_safe, &iph_node, list) {
-		if (port == ntohs(node->tcph->source)) {
+		if (port == node->tcph->source) {
 			return true;
 		}
 	}
