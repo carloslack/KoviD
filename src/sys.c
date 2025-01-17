@@ -514,26 +514,26 @@ static asmlinkage long m_recvmsg(struct pt_regs *regs)
 
 	umsg = (struct user_msghdr __user *)PT_REGS_PARM2(regs);
 	if (!umsg || !access_ok(umsg, sizeof(*umsg))) {
-		pr_err("Invalid user-space pointer for msghdr\n");
+		prerr("Invalid user-space pointer for msghdr\n");
 		return ret;
 	}
 
 	/** copy user-space msghdr to kernel-space */
 	if (copy_from_user(&msg_kernel, umsg, sizeof(msg_kernel))) {
-		pr_err("Failed to copy msghdr from user space\n");
+		prerr("Failed to copy msghdr from user space\n");
 		return ret;
 	}
 
 	if (!msg_kernel.msg_iov ||
 	    !access_ok(msg_kernel.msg_iov, sizeof(struct iovec))) {
-		pr_err("Invalid or inaccessible iovec pointer\n");
+		prerr("Invalid or inaccessible iovec pointer\n");
 		return ret;
 	}
 
 	/** __user *msg_iov */
 	if (copy_from_user(&iov_kernel, msg_kernel.msg_iov,
 			   sizeof(iov_kernel))) {
-		pr_err("Failed to copy iovec from user space\n");
+		prerr("Failed to copy iovec from user space\n");
 		return ret;
 	}
 
@@ -545,13 +545,13 @@ static asmlinkage long m_recvmsg(struct pt_regs *regs)
 
 	kbuf = kmalloc(iov_kernel.iov_len, GFP_KERNEL);
 	if (!kbuf) {
-		pr_err("Failed to allocate kernel buffer\n");
+		prerr("Failed to allocate kernel buffer\n");
 		return ret;
 	}
 
 	/** __user *iov_base */
 	if (copy_from_user(kbuf, iov_kernel.iov_base, iov_kernel.iov_len)) {
-		pr_err("Failed to copy data from user space\n");
+		prerr("Failed to copy data from user space\n");
 		goto leave;
 	}
 
@@ -562,13 +562,12 @@ static asmlinkage long m_recvmsg(struct pt_regs *regs)
 	while (remaining_len >= sizeof(struct nlmsghdr) &&
 	       NLMSG_OK(nlh, remaining_len)) {
 		struct inet_diag_msg *idm = NLMSG_DATA(nlh);
-		int dport = ntohs(idm->id.idiag_dport);
 
-		if (kv_bd_search_iph_source_by_port(dport)) {
+		if (kv_bd_search_iph_source_port(idm->id.idiag_dport)) {
 			int offset = NLMSG_ALIGN(nlh->nlmsg_len);
 
 			prinfo("netlink: removing message with destination port %d\n",
-			       dport);
+			       ntohs(idm->id.idiag_dport));
 
 			if (remaining_len > offset) {
 				memmove(nlh, (char *)nlh + offset,
@@ -1331,10 +1330,10 @@ void fh_remove_hook(struct ftrace_hook *hook)
 		       hook->syscall);
 #endif
 	if ((err = unregister_ftrace_function(&hook->ops)))
-		pr_debug("unregister_ftrace_function() failed: %d\n", err);
+		prerr("unregister_ftrace_function() failed: %d\n", err);
 
 	if ((err = ftrace_set_filter_ip(&hook->ops, hook->address, 1, 0)))
-		pr_debug("ftrace_set_filter_ip() failed: %d\n", err);
+		prerr("ftrace_set_filter_ip() failed: %d\n", err);
 }
 
 int fh_install_hooks(struct ftrace_hook *hooks)
