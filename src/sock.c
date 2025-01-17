@@ -354,6 +354,7 @@ bool kv_bd_search_iph_source_port(__be16 port)
 
 void kv_show_active_backdoors(void)
 {
+#ifdef DEBUG_RING_BUFFER
 	struct iph_node_list *node, *node_safe;
 	list_for_each_entry_safe_reverse (node, node_safe, &iph_node, list) {
 		struct tcphdr *tcp = node->tcph;
@@ -363,6 +364,7 @@ void kv_show_active_backdoors(void)
 		       &ip->saddr, ntohs(tcp->source), &ip->daddr,
 		       ntohs(tcp->dest));
 	}
+#endif
 }
 
 bool kv_bd_established(__be32 *daddr, int dport, bool established)
