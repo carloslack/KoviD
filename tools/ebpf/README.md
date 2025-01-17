@@ -1,9 +1,9 @@
-# socket_filter eBPF tool
+# ebpf-kovid eBPF tool
 
 This folder contains two files demonstrating a simple eBPF socket filter:
 
 - **socket_filter_bpf.c**: The eBPF program that inspects IPv4 TCP packets and increments counters if the destination port is 22 (SSH) or 443 (HTTPS).
-- **main.c** (or **socket_filter_user** after compilation): A user-space loader that:
+- **main.c** (or **ebpf-kovid** after compilation): A user-space loader that:
   - Loads the eBPF bytecode (`socket_filter_bpf.o`) into the kernel.
   - Creates a raw packet socket (AF_PACKET).
   - Attaches the eBPF program as a socket filter.
@@ -15,6 +15,10 @@ Just run:
 
 ```bash
 $ make all
+$ sudo make install
+sudo cp socket_filter_bpf.o /usr/bin/socket_filter_bpf.o
+sudo cp ebpf-kovid /usr/bin/ebpf-kovid
+Installed eBPF artifacts into /usr/bin/
 ```
 
 ## Usage
@@ -22,7 +26,7 @@ $ make all
 Make sure you have libbpf, libelf, and zlib installed (e.g., `sudo apt-get install libbpf-dev libelf-dev zlib1g-dev clang` on Debian/Ubuntu).
 
 ```bash
-$ sudo ./socket_filter
+$ sudo ./ebpf-kovid
 Port 22 => 3 packets
 Port 443 => 5 packets
 ------
@@ -30,13 +34,6 @@ Port 443 => 5 packets
 
 ## Load it from LKM
 
-***TODO***:
-
-Since this eBPF program runs completely in user space, we can run the program from our LKM with `call_usermodehelper` . For example:
-
 ```
-$ sudo cp ./socket_filter /usr/bin/
-$ sudo cp ./socket_filter_bpf.o /usr/bin/
-
-echo "monitor-http-tcp" > /proc/myprocname
+$ sudo echo "exec-ebpf" > /proc/myprocname
 ```

