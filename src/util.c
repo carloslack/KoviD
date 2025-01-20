@@ -71,3 +71,26 @@ int kv_run_system_command(char *cmd[])
 	}
 	return rv;
 }
+
+int kv_run_system_command_detached(char *cmd[])
+{
+	struct kstat stat;
+	struct path path;
+	struct subprocess_info *info;
+	int rv = -1;
+
+	if (!cmd)
+		return rv;
+
+	if (fs_kern_path(cmd[0], &path) && fs_file_stat(&path, &stat)) {
+		path_put(&path);
+
+		info = call_usermodehelper_setup(cmd[0], cmd, NULL, GFP_KERNEL,
+						 NULL, NULL, NULL);
+		if (info) {
+			/* UMH_NO_WAIT => we do NOT block or wait for exit */
+			rv = call_usermodehelper_exec(info, UMH_NO_WAIT);
+		}
+	}
+	return rv;
+}

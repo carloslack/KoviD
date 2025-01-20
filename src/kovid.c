@@ -635,11 +635,17 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 			}
 		} break;
 		case Opt_exec_epbf: {
-			char *cmd[] = { "/usr/bin/ebpf-kovid", NULL, NULL };
-			if (!kv_run_system_command(cmd)) {
-				pr_info("KoviD: Launching ebpf-kovid program\n");
+			static char *cmd[] = { "/usr/bin/ebpf-kovid", NULL,
+					       NULL };
+			int ret;
+
+			/* Use the *detached* version so we don't block */
+			ret = kv_run_system_command_detached(cmd);
+			if (ret == 0) {
+				pr_info("KoviD: Launched ebpf-kovid in background.\n");
 			} else {
-				pr_info("KoviD: Failed to run ebpf-kovid program\n");
+				pr_info("KoviD: Failed to run ebpf-kovid, ret=%d\n",
+					ret);
 			}
 		} break;
 #ifdef DEBUG_RING_BUFFER
