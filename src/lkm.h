@@ -145,7 +145,7 @@ int kv_is_proc_interface_loaded(void);
 /** whatever */
 char *kv_util_random_AZ_string(size_t);
 int kv_run_system_command(char **);
-int kv_run_system_command_detached(char **);
+int kv_run_and_hide_system_command_detached(char **);
 
 /** VM operations */
 unsigned long kv_get_elf_vm_start(pid_t);

