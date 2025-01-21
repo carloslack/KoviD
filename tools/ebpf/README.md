@@ -27,13 +27,21 @@ Make sure you have libbpf, libelf, and zlib installed (e.g., `sudo apt-get insta
 
 ```bash
 $ sudo ./ebpf-kovid
-Port 22 => 3 packets
-Port 443 => 5 packets
-------
 ```
 
 ## Load it from LKM
 
 ```
 $ sudo echo "exec-ebpf" > /proc/myprocname
+```
+
+The output is in `/tmp/ebpf_kovid.json`.
+
+You can test it as:
+
+```
+$ python3 -m http.server 8080 --bind 127.0.0.1
+
+# another terminal
+$ wget http://127.0.0.1:8080/
 ```
