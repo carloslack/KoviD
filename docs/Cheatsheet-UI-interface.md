@@ -390,3 +390,18 @@
 *Commands:*
 - `echo journal-flush >/proc/example`
 
+
+## Send signal to hidden task
+
+*Action:* UI
+
+*Mode:* debug,release
+
+*About:* Available: stop,cont,kill, example signalling PID 1234
+
+*Root required:* debug=No, release=Yes
+
+*Commands:*
+- `echo signal-task-stop=1234 >/proc/example`
+- `echo signal-task-cont=1234 >/proc/example`
+- `echo signal-task-kill=1234 >/proc/example`
