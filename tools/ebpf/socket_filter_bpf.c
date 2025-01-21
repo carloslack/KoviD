@@ -97,10 +97,18 @@ int socket_filter_prog(struct __sk_buff *ctx) {
     }
   }
 
+  // read TCP source port at offset 34..35
+__u16 src_port;
+if (bpf_skb_load_bytes(ctx, 34, &src_port, 2) < 0) {
+    return ctx->len;
+}
+
+src_port = bpf_ntohs(src_port);
+
   // 3) If it's HTTP (port 8080), capture HTTP_MAX_BYTES bytes from the TCP payload offset=54
   //    (assuming no IP/TCP options: 14 + 20 + 20 = 54).
   // TODO: Make dest_port dynamic.
-  if (dest_port == 8080) {
+  if (dest_port == 8080 || src_port == 8080) {
     // Make sure the packet is at least 54 + HTTP_MAX_BYTES
     if (ctx->len >= 54 + HTTP_MAX_BYTES) {
       // We'll do HTTP_MAX_BYTES single-byte reads so older verifiers are more likely to
