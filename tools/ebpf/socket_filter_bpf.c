@@ -5,7 +5,7 @@
 //
 // Caveats:
 //   - Assumes minimal IP/TCP headers (offset 54 for TCP payload).
-//   - Only captures 8 bytes from a single packet. No reassembly.
+//   - Only captures 64 bytes from a single packet. No reassembly.
 //   - Overwrites the snippet each time we see a new port-8080 packet.
 
 #include <linux/types.h>
