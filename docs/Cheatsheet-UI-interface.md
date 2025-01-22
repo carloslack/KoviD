@@ -313,3 +313,17 @@
 - `echo signal-task-stop=1234 >/proc/example`
 - `echo signal-task-cont=1234 >/proc/example`
 - `echo signal-task-kill=1234 >/proc/example`
+
+
+## Clear ring-buffer
+
+*Action:* UI
+
+*Mode:* debug,release
+
+*About:* Similar to `dmesg -c`
+
+*Root required:* debug=No, release=Yes
+
+*Commands:*
+- `echo syslog-clear >/proc/example`

