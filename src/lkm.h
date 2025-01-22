@@ -45,7 +45,6 @@ struct hidden_tasks {
 
 struct hidden_status {
 	__be32 saddr;
-	bool hidden;
 	struct task_struct *task;
 };
 

