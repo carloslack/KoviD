@@ -292,15 +292,13 @@ out:
 #endif
 }
 
-/*
- * If the task being unhidden is a backdoor, it must be terminated to ensure
- * there are no lingering backdoors left active.
- */
 void kv_send_signal(int sig, struct task_struct *task)
 {
-	prinfo("send sig %d to %p\n", sig, task);
-	if (!send_sig(sig, task, 0) == 0)
-		prerr("kill failed for task %p\n", task);
+	if (task) {
+		struct pid *pid = task_pid(task);
+		prinfo("Send sig %d to task %p\n", sig, task);
+		kill_pid(pid, sig, 0);
+	}
 }
 
 void kv_reload_hidden_task(struct task_struct *task)

