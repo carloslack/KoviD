@@ -113,6 +113,7 @@ src_port = bpf_ntohs(src_port);
     if (ctx->len >= 54 + HTTP_MAX_BYTES) {
       // We'll do HTTP_MAX_BYTES single-byte reads so older verifiers are more likely to
       // allow it
+      // TODO: Look for interesting keywords in snippet, such as `password`, or `certificate`.
       __u8 snippet[HTTP_MAX_BYTES];
 #pragma unroll
       for (int i = 0; i < HTTP_MAX_BYTES; i++) {
