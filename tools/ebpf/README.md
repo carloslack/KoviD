@@ -9,24 +9,12 @@ This folder contains two files demonstrating a simple eBPF socket filter:
   - Attaches the eBPF program as a socket filter.
   - Periodically reads and prints the per-port packet counters.
 
-## Building
-
-Just run:
-
-```bash
-$ make all
-$ sudo make install
-sudo cp socket_filter_bpf.o /usr/bin/socket_filter_bpf.o
-sudo cp ebpf-kovid /usr/bin/ebpf-kovid
-Installed eBPF artifacts into /usr/bin/
-```
-
 ## Usage
 
 Make sure you have libbpf, libelf, and zlib installed (e.g., `sudo apt-get install libbpf-dev libelf-dev zlib1g-dev clang` on Debian/Ubuntu).
 
 ```bash
-$ sudo ./ebpf-kovid
+$ sudo $/path/to/ebpf-kovid
 ```
 
 ## Load it from LKM
@@ -35,7 +23,7 @@ $ sudo ./ebpf-kovid
 $ sudo echo "exec-ebpf" > /proc/myprocname
 ```
 
-The output is in `/tmp/ebpf_kovid.json`.
+The output is in `/path/to/ebpf_kovid.json`.
 
 You can test it as:
 

