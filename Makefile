@@ -49,7 +49,7 @@ obj-m := ${OBJNAME}.o
 
 CC=gcc
 
-all: build-module install-ebpf
+all: build-module
 
 build-module:
 	# TODO: Check if we can generate a random PROCNAME, something like:
