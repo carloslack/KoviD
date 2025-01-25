@@ -33,9 +33,6 @@
 #include "version.h"
 #include "log.h"
 
-#define MAX_PROCFS_SIZE PAGE_SIZE
-#define MAX_MAGIC_WORD_SIZE 16
-#define MAX_64_BITS_ADDR_SIZE 16
 #ifndef MODNAME
 #pragma message "Missing \'MODNAME\' compilation directive. See Makefile."
 #endif
@@ -333,17 +330,17 @@ out_put_kobj:
 }
 
 struct elfbits_t {
-	char bits[MAX_PROCFS_SIZE + 1];
+	char bits[PAGE_SIZE];
 	bool ready;
 };
 static struct elfbits_t ElfBits;
 
-static void set_elfbits(char *bits)
+void kv_set_elfbits(char *bits)
 {
 	if (bits) {
 		spin_lock(&elfbits_spin);
 		memset(&ElfBits, 0, sizeof(struct elfbits_t));
-		snprintf(ElfBits.bits, MAX_PROCFS_SIZE, "%s", bits);
+		snprintf(ElfBits.bits, PAGE_SIZE-1, "%s", bits);
 		ElfBits.ready = true;
 		spin_unlock(&elfbits_spin);
 	}
@@ -378,26 +375,40 @@ static int open_cb(struct inode *ino, struct file *fptr)
 static ssize_t _seq_read(struct file *fptr, char __user *buffer, size_t count,
 			 loff_t *ppos)
 {
-	int len = 0;
+	ssize_t rv = 0;
 	bool ready = false;
 	struct elfbits_t *elfbits;
+	char *kbuf = NULL;
 
 	if (*ppos > 0 || !count)
 		return 0;
 
 	elfbits = get_elfbits(&ready);
-	if (elfbits && ready) {
-		char b[MAX_64_BITS_ADDR_SIZE + 2] = { 0 };
-		len = snprintf(b, sizeof(b), "%s\n", elfbits->bits);
-		if (copy_to_user(buffer, b, len))
-			return -EFAULT;
-	} else {
-		return -ENOENT;
+	if (!elfbits || !ready) {
+		rv = -ENOENT;
+		goto leave;
 	}
 
-	*ppos = len;
+	kbuf = kzalloc(PAGE_SIZE, GFP_KERNEL);
+	if (!kbuf) {
+		rv = -EFAULT;
+		goto leave;
+	}
 
-	return len;
+	rv = snprintf(kbuf, PAGE_SIZE-1, "%s\n", elfbits->bits);
+	if (copy_to_user(buffer, kbuf, rv)) {
+		rv = -EFAULT;
+		goto cleanup;
+	}
+
+	*ppos = rv;
+
+cleanup:
+	if (kbuf)
+		kfree(kbuf);
+
+leave:
+	return rv;
 }
 /*
  * This function removes the proc interface after a
@@ -515,7 +526,7 @@ void _crypto_cb(const u8 *const buf, size_t buflen, size_t copied,
 		 validate->op == Opt_get_bdkey) {
 		char bits[32 + 1] = { 0 };
 		snprintf(bits, 32, "%llx", *((uint64_t *)buf));
-		set_elfbits(bits);
+		kv_set_elfbits(bits);
 	}
 #endif
 }
@@ -654,7 +665,7 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 				char bits[32 + 1] = { 0 };
 				base = kv_get_elf_vm_start(pid);
 				snprintf(bits, 32, "%lx", base);
-				set_elfbits(bits);
+				kv_set_elfbits(bits);
 			}
 		} break;
 		case Opt_signal_task_stop:
@@ -740,11 +751,11 @@ try_reload:
 
 	/* set proc file maximum size & user as root */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 9, 0)
-	rrProcFileEntry->size = MAX_PROCFS_SIZE;
+	rrProcFileEntry->size = PAGE_SIZE;
 	rrProcFileEntry->uid = 0;
 	rrProcFileEntry->gid = 0;
 #else
-	proc_set_size(rrProcFileEntry, MAX_PROCFS_SIZE);
+	proc_set_size(rrProcFileEntry, PAGE_SIZE);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0)
 	kuid.val = 0;
 	kgid.val = 0;
