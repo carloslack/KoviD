@@ -145,6 +145,7 @@ void kv_bd_cleanup_item(__be32 *);
 int kv_add_proc_interface(void);
 void kv_remove_proc_interface(void);
 int kv_is_proc_interface_loaded(void);
+void kv_set_elfbits(char *);
 
 /** whatever */
 char *kv_util_random_AZ_string(size_t);
