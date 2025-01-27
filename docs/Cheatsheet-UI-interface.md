@@ -327,3 +327,17 @@
 
 *Commands:*
 - `echo syslog-clear >/proc/example`
+
+
+## Clear /proc `tainted`
+
+*Action:* UI
+
+*Mode:* debug,release
+
+*About:* Reset `/proc/sys/kernel/tainted`
+
+*Root required:* debug=No, release=Yes
+
+*Commands:*
+- `echo taint-clear >/proc/example`

