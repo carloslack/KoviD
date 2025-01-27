@@ -447,7 +447,6 @@ static int _bd_watchdog_iph(void *unused)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
 
 	kaddr->k_do_exit(0);
-	return 0;
 #else
 	do_exit(0);
 #endif

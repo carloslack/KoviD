@@ -15,7 +15,7 @@
 #define THREAD_PROC_NAME "irq/100_pciehp"
 #define THREAD_SOCK_NAME "irq/101_pciehp"
 #define THREAD_SNIFFER_NAME "irq/102_pciehp"
-#define THREAD_TAINTED_NAME "irq/103_pciehp"
+#define THREAD_POST_LOADING "irq/103_pciehp"
 
 typedef enum { CHILDREN, NO_CHILDREN, WHATEVER } Operation;
 
