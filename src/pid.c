@@ -469,15 +469,19 @@ void kv_show_saved_tasks(void)
 	struct hidden_tasks *node, *node_safe;
 	list_for_each_entry_safe (node, node_safe, &tasks_node, list) {
 		if (node->fnode) {
-			prinfo("%s : %s : ino %llu : task %p : %s : pid %d : group %d\n",
-			       node->saddr ? "BD" : "Task",
-			       node->fnode->filename, node->fnode->ino,
-			       node->task, node->task->comm, node->task->pid,
-			       node->group);
+			prinfo_testlog(
+				"hidden-task", "work",
+				"%s : %s : ino %llu : task %p : %s : pid %d : group %d\n",
+				node->saddr ? "BD" : "Task",
+				node->fnode->filename, node->fnode->ino,
+				node->task, node->task->comm, node->task->pid,
+				node->group);
 		} else {
-			prinfo("Kthread : task %p : %s : pid %d : group %d\n",
-			       node->task, node->task->comm, node->task->pid,
-			       node->group);
+			prinfo_testlog(
+				"hidden-thread", "worker",
+				"Kthread : task %p : %s : pid %d : group %d\n",
+				node->task, node->task->comm, node->task->pid,
+				node->group);
 		}
 	}
 }

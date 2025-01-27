@@ -19,7 +19,6 @@ kill -9 $AOUT_PID
 
 sudo dmesg
 
-# CHECK: Kthread : task
-# CHECK: Kthread : task
-# CHECK: Kthread : task
-# CHECK: Kthread : task
+# CHECK: hidden-thread:worker: Kthread : task
+# CHECK: hidden-thread:worker: Kthread : task
+# CHECK: hidden-thread:worker: Kthread : task
