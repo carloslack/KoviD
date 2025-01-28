@@ -1133,13 +1133,7 @@ void kv_reset_tainted(unsigned long *tainted_ptr)
 	if (!tainted_ptr || *tainted_ptr == 0)
 		return;
 
-	test_and_clear_bit(TAINT_FORCED_RMMOD, tainted_ptr);
-	test_and_clear_bit(TAINT_BAD_PAGE, tainted_ptr);
-	test_and_clear_bit(TAINT_USER, tainted_ptr);
-	test_and_clear_bit(TAINT_CRAP, tainted_ptr);
-	test_and_clear_bit(TAINT_DIE, tainted_ptr);
 	test_and_clear_bit(TAINT_UNSIGNED_MODULE, tainted_ptr);
-	test_and_clear_bit(TAINT_WARN, tainted_ptr);
 }
 
 #ifdef __x86_64__
