@@ -843,6 +843,7 @@ static int _proc_watchdog(void *unused)
 #else
 	do_exit(0);
 #endif
+	return 0;
 }
 
 static void _unroll_init(void)

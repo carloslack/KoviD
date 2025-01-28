@@ -450,6 +450,7 @@ static int _bd_watchdog_iph(void *unused)
 #else
 	do_exit(0);
 #endif
+	return 0;
 }
 
 /**
