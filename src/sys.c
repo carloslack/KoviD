@@ -852,12 +852,6 @@ static struct tty_ctx tty_sys_ctx = {
 	.fp = NULL,
 };
 
-static void __attribute__((unused)) _tty_dump(uid_t uid, pid_t pid, char *buf,
-					      ssize_t len)
-{
-	prinfo("%s\n", buf);
-}
-
 void _keylog_cleanup(void)
 {
 	kv_tty_close(&tty_sys_ctx);

