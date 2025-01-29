@@ -112,7 +112,7 @@ $ make
     $ cd KoviD && make PROCNAME="myprocname" TEST_ENV=1
     # From root directory of the project
     $ mkdir build && cd build
-    $ cmake ../ -DCMAKE_C_COMPILER=gcc && make PROCNAME="myprocname" TEST_ENV=1
+    $ cmake ../ -DCMAKE_C_COMPILER=gcc -DLLVM_DIR=/usr/lib/llvm-18/cmake && make PROCNAME="myprocname" TEST_ENV=1
     # Please run the command with only one Thread!
     $ make check-kovid -j1
     ```
