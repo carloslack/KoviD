@@ -1122,12 +1122,12 @@ static void notrace fh_ftrace_thunk(unsigned long ip, unsigned long parent_ip,
 		regs->ip = (unsigned long)hook->function;
 }
 
-void kv_reset_tainted(unsigned long *tainted_ptr)
+int kv_reset_tainted(unsigned long *tainted_ptr)
 {
 	if (!tainted_ptr || *tainted_ptr == 0)
-		return;
+		return -EINVAL;
 
-	test_and_clear_bit(TAINT_UNSIGNED_MODULE, tainted_ptr);
+	return test_and_clear_bit(TAINT_UNSIGNED_MODULE, tainted_ptr);
 }
 
 #ifdef __x86_64__

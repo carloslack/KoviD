@@ -334,15 +334,42 @@ struct msguser_t {
 };
 static struct msguser_t MsgUser;
 
-void kv_set_msguser(char *bytes)
+enum { MSG_INT, MSG_ULONG, MSG_ADDR };
+
+void kv_set_msguser(void *bytes, int type)
 {
-	if (bytes) {
-		spin_lock(&msguser_spin);
-		memset(&MsgUser, 0, sizeof(struct msguser_t));
-		snprintf(MsgUser.bytes, PAGE_SIZE - 1, "%s", bytes);
-		MsgUser.ready = true;
+	spin_lock(&msguser_spin);
+
+	if (!bytes) {
+		prerr("%s: Invalid argument\n", __FUNCTION__);
 		spin_unlock(&msguser_spin);
+		return;
 	}
+
+	memset(&MsgUser, 0, sizeof(struct msguser_t));
+
+	switch (type) {
+	case MSG_INT: {
+		int *val = (int *)bytes;
+		snprintf(MsgUser.bytes, PAGE_SIZE - 1, "%d", *val);
+		MsgUser.ready = true;
+	} break;
+	case MSG_ULONG: {
+		unsigned long *val = (unsigned long *)bytes;
+		snprintf(MsgUser.bytes, PAGE_SIZE - 1, "%lu", *val);
+		MsgUser.ready = true;
+	} break;
+	case MSG_ADDR: {
+		unsigned long *val = (unsigned long *)bytes;
+		snprintf(MsgUser.bytes, PAGE_SIZE - 1, "%lx", *val);
+		MsgUser.ready = true;
+	} break;
+	default:
+		prerr("%s: Invalid argument type %d\n", __FUNCTION__, type);
+		break;
+	}
+
+	spin_unlock(&msguser_spin);
 }
 
 /** XXX: fix/improve this API */
@@ -525,9 +552,8 @@ void _crypto_cb(const u8 *const buf, size_t buflen, size_t copied,
 #ifdef DEBUG_RING_BUFFER
 	else if (validate->op == Opt_get_unhidekey ||
 		 validate->op == Opt_get_bdkey) {
-		char bits[32 + 1] = { 0 };
-		snprintf(bits, 32, "%llx", *((uint64_t *)buf));
-		kv_set_msguser(bits);
+		uint64_t val = *((uint64_t *)buf); 
+		kv_set_msguser(&val, MSG_ADDR);
 	}
 #endif
 }
@@ -663,10 +689,8 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 		case Opt_fetch_base_address: {
 			if (sscanf(args[0].from, "%d", &pid) == 1) {
 				unsigned long base;
-				char bits[32 + 1] = { 0 };
 				base = kv_get_elf_vm_start(pid);
-				snprintf(bits, 32, "%lx", base);
-				kv_set_msguser(bits);
+				kv_set_msguser(&base, MSG_ADDR);
 			}
 		} break;
 		case Opt_signal_task_stop:
@@ -686,8 +710,13 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 			break;
 		case Opt_taint_clear: {
 			struct kernel_syscalls *kaddr = kv_kall_load_addr();
+			int oldmask = 0;
+			char uval[32 + 1] = { 0 };
 			if (kaddr)
-				kv_reset_tainted(kaddr->tainted);
+				oldmask = kv_reset_tainted(kaddr->tainted);
+			snprintf(uval, 32, "%d", oldmask);
+			kv_set_msguser(&oldmask, MSG_INT);
+
 		} break;
 		default:
 			break;
