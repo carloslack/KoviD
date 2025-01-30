@@ -7,7 +7,8 @@ This tool performs HTTP tracking using `eBPF` and can be extended to include add
 From root folder, run:
 
 ```
-$ make install-ebpf TEST_ENV=1
+$ make all build-ebpf PROCNAME="myprocname" TEST_ENV=1
+$ sudo make install-ebpf TEST_ENV=1
 ```
 
 ## Usage

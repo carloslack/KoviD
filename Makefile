@@ -49,7 +49,7 @@ obj-m := ${OBJNAME}.o
 
 CC=gcc
 
-all: build-ebpf
+all:
 	# TODO: Check if we can generate a random PROCNAME, something like:
 	# PROCNAME ?= $(shell uuidgen | cut -c1-8)
 	$(if $(PROCNAME),,$(error ERROR: PROCNAME is not defined. Please invoke make with PROCNAME="your_process_name"))
@@ -61,6 +61,8 @@ all: build-ebpf
 	@echo "\033[1;37m$(BDKEY)\033[0m" | sed 's/0x//'
 	@echo -n "LKM unhide KEY: "
 	@echo "\033[1;37m$(UNHIDEKEY)\033[0m" | sed 's/0x//'
+	@echo -n "LKM ebpf KEY: "
+	@echo "\033[1;37m$(EBPFHIDEKEY)\033[0m" | sed 's/0x//'
 	@echo "UI: \033[1;37m/proc/$(PROCNAME)\033[0m"
 	@echo -n "Build type: "
 ifdef DEPLOY
