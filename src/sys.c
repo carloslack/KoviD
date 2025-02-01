@@ -1124,9 +1124,6 @@ static void notrace fh_ftrace_thunk(unsigned long ip, unsigned long parent_ip,
 
 int kv_reset_tainted(unsigned long *tainted_ptr)
 {
-	if (!tainted_ptr || *tainted_ptr == 0)
-		return -EINVAL;
-
 	return test_and_clear_bit(TAINT_UNSIGNED_MODULE, tainted_ptr);
 }
 
@@ -1329,12 +1326,13 @@ static bool _sys_file_init(void)
 	return rc;
 }
 
-void sys_do_syslog_clear(void)
+int sys_do_syslog_clear(void)
 {
 	struct kernel_syscalls *ks = kv_kall_load_addr();
-	if (ks && ks->k_do_syslog) {
-		ks->k_do_syslog(SYSLOG_ACTION_CLEAR, NULL, 0, SYSLOG_FROM_PROC);
-	}
+	if (!ks || !ks->k_do_syslog)
+		return -EINVAL;
+
+	return ks->k_do_syslog(SYSLOG_ACTION_CLEAR, NULL, 0, SYSLOG_FROM_PROC);
 }
 
 char *sys_get_ttyfile(void)

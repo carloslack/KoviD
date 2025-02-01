@@ -277,13 +277,13 @@ int fs_add_name_rw_dir(const char *name, u64 ino, u64 ino_parent, bool is_dir)
 	return _fs_add_name(name, false, ino, ino_parent, is_dir);
 }
 
-bool fs_del_name(const char *name)
+int fs_del_name(const char *name)
 {
 	struct hidden_names *node, *node_safe;
 	int deleted = 0;
 
 	if (!name)
-		return false;
+		return -EINVAL;
 
 	list_for_each_entry_safe (node, node_safe, &names_node, list) {
 		if (node->ro)
@@ -298,7 +298,7 @@ bool fs_del_name(const char *name)
 		}
 	}
 
-	return (deleted ? true : false);
+	return (deleted ? 0 : -EINVAL);
 }
 
 void fs_names_cleanup(void)
