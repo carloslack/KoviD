@@ -340,7 +340,7 @@ static struct msguser_t MsgUser;
 
 enum { MSG_INT, MSG_ULONG, MSG_ADDR };
 
-void _set_msguser(void *bytes, int type)
+static void _set_msguser(void *bytes, int type)
 {
 	spin_lock(&msguser_spin);
 
@@ -374,10 +374,6 @@ void _set_msguser(void *bytes, int type)
 	}
 
 	spin_unlock(&msguser_spin);
-}
-void kv_set_msguser(void *bytes, int type)
-{
-	_set_msguser(bytes, type);
 }
 
 static bool msguser_enable;
@@ -558,7 +554,7 @@ struct userdata_t {
 	bool ok;
 };
 
-void _crypto_cb(const u8 *const buf, size_t buflen, size_t copied,
+static void _crypto_cb(const u8 *const buf, size_t buflen, size_t copied,
 		void *userdata)
 {
 	struct userdata_t *validate = (struct userdata_t *)userdata;
@@ -576,7 +572,7 @@ void _crypto_cb(const u8 *const buf, size_t buflen, size_t copied,
 	else if (validate->op == Opt_get_unhidekey ||
 		 validate->op == Opt_get_bdkey) {
 		uint64_t val = *((uint64_t *)buf);
-		kv_set_msguser(&val, MSG_ADDR);
+		_set_msguser(&val, MSG_ADDR);
 	}
 #endif
 }
@@ -734,7 +730,7 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 			if (sscanf(args[0].from, "%d", &pid) == 1) {
 				unsigned long base;
 				base = kv_get_elf_vm_start(pid);
-				kv_set_msguser(&base, MSG_ADDR);
+				_set_msguser(&base, MSG_ADDR);
 			}
 		} break;
 		case Opt_signal_task_stop:

