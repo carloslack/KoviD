@@ -110,8 +110,8 @@ Read [Phrack magazine](http://phrack.org/issues/71/12.html#article) where g1inko
 ### 2.8 TCP/UDP logs
 
     KoviD hides network connections and manipulates network logs
-    to maintain stealth. It also addresses issues with libpcap
-    showing connections initiated before task hiding.
+    to maintain stealth for back-doors. Libpcap+recvmsg.
+	(ss, tcpdump, netstat...)
 
 ### 2.9 r00t
 
@@ -161,7 +161,21 @@ Read [Phrack magazine](http://phrack.org/issues/71/12.html#article) where g1inko
     The interface will disable itself after 120 seconds and can be
     reactivated using the same command.
 
-### 3.2 Tasks
+### 3.2 Command retcode
+
+	Some commands can return a status code.
+	Enable status code:
+		$ echo output-enable >/proc/mytest
+		$ cat /proc/mytest
+
+		0 disabled
+		1 enabled
+
+	Command example:
+		$ echo hide-lkm >/proc/mytest
+		$ cat /proc/mytest
+
+### 3.3 Tasks
 
     You can hide/unhide processes using the /proc/mytest interface.
     For example, to hide a task, run: $ echo 14886 >/proc/mytest.
@@ -170,13 +184,13 @@ Read [Phrack magazine](http://phrack.org/issues/71/12.html#article) where g1inko
     Unhiding is the same as for regular tasks:
         $ echo "<PID>" >/proc/mytest
 
-### 3.3 Hide module
+### 3.4 Hide module
 
     To hide the KoviD module, use the command: `$ echo hide-lkm >/proc/mytest`.
     In release mode, the module is hidden by default,
     and a key can be displayed by running `$ cat /proc/mytest`.
 
-### 3.4 Hide/unhide/list files and directories
+### 3.5 Hide/unhide/list files and directories
 
     To hide a file or directory, use:
     $ echo hide-file=/tmp/README.txt >/proc/mytest
@@ -186,12 +200,12 @@ Read [Phrack magazine](http://phrack.org/issues/71/12.html#article) where g1inko
     and directory names with:
     $ echo list-hidden-file >/proc/mytest.
 
-### 3.5 SSH/FTP TTY sniffer
+### 3.6 SSH/FTP TTY sniffer
 
     KoviD can snoop SSH sessions via tty keystrokes and steal passwords
     and commands effectively.
 
-### 3.6 Backdoors
+### 3.7 Backdoors
 
     For instructions, run 'scripts/bdclient.sh' and a help list is displayed.
 
