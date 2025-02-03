@@ -555,7 +555,7 @@ struct userdata_t {
 };
 
 static void _crypto_cb(const u8 *const buf, size_t buflen, size_t copied,
-		void *userdata)
+		       void *userdata)
 {
 	struct userdata_t *validate = (struct userdata_t *)userdata;
 

