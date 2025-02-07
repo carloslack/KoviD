@@ -9,9 +9,7 @@ enum { //tty flags
 	R_RANGE = 4
 };
 
-/**
- * TTY user context
- */
+// TTY user context
 struct tty_ctx {
 	struct file *fp;
 	struct list_head *head;

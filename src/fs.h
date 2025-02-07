@@ -1,9 +1,7 @@
-/**
- * Linux Kernel version <= 5.5.0
- * - hash
- *
- *  ɯnɹpǝɹ rootkit
- */
+//
+// Linux Kernel version <= 5.5.0
+// - hash
+// ɯnɹpǝɹ rootkit
 
 #ifndef __FS_H
 #define __FS_H
@@ -15,11 +13,10 @@ struct fs_file_node {
 
 bool fs_kern_path(const char *, struct path *);
 bool fs_file_stat(struct path *, struct kstat *);
-/**
- * Return hidden filename and inode number.
- * This function allocates data that must
- * be freed when no longer needed.
- */
+
+// Return hidden filename and inode number.
+// This function allocates data that must
+// be freed when no longer needed.
 struct fs_file_node *fs_get_file_node(const struct task_struct *);
 bool fs_search_name(const char *, u64);
 const char *fs_get_basename(const char *);

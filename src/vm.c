@@ -4,14 +4,12 @@
 #include "lkm.h"
 #include "log.h"
 
-/**
- * Returns the starting virtual memory address of
- * the ELF executable for a specified process.
- * This function takes a process ID (PID) as
- * input and retrieves the virtual memory area (VMA)
- * corresponding to the ELF executable in
- * that process's memory map.
- */
+// Returns the starting virtual memory address of
+// the ELF executable for a specified process.
+// This function takes a process ID (PID) as
+// input and retrieves the virtual memory area (VMA)
+// corresponding to the ELF executable in
+// that process's memory map.
 unsigned long kv_get_elf_vm_start(pid_t pid)
 {
 	struct vm_area_struct *vma;
@@ -43,6 +41,6 @@ unsigned long kv_get_elf_vm_start(pid_t pid)
 		return 0L;
 	}
 
-	/** base address */
+	// base address
 	return vma->vm_start;
 }

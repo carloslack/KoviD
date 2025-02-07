@@ -12,10 +12,8 @@
 /** internal use transformation handle */
 static struct crypto_skcipher *tfm;
 
-/**
- * Setup encryption key
- * Must be called once from KoviD initialization
- */
+// Setup encryption key
+// Must be called once from KoviD initialization
 #define ENCKEY_LEN 32 /** aes 256 */
 
 int kv_crypto_engine_init(void)
@@ -23,15 +21,14 @@ int kv_crypto_engine_init(void)
 	static char key[ENCKEY_LEN] = { 0 };
 	int rc = -1;
 
-	/** Allocate AES-CBC */
+	// Allocate AES-CBC
 	if (!crypto_has_skcipher("cbc(aes)", 0, 0)) {
 		prerr("Cipher not found\n");
 		return rc;
 	}
 
-	/** Allocate for transformation
-	 * Shared across all instances
-	 */
+	// Allocate for transformation
+	// Shared across all instances
 	tfm = crypto_alloc_skcipher("cbc(aes)", 0, 0);
 	if (IS_ERR(tfm)) {
 		prerr("Failed to allocate cipher %ld\n", PTR_ERR(tfm));
@@ -40,7 +37,7 @@ int kv_crypto_engine_init(void)
 
 	get_random_bytes(key, ENCKEY_LEN);
 
-	/** Finally, set the key */
+	// Finally, set the key
 	rc = crypto_skcipher_setkey(tfm, key, ENCKEY_LEN);
 	if (rc < 0) {
 		prerr("Key init error %d\n", rc);
@@ -50,8 +47,8 @@ int kv_crypto_engine_init(void)
 	return rc;
 }
 
-/** Encryption init
- * Called for each encryption operation */
+// Encryption init
+// Called for each encryption operation
 struct kv_crypto_st *kv_crypto_mgc_init(void)
 {
 	struct kv_crypto_st *kvmgc =
@@ -67,7 +64,7 @@ struct kv_crypto_st *kv_crypto_mgc_init(void)
 		return NULL;
 	}
 
-	/** Generate a random IV each time */
+	// Generate a random IV each time
 	get_random_bytes(kvmgc->iv, sizeof(kvmgc->iv));
 
 	return kvmgc;
@@ -101,7 +98,7 @@ size_t kv_encrypt(struct kv_crypto_st *kvmgc, u8 *buf, size_t buflen)
 	skcipher_request_set_crypt(kvmgc->req, &kvmgc->sg, &kvmgc->sg, buflen,
 				   kvmgc->iv);
 
-	/** encrypt */
+	// encrypt
 	rc = crypto_skcipher_encrypt(kvmgc->req);
 	if (rc < 0) {
 		prerr("Encryption failed %d\n", rc);
@@ -117,7 +114,7 @@ size_t kv_encrypt(struct kv_crypto_st *kvmgc, u8 *buf, size_t buflen)
 		goto cleanup;
 	}
 
-	/** We're good to go */
+	// We're good to go
 	copied = total;
 
 #ifdef DEBUG_RING_BUFFER
@@ -160,7 +157,7 @@ size_t kv_decrypt(struct kv_crypto_st *kvmgc, decrypt_callback cb,
 		skcipher_request_set_crypt(kvmgc->req, &kvmgc->sg, &kvmgc->sg,
 					   buflen, kvmgc->iv);
 
-		/** decrypt */
+		// decrypt
 		err = crypto_skcipher_decrypt(kvmgc->req);
 		if (err) {
 			prerr("Decryption failed\n");
@@ -175,11 +172,11 @@ size_t kv_decrypt(struct kv_crypto_st *kvmgc, decrypt_callback cb,
 			goto cleanup;
 		}
 
-		/** We're good to go */
+		// We're good to go
 		copied = total;
 
 		{
-			/** user callback */
+			// user callback
 			const u8 *const buf = kvmgc->kv_data.buf;
 			cb(buf, buflen, copied, userdata);
 		}

