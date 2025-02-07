@@ -56,7 +56,7 @@ static DEFINE_SPINLOCK(hide_once_spin);
  * ├── hidden No → normal flow
  * └── hidden Yes
  *     └── Backdoor Yes
- *         ├── unhide and kill all back-doorss
+ *         ├── unhide and kill all back-doors
  *     └── Backdoor No
  *         ├── unhide task
  */
