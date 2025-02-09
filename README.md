@@ -34,7 +34,7 @@ Read [Phrack magazine](http://phrack.org/issues/71/12.html#article) where g1inko
 
 ### 1.1 Mostly tested against
 
-    6.x: Linux 6.8.0-52-generic #53~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC x86_64 x86_64 x86_64 GNU/Linux
+    6.x EXPERIMENTAL: Linux 6.8.0-52-generic #53~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC x86_64 x86_64 x86_64 GNU/Linux
     gcc-12 (Ubuntu 12.3.0-1ubuntu1~22.04) 12.3.0
 
     5.x: Ubuntu 22.04.1 LTS
