@@ -61,8 +61,6 @@ all:
 	@echo "\033[1;37m$(BDKEY)\033[0m" | sed 's/0x//'
 	@echo -n "LKM unhide KEY: "
 	@echo "\033[1;37m$(UNHIDEKEY)\033[0m" | sed 's/0x//'
-	@echo -n "LKM ebpf KEY: "
-	@echo "\033[1;37m$(EBPFHIDEKEY)\033[0m" | sed 's/0x//'
 	@echo "UI: \033[1;37m/proc/$(PROCNAME)\033[0m"
 	@echo -n "Build type: "
 ifdef DEPLOY
@@ -87,6 +85,8 @@ $(EBPF_USER_BIN): $(EBPF_MAIN_SRC)
 
 build-ebpf: $(EBPF_BPF_OBJ) $(EBPF_USER_BIN)
 	@echo "eBPF artifacts built successfully."
+	@echo -n "LKM ebpf KEY: "
+	@echo "\033[1;37m$(EBPFHIDEKEY)\033[0m" | sed 's/0x//'
 install-ebpf: build-ebpf
 	@echo "Installing eBPF artifacts into /usr/bin/$(EBPFHIDEKEY)/ ..."
 	@sudo mkdir -p /usr/bin/$(EBPFHIDEKEY)
