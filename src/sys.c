@@ -531,12 +531,12 @@ static asmlinkage long m_recvmsg(struct pt_regs *regs)
 	while (remaining_len >= sizeof(struct nlmsghdr) &&
 	       NLMSG_OK(nlh, remaining_len)) {
 		struct inet_diag_msg *idm = NLMSG_DATA(nlh);
+		int dport = ntohs(idm->id.idiag_dport);
 
-		if (kv_bd_search_iph_source_port(idm->id.idiag_dport)) {
+		if (dport > 0 && kv_bd_search_iph_source_port(idm->id.idiag_dport)) {
 			int offset = NLMSG_ALIGN(nlh->nlmsg_len);
 
-			prinfo("netlink: removing message with destination port %d\n",
-			       ntohs(idm->id.idiag_dport));
+			prinfo("netlink: removing message with destination port %d\n", dport);
 
 			if (remaining_len > offset) {
 				memmove(nlh, (char *)nlh + offset,
