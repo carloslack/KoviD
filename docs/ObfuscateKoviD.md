@@ -2,7 +2,35 @@
 
 Perform obfuscation of the KoviD LKM.
 
-## Install `clang`
+## Build Obfustaion Plugin
+
+First of all, lets build plugins for both GCC and clang compilers.
+Please follow this: https://github.com/djolertrk/kovid-obfustaion-passes/blob/main/README.md#build.
+Make sure you install dependencies such as:
+
+```
+$ sudo apt-get install gcc-12-plugin-dev
+```
+
+Bellow are two scenarios on how to build with obfustaion, by using:
+1. gcc
+2. clang
+
+## Build with `gcc`
+
+These are the steps to build with `gcc` compiler.
+
+Build KoviD:
+
+```
+$ make PROCNAME="myprocname" OBFUSCATE_WITH_GCC=1
+```
+
+## Build with `clang`
+
+These are the steps to build with LLVM/Clang compiler.
+
+### Install `clang`
 
 ```
 echo "deb http://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs)-19 main" | sudo tee /etc/apt/sources.list.d/llvm.list
@@ -11,7 +39,7 @@ sudo apt-get update
 sudo apt-get install -y llvm-19-dev clang-19 libclang-19-dev lld-19 pkg-config libgc-dev libssl-dev zlib1g-dev libcjson-dev libunwind-dev
 ```
 
-## Build Linux with `clang`
+### Build Linux with `clang`
 
 First, we need to build kernel with `clang` compiler.
 
@@ -46,15 +74,10 @@ $ make LLVM=1 LLVM_IAS=1 -j4 CC=clang-19 CXX=clang++-19 KCFLAGS="-Wno-error"
 $ sudo make LLVM=1 LLVM_IAS=1 -j4 CC=clang-19 CXX=clang++-19 KCFLAGS="-Wno-error" modules_install
 ```
 
-## Build Obfustaion Plugin
-
-Make sure you installed it per: https://github.com/djolertrk/kovid-obfustaion-passes/blob/main/README.md#build.
-
-## Build KoviD
+### Build KoviD with `clang` + obfuscation plugin
 
 ```
 
 $ export PATH=/usr/lib/llvm-19/bin/:$PATH
-$ make PROCNAME="myprocname" OBFUSCATE=1 CC=clang-19 CXX=clang++-19 LLVM=1 LLVM_IAS=1
-
+$ make PROCNAME="myprocname" OBFUSCATE_WITH_CLANG=1 CC=clang-19 CXX=clang++-19 LLVM=1 LLVM_IAS=1
 ```
