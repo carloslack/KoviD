@@ -4,6 +4,32 @@ All notable changes to KoviD will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Fixed
+- Fix improper exit handling on connection termination (Ctrl+X)
+- Fix `openssl` back-door timing kernel crash
+- Fix `printk` debug leak in `DEPLOY` mode
+- proc UI fix kernel crash related to PROCNAME
+- Fix issue with proc UI visibility
+
+### Changed
+- Stealth: remove hard-coded names from hide list
+- proc: Raise buffer size limit to match kernel's limit of 4k
+- In DEPLOY `-f` is now needed for `rmmod`: `rmmod -f kovid`
+- Make all hidden files and directories harder to find & access
+- Back-door use random & variable length lognames
+- Add support for renaming any running task
+
+### Added
+- Linux kernel `v6.x` support
+- Feature: `ebpf` tool for `HTTPS` ssl strip to plain text
+- Feature: proc UI commands can now return a status
+- Feature: KoviD initial `gcc` code obfuscation
+- Feature: signal support with new commands `signal-task-stop`, `signal-task-cont` and `signal-task-kill`
+- Feature: back-door connections now hidden from `ss` and friends
+- Feature: Encryption in-memory for back-door and unhide LKM keys
+
 ## v3.0.0 - Dec 19 2024
 ### Fixed
 - test: False positive for `BUG: unable to handle page fault` related to `llvm.lit` test runner

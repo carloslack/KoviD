@@ -47,13 +47,11 @@ struct allowed_ports_t {
 	int port;
 	int default_child_count;
 };
-static struct allowed_ports_t allowed_ports[] = {
-	{ PORT_NC, 1 },
-	{ PORT_SOCAT, 1 },
-	{ PORT_SOCAT_TTY, 1 },
-	{ PORT_OPENSSL, 2 },
-	{ PORT_UNSET, PORT_UNSET }
-};
+static struct allowed_ports_t allowed_ports[] = { { PORT_NC, 1 },
+						  { PORT_SOCAT, 1 },
+						  { PORT_SOCAT_TTY, 1 },
+						  { PORT_OPENSSL, 2 },
+						  { PORT_UNSET, PORT_UNSET } };
 
 struct stat_ops_t {
 	int kv_port;
