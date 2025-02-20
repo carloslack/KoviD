@@ -31,13 +31,13 @@
 *How to check:*
 - `cat /proc/myprocname`
 
-* == 0:* Success
-*  < 0:* Error
+*  Return is operation status that can vary depending on the command.
 
 *Default*: Disabled
 
 *Toggle and Check enable/disable:*
 - `echo output-enable >/proc/myprocname && cat /proc/myprocname`
+- `echo output-disable >/proc/myprocname && cat /proc/myprocname`
 
 * == 0:* Disabled
 * == 1:* Enabled

