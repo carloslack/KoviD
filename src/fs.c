@@ -241,6 +241,10 @@ static int _fs_add_name(const char *name, bool ro, u64 ino, u64 ino_parent,
 			return -ENOMEM;
 
 		hn->name = kcalloc(1, len + 1, GFP_KERNEL);
+		if (!hn->name) {
+			kfree(hn);
+			return -ENOMEM;
+		}
 		strncpy(hn->name, (const char *)name, len);
 		hn->ro = ro;
 		hn->ino = ino;
