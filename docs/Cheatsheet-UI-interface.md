@@ -1,374 +1,401 @@
 # CheatSheet
 
-## proc UI visibility
+## proc UI Visibility
 
-*Action:* run
+**Action:** Run
 
-*About:* to switch proc UI on/off repeat command
+**About:** To switch proc UI on/off, repeat the command.
 
-*Commands:*
+**Commands:**
 - `kill -CONT 31337`
 
-## Command status
+---
 
-*Commands that return execution status:*
+## Command Status
 
-- hide-pid
-- hide-task-backdoor
-- rename-task
-- hide-lkm
-- unhide-lkm
-- hide-file
-- unhide-directory
-- hide-file-anywhere
-- journal-flush
-- signal-task-stop
-- signal-task-cont
-- signal-task-kill
-- taint-clear
-- syslog-clear
+**Commands that return execution status:**
+- `hide-pid`
+- `hide-task-backdoor`
+- `rename-task`
+- `hide-lkm`
+- `unhide-lkm`
+- `hide-file`
+- `unhide-directory`
+- `hide-file-anywhere`
+- `journal-flush`
+- `signal-task-stop`
+- `signal-task-cont`
+- `signal-task-kill`
+- `taint-clear`
+- `syslog-clear`
 
-*How to check:*
+**How to check:**
 - `cat /proc/myprocname`
 
-*  Return is operation status that can vary depending on the command.
+The return value shows the operation status, which can vary depending on the command.
 
-*Default*: Disabled
+**Default:** Disabled
 
-*Toggle and Check enable/disable:*
+**Toggle and Check enable/disable:**
 - `echo output-enable >/proc/myprocname && cat /proc/myprocname`
 - `echo output-disable >/proc/myprocname && cat /proc/myprocname`
 
-* == 0:* Disabled
-* == 1:* Enabled
+**Return Codes:**
+- `== 0:` Disabled
+- `== 1:` Enabled
 
-## KoviD invisibility
+---
 
-*Action:* run
+## KoviD Invisibility
 
-*Mode:* debug,deploy
+**Action:** Run
 
-*About:* hide module
+**Mode:** debug, deploy
 
-*Root required:* debug No, deploy Yes
+**About:** Hide the module.
 
-*Commands:*
+**Root required:** debug = No, deploy = Yes
+
+**Commands:**
 - `echo hide-lkm >/proc/myprocname`
 
+---
 
-## KoviD visibility
+## KoviD Visibility
 
-*Action:* run
+**Action:** Run
 
-*Mode:* debug
+**Mode:** debug
 
-*About:* unhide module
+**About:** Unhide the module.
 
-*Root required:* No
+**Root required:** No
 
-*Commands:*
+**Commands:**
 - `echo get-unhidekey >/proc/myprocname`
 - `key=$(cat /proc/myprocname)`
 - `echo unhide-lkm=$key > /proc/myprocname`
 
+---
 
-## KoviD visibility in DEPLOY mode
+## KoviD Visibility in DEPLOY Mode
 
-*Action:* run
+**Action:** Run
 
-*Mode:* deploy
+**Mode:** deploy
 
-*About:* unhide module, KEY is build-time generated, check Makefile output
+**About:** Unhide the module. The KEY is build-time generated—check the Makefile output.
 
-*Root required:* Yes
+**Root required:** Yes
 
-*Commands:*
+**Commands:**
 - `echo unhide-lkm=<KEY> > /proc/myprocname`
 
+---
 
 ## Unload KoviD
 
-*Action:* run
+**Action:** Run
 
-*Mode:* debug
+**Mode:** debug
 
-*About:* unload module
+**About:** Unload the module.
 
-*Root required:* No
+**Root required:** No
 
-*Commands:*
+**Commands:**
 - `sudo rmmod ./kovid.ko`
 
+---
 
-## Unload KoviD in DEPLOY mode
+## Unload KoviD in DEPLOY Mode
 
-*Action:* run
+**Action:** Run
 
-*Mode:* deploy
+**Mode:** deploy
 
-*About:* unload module AFTER `unhide-lkm` command
+**About:** Unload the module AFTER `unhide-lkm` command.
 
-*Root required:* Yes
+**Root required:** Yes
 
-*Commands:*
+**Commands:**
 - `sudo rmmod -f ./kovid.ko`
 
+---
 
-## Get unhide module KEY
+## Get Unhide Module KEY
 
-*Action:* UI
+**Action:** UI
 
-*Mode:* debug
+**Mode:** debug
 
-*About:* get unhide module KEY
+**About:** Retrieve the unhide module KEY.
 
-*Root required:* No
+**Root required:** No
 
-*Commands:*
+**Commands:**
 - `echo get-unhidekey >/proc/myprocname`
 - `cat /proc/myprocname`
 
+---
 
-## Get back-doors KEY
+## Get Back-doors KEY
 
-*Action:* UI
+**Action:** UI
 
-*Mode:* debug
+**Mode:** debug
 
-*About:* get back-door KEY
+**About:** Retrieve the back-door KEY.
 
-*Root required:* No
+**Root required:** No
 
-*Commands:*
+**Commands:**
 - `echo get-bdkey >/proc/myprocname`
 - `cat /proc/myprocname`
 
+---
 
-## Hide process (PID)
+## Hide Process (PID)
 
-*Action:* UI
+**Action:** UI
 
-*Mode:* debug,deploy
+**Mode:** debug, deploy
 
-*About:* to hide/unhide tasks, myprocname PID `1234`
+**About:** Hide/unhide tasks. For example, to hide the task with PID `1234`.
 
-*Root required:* debug=No, deploy=Yes
+**Root required:** debug = No, deploy = Yes
 
-*Commands:*
+**Commands:**
 - `echo 1234 >/proc/myprocname`
 
+---
 
-## Hide a file in current directory
+## Hide a File in Current Directory
 
-*Action:* UI
+**Action:** UI
 
-*Mode:* debug,deploy
+**Mode:** debug, deploy
 
-*About:* Hide a file
+**About:** Hide a file.
 
-*Root required:* debug=No, deploy=Yes
+**Root required:** debug = No, deploy = Yes
 
-*Commands:*
+**Commands:**
 - `echo hide-file=README.txt >/proc/myprocname`
 
+---
 
-## Hide a file elsewhere
+## Hide a File Elsewhere
 
-*Action:* UI
+**Action:** UI
 
-*Mode:* debug,deploy
+**Mode:** debug, deploy
 
-*About:* Hide a file
+**About:** Hide a file located elsewhere.
 
-*Root required:* debug=No, deploy=Yes
+**Root required:** debug = No, deploy = Yes
 
-*Commands:*
+**Commands:**
 - `echo hide-file=/home/user/README.txt >/proc/myprocname`
 
+---
 
-## Hide all instances of a file
+## Hide All Instances of a File
 
-*Action:* UI
+**Action:** UI
 
-*Mode:* debug,deploy
+**Mode:** debug, deploy
 
-*About:* Hide a file
+**About:** Hide all instances of a file.
 
-*Root required:* debug=No, deploy=Yes
+**Root required:** debug = No, deploy = Yes
 
-*Commands:*
+**Commands:**
 - `echo hide-file-anywhere=README.txt >/proc/myprocname`
 
+---
 
-## Hide a directory in current directory
+## Hide a Directory in Current Directory
 
-*Action:* UI
+**Action:** UI
 
-*Mode:* debug,deploy
+**Mode:** debug, deploy
 
-*About:* Hide a file
+**About:** Hide a directory.
 
-*Root required:* debug=No, deploy=Yes
+**Root required:** debug = No, deploy = Yes
 
-*Commands:*
+**Commands:**
 - `echo hide-directory=dir1 >/proc/myprocname`
 
+---
 
-## Hide a directory elsewhere
+## Hide a Directory Elsewhere
 
-*Action:* UI
+**Action:** UI
 
-*Mode:* debug,deploy
+**Mode:** debug, deploy
 
-*About:* Unhide a directory
+**About:** Hide a directory located elsewhere.
 
-*Root required:* debug=No, deploy=Yes
+**Root required:** debug = No, deploy = Yes
 
-*Commands:*
+**Commands:**
 - `echo hide-directory=/home/some-user/dir1 >/proc/myprocname`
 
+---
 
-## Unhide a directory
+## Unhide a Directory
 
-*Action:* UI
+**Action:** UI
 
-*Mode:* debug,deploy
+**Mode:** debug, deploy
 
-*About:* Hide a directory
+**About:** Unhide a directory.
 
-*Root required:* debug=No, deploy=Yes
+**Root required:** debug = No, deploy = Yes
 
-*Commands:*
+**Commands:**
 - `echo unhide-directory=dir1 >/proc/myprocname`
 
+---
 
-## List hidden files
+## List Hidden Files
 
-*Action:* UI
+**Action:** UI
 
-*Mode:* debug
+**Mode:** debug
 
-*About:* Show hidden filenames in `dmesg`
+**About:** Show hidden filenames in `dmesg`.
 
-*Root required:* No
+**Root required:** No
 
-*Commands:*
+**Commands:**
 - `echo list-hidden-files >/proc/myprocname`
 - `dmesg`
 
+---
 
-## Rename a running task
+## Rename a Running Task
 
-*Action:* UI
+**Action:** UI
 
-*Mode:* debug,deploy
+**Mode:** debug, deploy
 
-*About:* Rename PID 1234 task to `newtaskname`
+**About:** Rename the task with PID `1234` to `newtaskname`.
 
-*Root required:* debug=No, deploy=Yes
+**Root required:** debug = No, deploy = Yes
 
-*Commands:*
+**Commands:**
 - `echo rename-task=1234,newtaskname >/proc/myprocname`
 
+---
 
-## List hidden tasks (PIDs)
+## List Hidden Tasks (PIDs)
 
-*Action:* UI
+**Action:** UI
 
-*Mode:* debug
+**Mode:** debug
 
-*About:* Show hidden tasks in `dmesg`
+**About:** Show hidden tasks in `dmesg`.
 
-*Root required:* No
+**Root required:** No
 
-*Commands:*
+**Commands:**
 - `echo list-hidden-tasks >/proc/myprocname`
 - `dmesg`
 
+---
 
-## List current back-door connections
+## List Current Back-door Connections
 
-*Action:* UI
+**Action:** UI
 
-*Mode:* debug
+**Mode:** debug
 
-*About:* Show current back-door connections in `dmesg`
+**About:** Show current back-door connections in `dmesg`.
 
-*Root required:* No
+**Root required:** No
 
-*Commands:*
+**Commands:**
 - `echo list-backdoor >/proc/myprocname`
 - `dmesg`
 
+---
 
-## Get the base-address of a process PID
+## Get the Base Address of a Process PID
 
-*Action:* UI
+**Action:** UI
 
-*Mode:* debug,deploy
+**Mode:** debug, deploy
 
-*About:* Fetch process base-address of PID 1234
+**About:** Fetch the base address of a process with PID `1234`.
 
-*Root required:* debug=No, deploy=Yes
+**Root required:** debug = No, deploy = Yes
 
-*Commands:*
+**Commands:**
 - `echo base-address=1234 >/proc/myprocname`
 - `cat /proc/myprocname`
 
+---
 
-## Run journal flush
+## Run Journal Flush
 
-*Action:* UI
+**Action:** UI
 
-*Mode:* debug,deploy
+**Mode:** debug, deploy
 
-*About:* flush journal logs
+**About:** Flush journal logs.
 
-*Root required:* debug=No, deploy=Yes
+**Root required:** debug = No, deploy = Yes
 
-*Commands:*
+**Commands:**
 - `echo journal-flush >/proc/myprocname`
 
+---
 
-## Send signal to hidden task
+## Send Signal to Hidden Task
 
-*Action:* UI
+**Action:** UI
 
-*Mode:* debug,release
+**Mode:** debug, release
 
-*About:* Available: stop,cont,kill, myprocname signalling PID 1234
+**About:** Available signals: stop, cont, kill. Signaling PID `1234`.
 
-*Root required:* debug=No, release=Yes
+**Root required:** debug = No, release = Yes
 
-*Commands:*
+**Commands:**
 - `echo signal-task-stop=1234 >/proc/myprocname`
 - `echo signal-task-cont=1234 >/proc/myprocname`
 - `echo signal-task-kill=1234 >/proc/myprocname`
 
+---
 
-## Clear ring-buffer
+## Clear Ring-Buffer
 
-*Action:* UI
+**Action:** UI
 
-*Mode:* debug,release
+**Mode:** debug, release
 
-*About:* Similar to `dmesg -c`
+**About:** Clears the kernel ring buffer, similar to `dmesg -c`.
 
-*Root required:* debug=No, release=Yes
+**Root required:** debug = No, release = Yes
 
-*Commands:*
+**Commands:**
 - `echo syslog-clear >/proc/myprocname`
 
+---
 
-## Clear /proc `tainted`
+## Clear `/proc` Tainted
 
-*Action:* UI
+**Action:** UI
 
-*Mode:* debug,release
+**Mode:** debug, release
 
-*About:* Reset `/proc/sys/kernel/tainted`
+**About:** Reset `/proc/sys/kernel/tainted`.
 
-*Root required:* debug=No, release=Yes
+**Root required:** debug = No, release = Yes
 
-*Commands:*
+**Commands:**
 - `echo taint-clear >/proc/myprocname`
+

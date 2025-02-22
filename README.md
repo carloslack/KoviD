@@ -26,8 +26,6 @@
     Hides files and directories.
     Explore Demos repository.
 
-NOTE: Although it compiles for Linux Kernel 6.x, it should not yet be used in production.
-
 Watch [KoviD Demos](https://github.com/carloslack/kv-demos/tree/master)
 
 Read [Phrack magazine](http://phrack.org/issues/71/12.html#article) where g1inko works on some challenges posed by `KoviD`
@@ -171,13 +169,18 @@ Read [Phrack magazine](http://phrack.org/issues/71/12.html#article) where g1inko
 	Enable status code:
 		$ echo output-enable >/proc/mytest
 		$ cat /proc/mytest
+		1
+		$ echo output-disable >/proc/mytest
+		$ cat /proc/mytest
+		0
 
 		0 disabled
 		1 enabled
 
-	Command example:
+	Command example after output-enable:
 		$ echo hide-lkm >/proc/mytest
 		$ cat /proc/mytest
+		0
 
 ### 3.3 Tasks
 
