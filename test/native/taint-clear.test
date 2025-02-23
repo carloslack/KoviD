@@ -1,0 +1,45 @@
+# REQUIRES: DEBUG_ONLY
+# REQUIRES: NATIVE_TESTS
+#
+# This test verifies the "taint-clear" command, which resets the
+# /proc/sys/kernel/tainted file.
+#
+# RUN: bash %s > %t.log
+# RUN: FileCheck-18 --input-file=%t.log %s
+
+sudo insmod ../../../build/kovid.ko
+sleep 2
+
+INITIAL_TAINT=$(cat /proc/sys/kernel/tainted)
+echo "Initial taint state: $INITIAL_TAINT"
+
+kill -CONT 31337
+echo output-enable > /proc/myprocname
+echo "Enable: "
+cat /proc/myprocname
+
+echo taint-clear > /proc/myprocname
+echo "After clear: "
+cat /proc/myprocname
+
+AFTER_TAINT=$(cat /proc/sys/kernel/tainted)
+echo "After taint state: $AFTER_TAINT"
+
+echo taint-clear > /proc/myprocname
+echo "After clear2: "
+cat /proc/myprocname
+
+AFTER_TAINT2=$(cat /proc/sys/kernel/tainted)
+echo "After taint state2: $AFTER_TAINT2"
+
+sudo rmmod kovid
+
+# CHECK: Initial taint state: {{.*}}
+# CHECK: Enable:
+# CHECK: 1
+# CHECK: After clear:
+# CHECK: 0
+# CHECK: After taint state: {{.*}}
+# CHECK: After clear2:
+# CHECK: 0
+# CHECK: After taint state2: {{.*}}
