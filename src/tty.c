@@ -42,15 +42,13 @@ void kv_tty_write(struct tty_ctx *ctx, uid_t uid, char *buf, ssize_t len)
 	long msecs;
 	size_t total;
 
-	/**
-     * We use a variable-length array (VLA) because the implementation of kernel_write
-     * forces a conversion to a user pointer. If the variable is heap-allocated, the
-     * pointer may be lost.
-     *
-     * VLA generates a warning since we're not in C99, but it's necessary for our use case.
-     *
-     * We allocate +32 bytes, which is enough to hold timestamp + "uid.%d".
-     */
+	// We use a variable-length array (VLA) because the implementation of kernel_write
+	// forces a conversion to a user pointer. If the variable is heap-allocated, the
+	// pointer may be lost.
+	//
+	// VLA generates a warning since we're not in C99, but it's necessary for our use case.
+	//
+	// Allocate +32 bytes, which is enough to hold timestamp + "uid.%d".
 	char ttybuf[len + 32];
 
 	spin_lock(&tty_lock);

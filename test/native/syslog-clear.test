@@ -1,0 +1,63 @@
+# REQUIRES: DEBUG_ONLY
+# REQUIRES: NATIVE_TESTS
+#
+# This test verifies the "Clear ring-buffer" command, which is analogous
+# to running "dmesg -c". It does so by:
+#   1. Clearing the kernel message ring buffer.
+#   2. Inserting the module to generate some kernel log messages.
+#   3. Capturing the log output to ensure it is non-empty.
+#   4. Executing "echo syslog-clear >/proc/example" to clear the ring buffer.
+#   5. Verifying that the ring buffer is cleared.
+#
+# RUN: bash %s > %t.log
+# RUN: FileCheck-18 --input-file=%t.log %s
+
+# Step 0: Clear any existing kernel messages.
+sudo dmesg -c > /dev/null
+sleep 2
+
+###############################################################################
+# Step 1: Insert the kernel module to generate kernel log messages.
+###############################################################################
+sudo insmod ../../../build/kovid.ko
+sleep 2
+
+###############################################################################
+# Step 2: Capture kernel log before clearing the ring buffer.
+###############################################################################
+PRE_CLEAR=$(dmesg)
+echo "Kernel log before syslog-clear:"
+echo "$PRE_CLEAR"
+
+if [ -z "$PRE_CLEAR" ]; then
+    echo "ERROR: Kernel log is unexpectedly empty before syslog-clear"
+fi
+# CHECK: Kernel log before syslog-clear:
+
+###############################################################################
+# Step 3: Execute the "syslog-clear".
+###############################################################################
+echo "Executing syslog-clear command"
+echo syslog-clear | sudo tee /proc/example > /dev/null
+sleep 2
+
+###############################################################################
+# Step 4: Capture kernel log after clearing the ring buffer.
+###############################################################################
+POST_CLEAR=$(dmesg)
+echo "Kernel log after syslog-clear:"
+# CHECK: Kernel log after syslog-clear:
+# CHECK-NOT: kovid
+echo "$POST_CLEAR"
+
+if [ -z "$POST_CLEAR" ]; then
+    echo "Ring buffer cleared"
+else
+    echo "ERROR: Ring buffer not cleared, found messages:"
+    echo "$POST_CLEAR"
+fi
+
+###############################################################################
+# Cleanup: Remove the kernel module.
+###############################################################################
+sudo rmmod kovid

