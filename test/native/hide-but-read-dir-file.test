@@ -1,0 +1,131 @@
+# REQUIRES: DEBUG_ONLY
+# REQUIRES: NATIVE_TESTS
+#
+# RUN: bash %s > %t.log
+# RUN: FileCheck-18 --input-file=%t.log %s
+#
+
+# CHECK: hidden_file.txt is hidden
+# CHECK: ERROR: hidden_dir is visible in ls
+# CHECK: ERROR: hidden_file.txt removed by rm
+# CHECK: hidden_dir exists after rm *
+# CHECK: hidden_file.txt not found by find
+# CHECK: ERROR: hidden_dir found by find
+# CHECK: myprocname is hidden in /proc
+# CHECK: hidden_file.txt is accessible via direct path
+# CHECK: hidden_file.txt is writable
+# CHECK: hidden_dir is accessible and its contents are listable
+
+# Insert our kernel module and activate the backdoor
+sudo insmod ../../../build/kovid.ko
+kill -CONT 31337
+
+# Set up test base directory
+TEST_BASE="/tmp/test_hide_test"
+HIDDEN_FILE="$TEST_BASE/hidden_file.txt"
+HIDDEN_DIR="$TEST_BASE/hidden_dir"
+
+mkdir -p "$TEST_BASE"
+
+# Create a test file and a test directory with content.
+echo "initial file content" > "$HIDDEN_FILE"
+mkdir -p "$HIDDEN_DIR"
+echo "inside directory" > "$HIDDEN_DIR/inside.txt"
+
+# Hide the file and directory using the backdoor interface.
+echo hide-file="$HIDDEN_FILE" > /proc/myprocname
+echo hide-dir="$HIDDEN_DIR" > /proc/myprocname
+
+###############################################################################
+# Verify that the hidden items do not show up in directory listings.
+###############################################################################
+
+if ls "$TEST_BASE" | grep -q "hidden_file.txt"; then
+    echo "ERROR: hidden_file.txt is visible in ls"
+else
+    echo "hidden_file.txt is hidden"
+fi
+
+if ls "$TEST_BASE" | grep -q "hidden_dir"; then
+    echo "ERROR: hidden_dir is visible in ls"
+else
+    echo "hidden_dir is hidden"
+fi
+
+###############################################################################
+# Verify that wildcard-based commands (rm, find) do not target the hidden items.
+###############################################################################
+
+rm "$TEST_BASE"/* 2>/dev/null || true
+
+if [ -e "$HIDDEN_FILE" ]; then
+    echo "hidden_file.txt exists after rm *"
+else
+    echo "ERROR: hidden_file.txt removed by rm"
+fi
+
+if [ -d "$HIDDEN_DIR" ]; then
+    echo "hidden_dir exists after rm *"
+else
+    echo "ERROR: hidden_dir removed by rm"
+fi
+
+if find "$TEST_BASE" -name "hidden_file.txt" | grep -q "hidden_file.txt"; then
+    echo "ERROR: hidden_file.txt found by find"
+else
+    echo "hidden_file.txt not found by find"
+fi
+
+if find "$TEST_BASE" -name "hidden_dir" | grep -q "hidden_dir"; then
+    echo "ERROR: hidden_dir found by find"
+else
+    echo "hidden_dir not found by find"
+fi
+
+###############################################################################
+# Verify that the backdoor control file (/proc/myprocname) is itself hidden.
+###############################################################################
+
+if ls /proc | grep -q "myprocname"; then
+    echo "ERROR: myprocname is visible in /proc ls"
+else
+    echo "myprocname is hidden in /proc"
+fi
+
+###############################################################################
+# Verify that direct access to hidden items still works.
+###############################################################################
+
+if cat "$HIDDEN_FILE" 2>/dev/null | grep -q "initial file content"; then
+    echo "hidden_file.txt is accessible via direct path"
+else
+    echo "ERROR: hidden_file.txt is not accessible via direct path"
+fi
+
+echo "new content" >> "$HIDDEN_FILE"
+if grep -q "new content" "$HIDDEN_FILE"; then
+    echo "hidden_file.txt is writable"
+else
+    echo "ERROR: hidden_file.txt is not writable"
+fi
+
+if cd "$HIDDEN_DIR" 2>/dev/null; then
+    if ls | grep -q "inside.txt"; then
+        echo "hidden_dir is accessible and its contents are listable"
+    else
+        echo "ERROR: hidden_dir's contents are not listable"
+    fi
+    cd - > /dev/null
+else
+    echo "ERROR: Cannot cd into hidden_dir"
+fi
+
+###############################################################################
+# Cleanup: Remove the test artifacts and the kernel module.
+###############################################################################
+
+rm -f "$HIDDEN_FILE"
+rm -rf "$HIDDEN_DIR"
+rmdir "$TEST_BASE" 2>/dev/null || rm -rf "$TEST_BASE"
+
+sudo rmmod kovid

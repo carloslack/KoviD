@@ -26,40 +26,42 @@
     Hides files and directories.
     Explore Demos repository.
 
-NOTE: Although it compiles for Linux Kernel 6.x, it should not yet be used in production.
-
 Watch [KoviD Demos](https://github.com/carloslack/kv-demos/tree/master)
 
-Read [Phrack magazine](http://phrack.org/issues/71/12.html#article) where g1inko works on some challenges posed by KoviD
+Read [Phrack magazine](http://phrack.org/issues/71/12.html#article) where g1inko works on some challenges posed by `KoviD`
 
 ### 1.1 Mostly tested against
 
-    CentOS Linux release 8.3.2011
-    4.18.0-240.22.1.el8_3.x86_64 #1 SMP Thu Apr 8 19:01:30 UTC 2021 x86_64 x86_64 x86_64 GNU/Linux
-    gcc (GCC) 8.3.1 20191121 (Red Hat 8.3.1-5)
+    6.x EXPERIMENTAL: Linux 6.8.0-52-generic #53~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC x86_64 x86_64 x86_64 GNU/Linux
+    gcc-12 (Ubuntu 12.3.0-1ubuntu1~22.04) 12.3.0
 
-    Debian GNU/Linux 10
-    Linux debian10teste 4.19.0-18-amd64 #1 SMP Debian 4.19.208-1 (2021-09-29) x86_64 GNU/Linux
-    gcc (Debian 8.3.0-6) 8.3.0
-
-    Ubuntu 18.04.5 LTS
-    Linux ubuntu 5.4.0-89-generic #100~18.04.1-Ubuntu SMP Wed Sep 29 10:59:42 UTC 2021 x86_64 x86_64 x86_64 GNU/Linux
-    gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0
-
-    Ubuntu 20.10
-    Linux ubuntu 5.8.0-55-generic #62-Ubuntu SMP Tue Jun 1 08:21:18 UTC 2021 x86_64 x86_64 x86_64 GNU/Linux
-    gcc (Ubuntu 10.3.0-1ubuntu1~20.10) 10.3.0
-
-    Ubuntu 22.04 LTS
-    Linux 5.15.0-43-generic #46-Ubuntu SMP Tue Jul 12 10:30:17 UTC 2022 x86_64 x86_64 x86_64 GNU/Linux
-    gcc (Ubuntu 11.2.0-19ubuntu1) 11.2.0
-
-    Ubuntu 22.04.1 LTS
+    5.x: Ubuntu 22.04.1 LTS
     Linux hash-virtual-machine 5.19.0-41-generic #42~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC
     UTC 2 x86_64 x86_64 x86_64 GNU/Linux
 
-    Linux Standard-PC-Q35-ICH9-2009 5.15.0-43-generic #46-Ubuntu
+    5.x: Linux Standard-PC-Q35-ICH9-2009 5.15.0-43-generic #46-Ubuntu
     SMP x86_64 x86_64 x86_64 GNU/Linux
+
+    5.x: Ubuntu 22.04 LTS
+    Linux 5.15.0-43-generic #46-Ubuntu SMP Tue Jul 12 10:30:17 UTC 2022 x86_64 x86_64 x86_64 GNU/Linux
+    gcc (Ubuntu 11.2.0-19ubuntu1) 11.2.0
+
+    5.x: Ubuntu 20.10
+    Linux ubuntu 5.8.0-55-generic #62-Ubuntu SMP Tue Jun 1 08:21:18 UTC 2021 x86_64 x86_64 x86_64 GNU/Linux
+    gcc (Ubuntu 10.3.0-1ubuntu1~20.10) 10.3.0
+
+    5.x: Ubuntu 18.04.5 LTS
+    Linux ubuntu 5.4.0-89-generic #100~18.04.1-Ubuntu SMP Wed Sep 29 10:59:42 UTC 2021 x86_64 x86_64 x86_64 GNU/Linux
+    gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0
+
+    4.x: Debian GNU/Linux 10
+    Linux debian10teste 4.19.0-18-amd64 #1 SMP Debian 4.19.208-1 (2021-09-29) x86_64 GNU/Linux
+    gcc (Debian 8.3.0-6) 8.3.0
+
+    4.x: CentOS Linux release 8.3.2011
+    4.18.0-240.22.1.el8_3.x86_64 #1 SMP Thu Apr 8 19:01:30 UTC 2021 x86_64 x86_64 x86_64 GNU/Linux
+    gcc (GCC) 8.3.1 20191121 (Red Hat 8.3.1-5)
+
 
 ## 2 - Features
 
@@ -110,8 +112,8 @@ Read [Phrack magazine](http://phrack.org/issues/71/12.html#article) where g1inko
 ### 2.8 TCP/UDP logs
 
     KoviD hides network connections and manipulates network logs
-    to maintain stealth. It also addresses issues with libpcap
-    showing connections initiated before task hiding.
+    to maintain stealth for back-doors. Libpcap+recvmsg.
+	(ss, tcpdump, netstat...)
 
 ### 2.9 r00t
 
@@ -161,7 +163,26 @@ Read [Phrack magazine](http://phrack.org/issues/71/12.html#article) where g1inko
     The interface will disable itself after 120 seconds and can be
     reactivated using the same command.
 
-### 3.2 Tasks
+### 3.2 Command retcode
+
+	Some commands can return a status code.
+	Enable status code:
+		$ echo output-enable >/proc/mytest
+		$ cat /proc/mytest
+		1
+		$ echo output-disable >/proc/mytest
+		$ cat /proc/mytest
+		0
+
+		0 disabled
+		1 enabled
+
+	Command example after output-enable:
+		$ echo hide-lkm >/proc/mytest
+		$ cat /proc/mytest
+		0
+
+### 3.3 Tasks
 
     You can hide/unhide processes using the /proc/mytest interface.
     For example, to hide a task, run: $ echo 14886 >/proc/mytest.
@@ -170,13 +191,13 @@ Read [Phrack magazine](http://phrack.org/issues/71/12.html#article) where g1inko
     Unhiding is the same as for regular tasks:
         $ echo "<PID>" >/proc/mytest
 
-### 3.3 Hide module
+### 3.4 Hide module
 
     To hide the KoviD module, use the command: `$ echo hide-lkm >/proc/mytest`.
     In release mode, the module is hidden by default,
     and a key can be displayed by running `$ cat /proc/mytest`.
 
-### 3.4 Hide/unhide/list files and directories
+### 3.5 Hide/unhide/list files and directories
 
     To hide a file or directory, use:
     $ echo hide-file=/tmp/README.txt >/proc/mytest
@@ -186,12 +207,12 @@ Read [Phrack magazine](http://phrack.org/issues/71/12.html#article) where g1inko
     and directory names with:
     $ echo list-hidden-file >/proc/mytest.
 
-### 3.5 SSH/FTP TTY sniffer
+### 3.6 SSH/FTP TTY sniffer
 
     KoviD can snoop SSH sessions via tty keystrokes and steal passwords
     and commands effectively.
 
-### 3.6 Backdoors
+### 3.7 Backdoors
 
     For instructions, run 'scripts/bdclient.sh' and a help list is displayed.
 

