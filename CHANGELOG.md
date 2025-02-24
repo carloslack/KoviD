@@ -4,9 +4,7 @@ All notable changes to KoviD will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## Unreleased
-
-### Fixed
+## v4.0.0
 - Fix improper exit handling on connection termination (Ctrl+X)
 - Fix `openssl` back-door timing kernel crash
 - Fix `printk` debug leak in `DEPLOY` mode
@@ -30,7 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Feature: back-door connections now hidden from `ss` and friends
 - Feature: Encryption in-memory for back-door and unhide LKM keys
 
-## v3.0.0 - Dec 19 2024
+## v3.0.0
 ### Fixed
 - test: False positive for `BUG: unable to handle page fault` related to `llvm.lit` test runner
 
@@ -48,11 +46,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Tests:`cmake` build system for tests framework
 - Tests: Native tests
 
-## 2.1.1 - Oct 19 2024
+## 2.1.1
 ### Fixed
 -  Bug: back-doors deinit
 
-## 2.1.0 - Oct 18 2024
+## 2.1.0
 ### Added
 - Prevent ftrace from being disabled
 - Added -n option to rename a hidden process on-the-fly
@@ -68,7 +66,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Make sure to remove SSL socket file when KoviD in unloaded
 - Memory leak from random strings
 
-## 2.0.0 - Oct 2 2024
+## 2.0.0
 ### Added
 - Zero `/proc/sys/kernel/tainted`
 - Added "-g" proc interface to support inode hiding files globally
