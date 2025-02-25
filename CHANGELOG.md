@@ -4,7 +4,12 @@ All notable changes to KoviD will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## v4.0.1
+### Fixed
+- Fix `dmesg` (and others) gap created when hiding magic words
+
 ## v4.0.0
+### Fixed
 - Fix improper exit handling on connection termination (Ctrl+X)
 - Fix `openssl` back-door timing kernel crash
 - Fix `printk` debug leak in `DEPLOY` mode
