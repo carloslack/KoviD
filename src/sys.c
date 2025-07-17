@@ -978,7 +978,8 @@ static int m_proc_dointvec(struct ctl_table *table, int write, void *buffer,
 }
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0)
-#define FTRACE_OPS_FL_RECURSION FTRACE_OPS_FL_RECURSION_SAFE
+// Recursion test is enabled by default before Linux 5.11
+#define FTRACE_OPS_FL_RECURSION 0
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0)
