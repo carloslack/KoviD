@@ -138,6 +138,9 @@ reset-auto:
 	@sed -i "s/\(uint64_t auto_bdkey = \)[^;]*;/\10x0000000000000000;/" src/sock.c
 	@sed -i "s/\(uint64_t auto_unhidekey = \)[^;]*;/\10x0000000000000000;/" src/kovid.c
 	@sed -i "s/\(uint64_t auto_ebpfhidenkey = \)[^;]*;/\10x0000000000000000;/" tools/ebpf/main.c
+	@sed -i 's|/var/\.[a-f0-9-]\{36\}\.sh|/var/.lm.sh|g' $(persist).S
+	@sed -i 's|/var/\.[a-f0-9-]\{36\}\.ko|/var/.kv.ko|g' $(persist).S
+
 
 clean: reset-auto
 	@make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
