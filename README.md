@@ -13,9 +13,8 @@
     Conceals CPU usage for all hidden tasks.
     Grants root privileges.
     Hides files and directories.
-    Explore Demos repository.
 
-Watch [KoviD Demos](https://github.com/carloslack/kv-demos/tree/master)
+KoviD and KoviD-Obfuscation papers [TheOpenStealth](https://github.com/theopenstealth/theopenstealth-papers/tree/main/KoviD) are now available!
 
 Read [Phrack magazine](http://phrack.org/issues/71/12.html#article) where g1inko works on some challenges posed by `KoviD`
 
