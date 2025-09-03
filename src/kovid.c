@@ -107,7 +107,11 @@ struct module_sect_attrs {
 // Mostly copycat from the kernel with
 // light modifications to handle only a subset
 // of sysfs files
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+static ssize_t show_refcnt(const struct module_attribute *mattr,
+#else
 static ssize_t show_refcnt(struct module_attribute *mattr,
+#endif
 			   struct module_kobject *mk, char *buffer)
 {
 	return sprintf(buffer, "%i\n", module_refcount(mk->mod));
