@@ -1,22 +1,95 @@
 ![KoviD Logo](./docs/images/logo/kvlogo.jpeg)
 
-## 1 - About
+---
 
-    KoviD is a Loadable Kernel Module (LKM) designed for
-    Linux Kernel version 5 and later. Key features include:
+## ⚠️ IMPORTANT DISCLAIMER - EDUCATIONAL & DEFENSIVE SECURITY RESEARCH ONLY ⚠️
 
-    Self-hiding from SysFS.
-    Provides reverse shell backdoors.
-    Conceals processes from the proc file system.
-    Handles child processes, newly created processes.
-    Hides KauditD logs, syslogs, user presence.
-    Conceals CPU usage for all hidden tasks.
-    Grants root privileges.
-    Hides files and directories.
+**This project is strictly for educational purposes and defensive security research.**
+
+### Our Mission
+
+Rootkits are typically closed-source threats that operate in shadows, making them difficult to understand and defend against. **KoviD exists to change this paradigm** by providing an open-source implementation that:
+
+- **Empowers security researchers** to understand rootkit techniques in a transparent, controlled environment
+- **Helps system administrators** learn how to detect and defend against real-world threats
+- **Educates students and professionals** about kernel-level security vulnerabilities
+- **Contributes to making Linux more secure** by exposing potential attack vectors for defensive purposes
+
+### Why Open Source Rootkit Research Matters
+
+Most rootkits in the wild are closed-source, leaving defenders at a disadvantage. By providing an open-source implementation:
+- Security professionals can study real rootkit techniques without reverse-engineering malware
+- Defensive tools can be tested against known rootkit behaviors
+- The security community can collaborate on detection and prevention methods
+- Organizations can prepare their defenses against sophisticated kernel-level threats
+
+### Legal and Ethical Use Only
+
+**WARNING:** This software is provided for authorized security testing and educational purposes ONLY.
+
+- **DO NOT** use this software on systems you do not own or lack explicit permission to test
+- **DO NOT** use this software for any illegal or malicious purposes
+- **ALWAYS** comply with all applicable laws and regulations in your jurisdiction
+- **REMEMBER:** Unauthorized access to computer systems is illegal and unethical
+
+By using this software, you agree to use it responsibly and solely for improving security posture and understanding.
+
+---
+
+## Educational & Research Objectives
+
+KoviD serves as a comprehensive educational platform for:
+
+### For Security Researchers
+- **Analyze rootkit behavior** in a controlled, observable environment
+- **Develop detection signatures** for security tools and IDS/IPS systems
+- **Test defensive solutions** against known rootkit techniques
+- **Research kernel security** vulnerabilities and mitigation strategies
+
+### For System Administrators
+- **Learn to identify** signs of rootkit infection
+- **Understand attack vectors** to better secure production systems
+- **Test incident response** procedures in safe environments
+- **Validate security tools** effectiveness against rootkit techniques
+
+### For Students & Educators
+- **Hands-on learning** about kernel-level security concepts
+- **Practical demonstrations** of theoretical security vulnerabilities
+- **Research projects** on Linux kernel security
+- **Thesis work** on rootkit detection and prevention methods
+
+### How This Helps Improve Linux Security
+1. **Transparency**: Open-source code allows the community to understand threats better
+2. **Collaboration**: Researchers can work together on detection methods
+3. **Innovation**: Drives development of better security tools and kernel hardening
+4. **Preparation**: Helps organizations prepare defenses before encountering real threats
+
+---
+
+## 1 - About KoviD
+
+    KoviD is an open-source Loadable Kernel Module (LKM) security research tool
+    designed to help security professionals understand and defend against rootkit
+    techniques in Linux Kernel version 5 and later.
+
+    This educational tool demonstrates various rootkit capabilities to help defenders:
+    • Understand how rootkits hide from detection systems
+    • Test security monitoring and detection tools
+    • Learn kernel-level security vulnerabilities
+    • Develop better defensive strategies
+
+    Research capabilities demonstrated include:
+    • Module concealment techniques from SysFS
+    • Process hiding mechanisms in proc filesystem
+    • Log manipulation and evasion techniques
+    • CPU usage concealment methods
+    • Privilege escalation vectors
+    • File and directory hiding approaches
+    • Network connection concealment
 
 KoviD and KoviD-Obfuscation papers [TheOpenStealth](https://github.com/theopenstealth/theopenstealth-papers/tree/main/KoviD) are now available!
 
-Read [Phrack magazine](http://phrack.org/issues/71/12.html#article) where g1inko works on some challenges posed by `KoviD`
+Read [Phrack magazine](http://phrack.org/issues/71/12.html#article) where `g1inko` works on some challenges posed by `KoviD`.
 
 ### 1.1 Mostly tested against
 
