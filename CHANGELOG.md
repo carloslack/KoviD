@@ -4,6 +4,10 @@ All notable changes to KoviD will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## v4.0.2
+### Added
+- Full computing of hidden files sizes when passing via `sys_statfs`
+
 ## v4.0.1
 ### Fixed
 - Fix `dmesg` (and others) gap created when hiding magic words
