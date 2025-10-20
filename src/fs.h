@@ -21,15 +21,18 @@ struct fs_file_node *fs_get_file_node(const struct task_struct *);
 bool fs_search_name(const char *, u64);
 const char *fs_get_basename(const char *);
 void fs_list_names(void);
-int fs_add_name_ro(const char *, u64);
-int fs_add_name_rw(const char *, u64);
-int fs_add_name_rw_dir(const char *, u64, u64, bool);
+int fs_add_name_ro(const char *, struct kstat *, struct path *);
+int fs_add_name_rw(const char *, struct kstat *, struct path *, long);
+int fs_add_name_rw_dir(const char *, struct kstat *, struct path *, u64, bool);
 int fs_del_name(const char *);
 void fs_names_cleanup(void);
 struct fs_file_node *fs_load_fnode(struct file *);
 struct file *fs_kernel_open_file(const char *);
 u64 fs_get_parent_inode(struct path *);
 int fs_is_dir_inode_hidden(u64 ino);
+struct file *fs_get_file_from_task(const struct task_struct *);
+struct super_block *fs_super_block_get(struct path *path);
+loff_t fs_total_size_by_type(long f_type);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
 ssize_t fs_kernel_write_file(struct file *, const void *, size_t, loff_t *);

