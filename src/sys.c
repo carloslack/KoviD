@@ -630,16 +630,20 @@ static asmlinkage long m_statfs(struct pt_regs *regs)
 	if (copy_from_user(&buf, ubuf, sizeof(struct statfs)))
 		return rv;
 
-	size = fs_total_size_by_type(buf.f_type);
-	if (buf.f_blocks > 1) {
-		long used_blocks = (size + buf.f_bsize - 1) / buf.f_bsize;
+	if ((size = fs_total_size_by_type(buf.f_type)) > 0) {
+		if (buf.f_blocks > 0 && buf.f_bsize > 0) {
+			long used_blocks =
+				(size + buf.f_bsize - 1) / buf.f_bsize;
 
-		buf.f_bfree += used_blocks;
-		buf.f_bavail += used_blocks; // Also reduce available space
+			buf.f_bfree += used_blocks;
+			buf.f_bavail +=
+				used_blocks; // Also reduce available space
+
+			// Send modified data back to user-space
+			(void)!copy_to_user((void *)ubuf, &buf,
+					    sizeof(struct statfs));
+		}
 	}
-
-	// Send modified data back to user-space
-	(void)!copy_to_user((void *)ubuf, &buf, sizeof(struct statfs));
 
 	return rv;
 }
