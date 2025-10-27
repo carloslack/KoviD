@@ -66,7 +66,7 @@ KoviD serves as a comprehensive educational platform for:
 
 ---
 
-## 1 - About KoviD
+## 1 - About KoviD Security Research Tool
 
     KoviD is an open-source Loadable Kernel Module (LKM) security research tool
     designed to help security professionals understand and defend against rootkit
@@ -87,13 +87,83 @@ KoviD serves as a comprehensive educational platform for:
     • File and directory hiding approaches
     • Network connection concealment
 
-KoviD and KoviD-Obfuscation papers [TheOpenStealth](https://github.com/theopenstealth/theopenstealth-papers/tree/main/KoviD) are now available!
+    By understanding these techniques, security professionals can better protect systems.
 
-Read [Phrack magazine](http://phrack.org/issues/71/12.html#article) where `g1inko` works on some challenges posed by `KoviD`.
 
-### 1.1 Mostly tested against
+### 1.1 KoviD impact and influence
 
-    6.x EXPERIMENTAL: Linux 6.8.0-52-generic #53~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC x86_64 x86_64 x86_64 GNU/Linux
+`KoviD` has influenced the security‑research community: it is cited in numerous
+papers and analyses, and later tools have adopted technical ideas from it.
+
+#### 1.1.1 Articles and Researches
+
+    • [Phrack magazine](http://phrack.org/issues/71/12.html#article)
+        Where g1inko works on some challenges posed by `KoviD`
+
+    • [Black Hat Arsenal 2025](https://www.youtube.com/watch?v=FKcX-6jReAc)
+        wetw0rk's awesome [Sickle Payload Framework](https://github.com/wetw0rk/Sickle),
+        `KoviD` is deployed without touching the disk!
+
+    • [Sandfly Security](https://sandflysecurity.com/blog/sandfly-5-3-1-new-license-tiers-and-selinux-support)
+        Sandfly Agentless Linux Security and stealth rootkit detection technics
+
+    • [Thalium](https://blog.thalium.re/posts/linux-kernel-rust-module-for-rootkit-detection/)
+        Linux kernel Rust module for rootkit detection
+
+    • [Universite de Bordeaux](https://mastercsi.labri.fr/wp-content/uploads/2025/03/Kovid_Rootkit-Charbonnier_Raphel.pdf)
+        Master SCI KoviD rootkit case-study by Charbonnier Elouan & Raphel Elsa
+
+    • [Phrack magazine](http://phrack.org/issues/71/12.html#article)
+        Where g1inko works on some challenges posed by `KoviD`
+
+    • [Bloo](https://bloo.io/blog/inside-kovid-the-stealthy-linux-kernel-rootkit-threat)
+        Inside KoviD: The Stealthy Linux Kernel Rootkit Threat
+
+#### 1.1.2 Influence on other LKM researches
+
+We also inspire other LKM rootkits, with
+some unique set of features, to name a few:
+
+    • Ftrace disabling call interception
+    • TTY session logging
+    • tainted mask manipulation
+    • Process handling
+    • BPF introspection operations
+    • SysFS entries re-addition - Essential for debugging and development
+
+The APT Down leak contains a rootkit that appears to reuse parts of KoviD,
+notably the SysFS hide/unhide implementation and helper
+routines — see links below.
+
+[ENKI Whitehat](https://www.enki.co.kr/en/media-center/blog/in-depth-analysis-of-the-apt-down-the-north-korea-files-leak)
+
+[APT Down - The North Korea Files, leak](https://phrack.org/issues/72/7_md)
+
+
+A number of public‑domain projects have drawn inspiration from KoviD.
+In some cases developers adapted concepts or reused small,
+code fragments recreate features that were distinctive to our project:
+
+[blackbox-ave](https://github.com/Yuragy/blackbox-ave)
+
+[basilisk rootkit](https://github.com/lil-skelly/basilisk)
+
+[Singularity rootkit](https://github.com/MatheuZSecurity/Singularity)
+
+
+### 1.2 Build from source
+
+We propose building it via `docker`, e.g.:
+
+```
+$ docker build --build-arg BASE_UBUNTU_VERSION=20.04 --build-arg UBUNTU_KERNEL_VERSION=5.15.0-43-generic -t kovid-builder .
+```
+
+For more info, check out `docs/Automated-Build-With-Docker.md`.
+
+### 1.3 Mostly tested against
+
+    6.x: Linux 6.8.0-52-generic #53~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC x86_64 x86_64 x86_64 GNU/Linux
     gcc-12 (Ubuntu 12.3.0-1ubuntu1~22.04) 12.3.0
 
     5.x: Ubuntu 22.04.1 LTS
