@@ -424,7 +424,7 @@ static asmlinkage long m_bpf(struct pt_regs *regs)
 				goto leave;
 			}
 
-			bucket = xchg(&smap->buckets[id], NULL);
+			bucket = READ_ONCE(smap->buckets[id]);
 			if (!bucket)
 				goto leave;
 
