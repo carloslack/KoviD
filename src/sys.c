@@ -355,11 +355,15 @@ static asmlinkage long m_bpf(struct pt_regs *regs)
 	union bpf_attr __user *uattr;
 	struct kernel_syscalls *ks;
 	void *key = NULL, *value = NULL;
+	int cmd = (int)PT_REGS_PARM1(regs);
 	unsigned long size = (unsigned int)PT_REGS_PARM3(regs);
 
 	// Call original first this time
 	ret = real_m_bpf(regs);
 	if (ret < 0)
+		goto leave;
+
+	if (cmd != BPF_MAP_LOOKUP_ELEM)
 		goto leave;
 
 	if (!(attr = (union bpf_attr *)kmalloc(size, GFP_KERNEL)))
@@ -379,8 +383,15 @@ static asmlinkage long m_bpf(struct pt_regs *regs)
 		struct fd f = { .file = file, .flags = 0 };
 		struct bpf_map *map = ks->k_bpf_map_get(f);
 #endif
-		struct bpf_stack_map *smap =
-			container_of(map, struct bpf_stack_map, map);
+		struct bpf_stack_map *smap = NULL;
+
+		if (IS_ERR(map))
+			goto leave;
+
+		if (map->map_type != BPF_MAP_TYPE_STACK_TRACE)
+			goto leave;
+
+		smap = container_of(map, struct bpf_stack_map, map);
 
 		if (!smap) {
 			prerr("smap error\n");
@@ -393,7 +404,7 @@ static asmlinkage long m_bpf(struct pt_regs *regs)
 		// that is about to be returned to userspace. We'll then
 		// read, modify, and write it back. The goal is to nullify
 		// it if there's a match, ensuring it doesn't get used.
-		if (attr->map_type == BPF_MAP_TYPE_PERF_EVENT_ARRAY) {
+		{
 			u32 id;
 			void __user *ukey = u64_to_user_ptr(attr->key);
 			struct stack_map_bucket *bucket;
@@ -413,7 +424,7 @@ static asmlinkage long m_bpf(struct pt_regs *regs)
 				goto leave;
 			}
 
-			bucket = xchg(&smap->buckets[id], NULL);
+			bucket = READ_ONCE(smap->buckets[id]);
 			if (!bucket)
 				goto leave;
 
