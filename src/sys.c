@@ -210,7 +210,7 @@ static bool _ftrace_intercept(struct pt_regs *regs)
 {
 	const char __user *arg;
 	struct file *file;
-	struct path file_path;
+	struct path file_path = { };
 	bool rc = false;
 
 	int fd = PT_REGS_PARM1(regs);
