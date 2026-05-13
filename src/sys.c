@@ -168,12 +168,24 @@ static bool is_sys_parent(unsigned int fd)
 	struct dentry *parent_dentry;
 	char *path_buffer, *parent_path;
 	bool rv = false;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0)
+	struct file *fdfile;
+#endif
 
 	struct fd f = fdget(fd);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0)
+       if (!fd_file(f))
+#else
 	if (!f.file)
+#endif
 		goto out;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0)
+		fdfile = fd_file(f);
+		dentry = fdfile->f_path.dentry;
+#else
 	dentry = f.file->f_path.dentry;
+#endif
 	parent_dentry = dentry->d_parent;
 
 	path_buffer = (char *)__get_free_page(GFP_KERNEL);
@@ -182,7 +194,11 @@ static bool is_sys_parent(unsigned int fd)
 		goto out;
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0)
+	parent_path = d_path(&fdfile->f_path, path_buffer, PAGE_SIZE);
+#else
 	parent_path = d_path(&f.file->f_path, path_buffer, PAGE_SIZE);
+#endif
 	if (!IS_ERR(parent_path)) {
 		if (!strncmp(parent_path, "/proc", 5) ||
 		    !strncmp(parent_path, "/sys", 4) ||
@@ -210,7 +226,7 @@ static bool _ftrace_intercept(struct pt_regs *regs)
 {
 	const char __user *arg;
 	struct file *file;
-	struct path file_path;
+	struct path file_path = { };
 	bool rc = false;
 
 	int fd = PT_REGS_PARM1(regs);
