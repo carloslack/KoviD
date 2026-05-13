@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 ### Fixed
+- Fix build regression regarding kernel 6.14
 - Fix use-after-free in NF hooks: always `kmemdup` iph/tcph since skb is freed after `NF_DROP`
 - Fix `GFP_KERNEL` allocations in softirq/interrupt context (NF hook path), use `GFP_ATOMIC`
 - Fix concurrent access to `iph_node` list with `spin_lock_bh` + dedup check
