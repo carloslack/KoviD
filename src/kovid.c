@@ -842,11 +842,7 @@ int kv_add_proc_interface(void)
 		return 0;
 
 try_reload:
-#ifdef DEBUG_RING_BUFFER
 	rrProcFileEntry = proc_create(PROCNAME, 0666, NULL, &proc_file_fops);
-#else
-	rrProcFileEntry = proc_create(PROCNAME, S_IRUSR, NULL, &proc_file_fops);
-#endif
 	if (lock && !rrProcFileEntry)
 		goto proc_file_error;
 	if (!lock) {
