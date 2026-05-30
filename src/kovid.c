@@ -204,6 +204,7 @@ static void hide_work_fn(struct work_struct *work)
 		if (k_mod_tree_remove)
 			k_mod_tree_remove(lkmmod.this_mod);
 	}
+	complete(&hide_work_done);
 }
 
 static DECLARE_DELAYED_WORK(hide_work, hide_work_fn);
