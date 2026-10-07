@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 ### Fixed
+- Fix `m_bpf` data interception: restore hook evasion against bpf-hookdetect by adding range-based address matching for return addresses in stack traces
 - Fix `this_mod->state` being overridden in `do_init_module` by kernel
 
 ### Added
