@@ -1226,10 +1226,14 @@ int kv_reset_tainted(unsigned long *tainted_ptr)
 #define _sys_arch(s) s
 #endif
 
+static DEFINE_MUTEX(kall_load_mtx);
 struct kernel_syscalls *kv_kall_load_addr(void)
 {
 	static struct kernel_syscalls ks;
+	if (READ_ONCE(ks.k_kallsyms_lookup_name))
+		return &ks;
 
+	mutex_lock(&kall_load_mtx);
 	if (!ks.k_kallsyms_lookup_name) {
 		static struct kprobe kps;
 
@@ -1282,6 +1286,8 @@ struct kernel_syscalls *kv_kall_load_addr(void)
 		if (!ks.k__set_task_comm)
 			prwarn("invalid data: __set_task_comm will not work\n");
 	}
+	mutex_unlock(&kall_load_mtx);
+
 	return &ks;
 }
 

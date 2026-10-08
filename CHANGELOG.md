@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 ### Fixed
 - Fix `m_bpf` data interception: restore hook evasion against bpf-hookdetect by adding range-based address matching for return addresses in stack traces
+- Fix lazy-init race in `kv_kall_load_addr` with double-checked locking and mutex protection
 - Fix `this_mod->state` being overridden in `do_init_module` by kernel
 
 ### Added
