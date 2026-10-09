@@ -63,15 +63,20 @@ You should see output similar to this:
 ```
 
 Make sure you remember what value you used for `PROCNAME` during the build process.
-Now, let’s use our trick—specifically, the signal that opens and closes the `/proc` files:
+Now, let’s toggle the proc UI using the magic key from the build output.
+The `PRCKEY` is printed during compilation—save it for this step:
 
 ```
-# kill -CONT 31337
+# rm -f <PRCKEY>
 ```
-By doing this, we should see our `proc` loaded:
+By doing this, we should see our `proc` interface toggled:
 ```
-# kill -CONT 31337
 [  929.419542] /proc/myprocname loaded, timeout: 1200s
+```
+
+To get root access, use:
+```
+# echo root > /proc/myprocname
 ```
 
 ## A simple feature

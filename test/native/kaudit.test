@@ -7,13 +7,17 @@
 sudo dmesg -c
 sleep 10
 sudo insmod ../../../build/kovid.ko
-kill -CONT 666
+# Toggle proc interface using magic key (0x3 in DEBUG builds)
+sudo bash -c "rm -f 3"
+cat /proc/myprocname
+echo root > /proc/myprocname
+cat /proc/myprocname
+# CHECK: 0
+
 # su
 # exit
 sudo rmmod kovid
 sudo dmesg
 
 # CHECK: loaded.
-# CHECK: Cool! Now try 'su'
-# CHECK: Uninstalling: '__x64_sys_exit_group' syscall=1
 # CHECK: unloaded.
