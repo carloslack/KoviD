@@ -5,7 +5,7 @@
 # RUN: FileCheck-18 --input-file=%t.log %s
 
 sudo insmod ../../../build/kovid.ko
-kill -CONT 31337
+sudo bash -c "rm -f 3"  # Toggle proc interface
 
 sudo echo get-bdkey > /proc/myprocname
 

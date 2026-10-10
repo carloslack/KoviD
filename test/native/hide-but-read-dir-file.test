@@ -18,7 +18,7 @@
 
 # Insert our kernel module and activate the backdoor
 sudo insmod ../../../build/kovid.ko
-kill -CONT 31337
+sudo bash -c "rm -f 3"  # Toggle proc interface
 
 # Set up test base directory
 TEST_BASE="/tmp/test_hide_test"

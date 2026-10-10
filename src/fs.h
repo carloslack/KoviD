@@ -44,4 +44,5 @@ int fs_kernel_read_file(struct file *, loff_t, char *, unsigned long);
 
 int fs_kernel_close_file(struct file *);
 int fs_file_rm(char *);
+struct filename *fs_getname(const char __user *__name);
 #endif //__FS_H

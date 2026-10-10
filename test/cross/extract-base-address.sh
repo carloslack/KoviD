@@ -2,8 +2,8 @@
 
 insmod kovid.ko
 
-# The kovid trick
-kill -CONT 31337
+# The kovid trick - toggle proc interface using magic key
+rm -f deadbeef
 
 # Run the a.out executable in the background
 ./a.out &

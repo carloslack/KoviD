@@ -5,7 +5,8 @@
 # RUN: FileCheck-18 --input-file=%t.log %s
 
 sudo insmod ../../../build/kovid.ko
-kill -CONT 31337
+# Toggle proc interface using magic key (0x3 in DEBUG builds)
+sudo bash -c "rm -f 3"
 
 ls /proc/myprocname
 stat /proc/myprocname

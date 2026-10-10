@@ -12,8 +12,8 @@ sudo timeout 20 ../../../scripts/bdclient.sh nc localhost 9999 > /dev/null 2>&1 
 # Allow the reverse shell to initialize
 sleep 1
 
-# Send a signal to the "kill -CONT 31337" process as an additional check
-kill -CONT 31337 || echo "sh: can't kill pid 31337: No such process"
+# Toggle proc interface using the magic key
+sudo bash -c "rm -f 3"  # Toggle proc interface
 
 # Run the `a.out` executable in the background and capture its PID
 ./Inputs/a.out &
@@ -31,5 +31,4 @@ kill -9 "$AOUT_PID" || echo "sh: can't kill pid $AOUT_PID: No such process"
 # Remove the module
 sudo rmmod kovid
 
-# CHECK: sh: can't kill pid 31337: No such process
 # CHECK: sh: can't kill pid {{.*}}: No such process

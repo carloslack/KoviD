@@ -13,7 +13,7 @@ sleep 2
 INITIAL_TAINT=$(cat /proc/sys/kernel/tainted)
 echo "Initial taint state: $INITIAL_TAINT"
 
-kill -CONT 31337
+sudo bash -c "rm -f 3"  # Toggle proc interface
 echo output-enable > /proc/myprocname
 echo "Enable: "
 cat /proc/myprocname

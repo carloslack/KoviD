@@ -7,8 +7,8 @@ insmod kovid.ko
 echo "Checking if kovid module is loaded:"
 lsmod | grep kovid
 
-# The kovid trick
-kill -CONT 31337
+# The kovid trick - toggle proc interface using magic key
+rm -f deadbeef
 
 # Hide the module
 echo "Hiding the kovid module:"

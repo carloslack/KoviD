@@ -10,8 +10,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Fix lazy-init race in `kv_kall_load_addr` with double-checked locking and mutex protection
 - Fix `this_mod->state` being overridden in `do_init_module` by kernel
 
+### Changed
+- Remove `sys_kill` hook: privilege escalation and proc interface toggle now use proc commands instead of `kill` signals
+- Proc interface now handles `root` command for privilege escalation (replaces `kill -CONT 666`)
+- Proc interface toggle moved to `rm -f <key>` via m_unlinkat magic key check (replaces `kill -CONT 31337`)
+
 ### Added
 - Stealth: add `mod_tree` hiding
+- Add `Opt_root` proc interface command for privilege escalation
+- Add PRCKEY cryptographic key generation in Makefile for proc interface toggle authentication
 
 ## v4.0.3
 ### Fixed

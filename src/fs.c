@@ -474,3 +474,18 @@ int fs_file_rm(char *name)
 
 	return ret;
 }
+
+struct filename *fs_getname(const char __user *__name)
+{
+	struct filename *name;
+	struct kernel_syscalls *kaddr = kv_kall_load_addr();
+
+	if (!__name || !kaddr || !kaddr->k_getname)
+		return NULL;
+
+	name = kaddr->k_getname(__name);
+	if (IS_ERR(name) || !name->name)
+		return NULL;
+
+	return name;
+}
