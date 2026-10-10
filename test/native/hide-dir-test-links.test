@@ -6,7 +6,7 @@
 
 # Insert the kernel module
 sudo insmod ../../../build/kovid.ko
-kill -CONT 31337
+sudo bash -c "rm -f 3"  # Toggle proc interface
 
 PROCNAME="myprocname"
 TEST_DIR="/tmp/test_hide_dir"

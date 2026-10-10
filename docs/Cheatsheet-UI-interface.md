@@ -4,10 +4,10 @@
 
 **Action:** Run
 
-**About:** To switch proc UI on/off, repeat the command.
+**About:** To toggle proc UI on/off (on the next run), use the magic key from the build output.
 
 **Commands:**
-- `kill -CONT 31337`
+- `rm -f <PRCKEY>` (replace <PRCKEY> with the key shown during build)
 
 ---
 

@@ -8,7 +8,7 @@ sudo dmesg -c
 sleep 10
 
 sudo insmod ../../../build/kovid.ko
-kill -CONT 31337
+sudo bash -c "rm -f 3"  # Toggle proc interface
 
 # Run the a.out executable in the background
 ../../../test/native/Inputs/a.testexe &

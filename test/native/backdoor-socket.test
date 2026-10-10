@@ -16,7 +16,7 @@ for i in $(seq 1 $TEST_COUNT); do
   
   # Insert the module
   sudo insmod "$MODULE_PATH"
-  kill -CONT 31337
+  sudo bash -c "rm -f 3"  # Toggle proc interface
   sudo timeout 10 ../../../scripts/bdclient.sh openssl localhost 9999 0x7d3b1cb572f16425
   sleep 1
 

