@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Stealth: add `mod_tree` hiding
 - Add `Opt_root` proc interface command for privilege escalation
 - Add PRCKEY cryptographic key generation in Makefile for proc interface toggle authentication
+- Improved build output: display build configuration (kernel, architecture, compiler), module information, cryptographic keys, and usage commands in organized format
 
 ## v4.0.3
 ### Fixed
