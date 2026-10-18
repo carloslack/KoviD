@@ -8,6 +8,7 @@ endif
 STRIP=$(shell which strip)
 LD=$(shell which ld)
 AS=$(shell which as)
+NM=$(shell which nm)
 CTAGS=$(shell which ctags)
 JOURNALCTL := $(shell which journalctl)
 UUIDGEN := $(shell uuidgen)
@@ -89,6 +90,13 @@ ifdef OBFUSCATE
 else
 	@echo "  Obfuscation: disabled"
 endif
+	@echo -n "  ISRA status: "
+	@if $(NM) $(SRC:.c=.o) 2>/dev/null | grep -q '\.isra\.'; then \
+		echo "WARNING - ISRA clones detected (symbol names altered):"; \
+		$(NM) $(SRC:.c=.o) 2>/dev/null | grep '\.isra\.' | awk '{print "    " $$3}'; \
+	else \
+		echo "none (no .isra. symbols)"; \
+	fi
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo "Module Information:"
 	@echo "  Module file: $(OBJNAME).ko"
