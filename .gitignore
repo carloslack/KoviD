@@ -74,3 +74,6 @@ Mkfile.old
 dkms.conf
 
 build/
+
+# Local TLS certs/keys - never commit
+scripts/certs/
