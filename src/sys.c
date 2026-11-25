@@ -623,13 +623,17 @@ static asmlinkage long m_lseek(struct pt_regs *regs)
 	if (NULL != p && strstr(p, PROCNAME)) {
 		struct kstat stat;
 		struct path path;
-		if (fs_kern_path(PROCNAME_FULL, &path) &&
-		    fs_file_stat(&path, &stat)) {
-			if (stat.ino == this_ino) {
+
+		// fs_kern_path() only populates @path on success, so the
+		// reference must only be dropped when it was acquired.
+		if (fs_kern_path(PROCNAME_FULL, &path)) {
+			if (fs_file_stat(&path, &stat) && stat.ino == this_ino) {
+				path_put(&path);
 				fput(file);
 				// No lseek for PROCNAME
 				goto leave;
 			}
+			path_put(&path);
 		}
 	}
 
